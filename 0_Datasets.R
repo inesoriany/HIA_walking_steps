@@ -90,10 +90,7 @@ emp_subset <- emp_subset %>%
 
 # Daily steps
 emp_subset <- emp_subset %>% 
-  mutate(step = case_when(
-    sexe == "Male"     ~ nbkm_walking/step_length_men,
-    sexe == "Female"   ~ nbkm_walking/step_length_women
-  ))
+  mutate(step = nbkm_walking/step_length)
 
 # Day time spent walking (min)
 emp_subset <- emp_subset %>% 
@@ -243,10 +240,7 @@ emp_drivers <- emp_drivers %>%
 
 # Daily steps if those car distances were walked
 emp_drivers <- emp_drivers %>% 
-  mutate(day_step_shift = case_when(
-    sexe == "Male"     ~ mdisttot_fin1/step_length_men,
-    sexe == "Female"   ~ mdisttot_fin1/step_length_women
-  ))
+  mutate(day_step_shift = mdisttot_fin1/step_length)
 
 
 
