@@ -4,8 +4,7 @@
 
 
 ## STEP LENGTH (Murtagh et al., 2020)
-step_length_women <- 0.656 * 1e-3   # km
-step_length_men <- 0.704 *1e-3     # km
+step_length <- 0.715*1e-3   # km
 
 
 ## WALKING SPEED (Barban et al, 2022) ----
