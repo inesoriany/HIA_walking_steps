@@ -123,8 +123,6 @@ graph_DRF <- function(dis, data, rr_mean, rr_lci, rr_uci) {
 ################################################################################################################################
 ################################################################################################################################
 
-
-
 ##############################################################
 #                DISEASE REDUCTION RISK                      #
 ##############################################################
@@ -135,22 +133,13 @@ graph_DRF <- function(dis, data, rr_mean, rr_lci, rr_uci) {
 
 reduction_risk = function(data, dis, bound, data_rr) {
     rr_obs <- sym(paste0(dis, "_rr"))  
-  
-    rr0 <- data_rr %>% 
-      filter(step == 0, disease == dis)
     
-    # To calculate the upper bound of reduction of the relative risk, use RR lower bound because the decrease will be higher 
-    rr_ref <- case_when(
-      bound == "low" ~ rr0$low,      
-      bound == "up"  ~ rr0$up,      
-      TRUE           ~ rr0$mid      
-    )
-      rr_ref <- as.numeric(rr_ref)
-      
+    rr2000 <- 1
+    
       # Risk reduction
     data <- data %>%
       mutate(
-        !!paste0(dis, "_reduction_risk") := 1 - (!!rr_obs / rr_ref)
+        !!paste0(dis, "_reduction_risk") := rr2000 / !!rr_obs
       )
       
     return(data)
@@ -164,10 +153,11 @@ reduction_risk = function(data, dis, bound, data_rr) {
 reduc_incidence = function (data, incidence_rate, reduction_risk, dis) {
   for (i in 1:nrow(data)) {
     data[i, paste0(dis,"_reduc_incidence")] <- data[i, incidence_rate] * data[i, reduction_risk]
-  }
-  if (!is.na(data[i, paste0(dis,"_reduc_incidence")]) & data[i, paste0(dis,"_reduc_incidence")] > 0.40) {             
-    data[i, paste0(dis,"_reduc_incidence")] <-  0.40                                    # cap reduction to 40%
-  }
+    
+    if (!is.na(data[i, paste0(dis,"_reduc_incidence")]) & data[i, paste0(dis,"_reduc_incidence")] > 0.30) {             
+      data[i, paste0(dis,"_reduc_incidence")] <-  0.30                                    # cap reduction to 30%
+    }
+  }  
   return(data)
 }
 
@@ -208,14 +198,14 @@ calc_HIA = function(data, bound, data_rr, dis_vec){
   
   for (dis in dis_vec) {
     
-    # 1. Percentage of disease decrease 
-    data <- reduction_risk(data, dis, bound, data_rr)
+    # 1. Reduction risk
+    data <- reduction_risk (data, dis, bound, data_rr)
     
     # 2. Reduced incidence
     dis_incidence_rate <- paste0(dis, "_rate")
     dis_reduction_risk <- paste0(dis, "_reduction_risk")
     
-    data <- reduc_incidence(data, dis_incidence_rate, dis_reduction_risk, dis)
+    data <- reduc_incidence(data, dis_incidence_rate, dis_reduction_risk, dis) 
     
     # 3. DALY prevented  
     data <- daly(data, dis, bound)
