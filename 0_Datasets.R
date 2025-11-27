@@ -90,7 +90,7 @@ emp_subset <- emp_subset %>%
 
 # Daily steps
 emp_subset <- emp_subset %>% 
-  mutate(step = nbkm_walking/step_length)
+  mutate(step_commute = nbkm_walking/step_length)
 
 # Day time spent walking (min)
 emp_subset <- emp_subset %>% 
@@ -240,7 +240,7 @@ emp_drivers <- emp_drivers %>%
 
 # Daily steps if those car distances were walked
 emp_drivers <- emp_drivers %>% 
-  mutate(day_step_shift = mdisttot_fin1/step_length)
+  mutate(day_step_commute_shift = mdisttot_fin1/step_length)
 
 
 
