@@ -69,7 +69,7 @@ dis_vec = c("mort", "cvd", "diab2", "dem")
 # Initialization
 health_walkers <- emp_walk %>% 
   # Round the number of steps to the nearest ten
-  mutate(step = pmin(12000, round(step / 10) * 10))
+  mutate(step = pmin(12000, round(step_commute / 10) * 10 + 2000))
 
 
 # Associate simulated RR
@@ -82,7 +82,7 @@ health_walkers_mid <- health_walkers
           filter(disease == dis) %>% 
           select(step, mid) %>% 
           rename(!!paste0(dis, "_rr") := mid),
-        by = "step"
+        by = "step" 
       )
   }
 
@@ -94,7 +94,9 @@ health_walkers_low <- health_walkers
         rr_table %>% 
           filter(disease == dis) %>% 
           select(step, low) %>% 
-          rename(!!paste0(dis, "_rr") := low),
+          # To calculate the upper bound of reduction of the relative risk, use RR lower bound because the decrease will be higher,
+          # i.e. the person exposed (walking) is less likely to have the disease 
+          rename(!!paste0(dis, "_rr") := up),
         by = "step"
       )
   }
@@ -107,7 +109,7 @@ health_walkers_up <- health_walkers
         rr_table %>% 
           filter(disease == dis) %>% 
           select(step, up) %>% 
-          rename(!!paste0(dis, "_rr") := up),
+          rename(!!paste0(dis, "_rr") := low),
         by = "step"
       )
   }
