@@ -57,14 +57,13 @@ generate_RR_distrib = function (RR, low, sup, N) {          # N : number of rand
   
   sd1 <- (lRR - l_low) / qnorm(1-0.05/2)
   sd2 <- (l_sup - lRR) / qnorm(1-0.05/2) 
-  sd <- mean( c(sd1, sd2))                          # Estimation of standard deviation assuming symmetrical confidence intervals
+  sd <- mean( c(sd1, sd2))                                  # Estimation of standard deviation assuming symmetrical confidence intervals
   
-  distr_RR <- exp(rnorm(N, lRR, sd))                     # Generation of log-normal distribution (random samples)
+  distr_RR <- exp(rnorm(N, lRR, sd))                        # Generation of log-normal distribution (random samples)
+                               
+  distr_RR[distr_RR<0]=0                                    # just need to truncat values
   
-  distr_RR[distr_RR>1]=1                                 # just need to truncat values
-  distr_RR[distr_RR<0]=0
-  
-  return(distr_RR)                                       # Return simulated RR value
+  return(distr_RR)                                          # Return simulated RR value
 }
 
 
