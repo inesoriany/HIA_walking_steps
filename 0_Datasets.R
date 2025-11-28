@@ -111,7 +111,6 @@ emp_subset <- emp %>%
     pond_indc,
     pond_jour,
     nbkm_walking_lower,
-    nbkm_walking_upper,
     mdisttot_fin1
   )
 
@@ -132,8 +131,11 @@ emp_subset <- emp_subset %>%
 
 # Day time spent walking (min)
 emp_subset <- emp_subset %>% 
-  mutate(day_time = nbkm_walking*60/walk_speed) %>% 
-  mutate(day_time_upper = nbkm_walking_upper*60/walk_speed)
+  mutate(day_time = nbkm_walking*60/walk_speed)
+
+# Week time spent walking (min)
+emp_subset <- emp_subset %>% 
+  mutate(week_time = 7*nbkm_walking*60/walk_speed)
 
 
 # Create age categories
@@ -264,9 +266,7 @@ export(emp_subset, here("data_clean", "EMP_walkers.xlsx"))
 # Selecting only variables of interests for drivers / removing non-relevant variables 
 emp_drivers <- emp_subset %>% 
   select(-nbkm_walking,
-         -nbkm_walking_upper,
-         -day_time,
-         -day_time_upper)
+         -day_time)
 
 
 # Associate drive speed
@@ -282,6 +282,10 @@ emp_drivers <- emp_drivers %>%
 # Day time spent walking if those car distances were walked (min)
 emp_drivers <- emp_drivers %>% 
   mutate(day_time_shift = mdisttot_fin1*60 / walk_speed)
+
+# Day time spent walking if those car distances were walked (min)
+emp_drivers <- emp_drivers %>% 
+  mutate(week_time_shift = 7*mdisttot_fin1*60 / walk_speed)
 
 
 # Daily steps if those car distances were walked
