@@ -1,5 +1,5 @@
 #################################################
-################ RR DISTRIBUTIONs ###############
+################ RR DISTRIBUTIONS ###############
 #################################################
 
 # Files needed:
@@ -87,37 +87,53 @@ for (dis in dis_vec) {
 ################################################################################################################################
 
 
-rr_table_long <- tibble()
 set.seed(123)
 for (dis in dis_vec) {
-  rr_distrib <- rr_table %>%
-    rowwise() %>%
-    mutate(
-      disease = dis,
-      simulated_rr = list(
-        sort(generate_RR_distrib(                 # Sort the RR normal distributions in ascending order
-          get(paste0(dis, "_mid")),
-          get(paste0(dis, "_low")),
-          get(paste0(dis, "_up")),
-          1000
-        ))
-      )
-    ) %>%
-    unnest_longer(simulated_rr, indices_to = "simulation_id") %>%
-    ungroup() %>%
-    select(1, disease, simulation_id, simulated_rr)
-  
-  rr_table_long <- bind_rows(rr_table_long, rr_distrib)
+  rr_table <- rr_table %>% 
+    rowwise() %>% 
+    mutate(rr_distrib = list(generate_RR_distrib(get(paste0(dis, "_mid")), get(paste0(dis, "_low")), get(paste0(dis, "_up")), 1000)))
 }
 
-
+#for (dis in dis_vec) {
+ # rr_distrib <- rr_table %>%
+ #   rowwise() %>%
+  #  mutate(
+   #   disease = dis,
+    #  simulated_rr = list(
+     #   sort(generate_RR_distrib(                 # Sort the RR normal distributions in ascending order
+      #    get(paste0(dis, "_mid")),
+       #   get(paste0(dis, "_low")),
+        #  get(paste0(dis, "_up")),
+       #   1000
+      #  ))
+     # )
+    #) %>%
+    #unnest_longer(simulated_rr, indices_to = "simulation_id") %>%
+   # ungroup() %>%
+  #  select(1, disease, simulation_id, simulated_rr)
+  
+ # rr_table_long <- bind_rows(rr_table_long, rr_distrib)
+#}
 
 
 ################################################################################################################################
-#                                                       6. INTERPOLATION                                                       #
+#                                         6. SORT THE RR DISTRIBUTIONS IN ASCENDING ORDER                                      #
 ################################################################################################################################
 
-# RR Central values interpolation ----
+rr_table <- rr_table %>% 
+  rowwise() %>% 
+  mutate(rr_distrib = list(sort(unlist(rr_distrib)))) %>%
+  ungroup()
+
+
+################################################################################################################################
+#                                                       7. INTERPOLATION                                                       #
+################################################################################################################################
+
+
+##############################################
+#       RR Central values interpolation      #
+##############################################
 
   # Interpolation
 rr_central_list <- list()
@@ -142,7 +158,32 @@ rr_central_table <- rr_central_full %>%
 
 
 
-# RR normal distribution interpolation ----
+##############################################
+#    RR normal distributions interpolation   #
+##############################################
+
+# Transform the rr_table to long format
+rr_table_dis <- rr_table %>%
+  pivot_longer(
+    cols = matches(".*_(mid|low|up)$"),  
+    names_to = c("disease", ".value"),   # word before _ becomes "disease", suffix becomes the column name
+    names_sep = "_"
+  )
+
+rr_table_long <- rr_table_dis %>% 
+  unnest_wider(rr_distrib, names_sep = "_") %>%     # separate the rr_distrib column into multiple columns
+  pivot_longer(
+    cols = starts_with("rr_distrib_"), 
+    names_to = "simulation_id",                     # column name for the simulation ID
+    values_to = "simulated_rr"                      # column name for the simulated RR values
+  ) %>% 
+  mutate(simulation_id = as.numeric(str_remove(simulation_id, "rr_distrib_")))      # simulation ID as a numeric value
+
+
+
+
+
+# Interpolation
 rr_table_interpolated <- rr_table_long %>% 
   group_by(disease, simulation_id) %>% 
   complete(step = seq(0, 12000, by = 100)) %>% 
@@ -153,8 +194,7 @@ rr_table_interpolated <- rr_table_long %>%
     # cubic (degree = 3)
     disease %in% c("dem")           ~ if_else(is.na(simulated_rr), spline(step, simulated_rr, xout = step, method = "natural")$y, simulated_rr),
     # linear
-    TRUE                            ~ {fit <- lm(simulated_rr ~step, data = pick(everything()))
-                                        fit$coefficients[1] + fit$coefficients[2] * step}
+    TRUE                            ~ if_else(is.na(simulated_rr), approx(step, simulated_rr, xout = step, method = "linear", rule = 1)$y, simulated_rr)
   )) %>%
   # $y, rr, take the interpolated values in y from the approx function and assign them to rr
   mutate(rr_interpolated = if_else(step > max(step[!is.na(simulated_rr)]), NA_real_, rr_interpolated)) %>%
