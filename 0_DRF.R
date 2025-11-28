@@ -70,6 +70,7 @@ rr_table <- rr_table_mid %>%
   left_join(rr_table_low, by = "step") %>%
   left_join(rr_table_up, by = "step") %>% 
   mutate(across(where(is.character), as.numeric))
+
   
 for (dis in dis_vec) {
   rr_table <- rr_table %>% 
@@ -82,17 +83,28 @@ for (dis in dis_vec) {
   
 
 
+# Pivot longer
+rr_table_long <- rr_table %>%
+  pivot_longer(
+    cols = matches(".*_(mid|low|up)$"),
+    names_to = c("disease", ".value"),
+    names_sep = "_"
+  )
+
+
+
 ################################################################################################################################
 #                                             5. GENERATE RR NORMAL DISTRIBUTIONS                                              #
 ################################################################################################################################
 
-
+# Generate RR normal distributions
 set.seed(123)
-for (dis in dis_vec) {
-  rr_table <- rr_table %>% 
-    rowwise() %>% 
-    mutate(rr_distrib = list(generate_RR_distrib(get(paste0(dis, "_mid")), get(paste0(dis, "_low")), get(paste0(dis, "_up")), 1000)))
-}
+rr_table_long <- rr_table_long %>%
+  rowwise() %>%
+  mutate(rr_distrib = list(
+    generate_RR_distrib(mid, low, up, n)
+  ))
+
 
 #for (dis in dis_vec) {
  # rr_distrib <- rr_table %>%
@@ -120,7 +132,7 @@ for (dis in dis_vec) {
 #                                         6. SORT THE RR DISTRIBUTIONS IN ASCENDING ORDER                                      #
 ################################################################################################################################
 
-rr_table <- rr_table %>% 
+rr_table_long <- rr_table_long %>% 
   rowwise() %>% 
   mutate(rr_distrib = list(sort(unlist(rr_distrib)))) %>%
   ungroup()
@@ -162,15 +174,8 @@ rr_central_table <- rr_central_full %>%
 #    RR normal distributions interpolation   #
 ##############################################
 
-# Transform the rr_table to long format
-rr_table_dis <- rr_table %>%
-  pivot_longer(
-    cols = matches(".*_(mid|low|up)$"),  
-    names_to = c("disease", ".value"),   # word before _ becomes "disease", suffix becomes the column name
-    names_sep = "_"
-  )
 
-rr_table_long <- rr_table_dis %>% 
+rr_table_long <- rr_table_long %>% 
   unnest_wider(rr_distrib, names_sep = "_") %>%     # separate the rr_distrib column into multiple columns
   pivot_longer(
     cols = starts_with("rr_distrib_"), 
@@ -178,8 +183,6 @@ rr_table_long <- rr_table_dis %>%
     values_to = "simulated_rr"                      # column name for the simulated RR values
   ) %>% 
   mutate(simulation_id = as.numeric(str_remove(simulation_id, "rr_distrib_")))      # simulation ID as a numeric value
-
-
 
 
 
@@ -240,7 +243,7 @@ names_disease <- c(
 
 # Disease colour
 colors_disease <- c(
-  "cancer" = "firebrick2",      
+  "cancer" = "darkorange",      
   "cvd" = "gold" ,
   "dem" = "pink" ,
   "diab2" = "palegreen3",
