@@ -83,7 +83,7 @@ jour <- emp_walkers %>%
   filter(pond_jour != "NA") %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_jour,
-                   strata = c(sexe, age_grp.x, quartile_rev, area_type),
+                   strata = c(sexe, age_grp10, quartile_rev, area_type),
                    nest = TRUE)
 
 # Survey design ponderated by individual
@@ -91,7 +91,7 @@ indiv <- emp_walkers %>%
   filter (pond_indc != "NA") %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_indc,
-                   strata = c(sexe, age_grp.x, quartile_rev, area_type),
+                   strata = c(sexe, age_grp10, quartile_rev, area_type),
                    nest = TRUE)
 
 
@@ -102,11 +102,11 @@ indiv <- emp_walkers %>%
 
 ## Mortality rates distribution per sex and age group
 mortality <- indiv %>% 
-  group_by(sexe, age_grp.x) %>% 
+  group_by(sexe, age_grp10) %>% 
   summarise(mort_rate_mean = survey_mean(mort_rate, proportion = TRUE, na.rm = TRUE)) %>% 
   rename(sex = sexe)
 
-mean_mortality_rates <- ggplot(mortality, aes(x = age_grp.x, y = mort_rate_mean, fill = sex)) +
+mean_mortality_rates <- ggplot(mortality, aes(x = age_grp10, y = mort_rate_mean, fill = sex)) +
   geom_bar(width = 0.7, position = position_dodge2(0.7), stat = "identity") +
   scale_fill_manual(values = c("Female" = "darkorange1",
                                "Male" = "chartreuse4")) +
@@ -132,13 +132,13 @@ dis_names <- c(bc = "Breast cancer",
 for(dis in dis_vec) {
   dis_distrib <- ggplot() +
     geom_point(data = emp_walkers, 
-               mapping = aes(x = .data[["age_grp.x"]],
+               mapping = aes(x = .data[["age_grp10"]],
                              y = .data[[paste0(dis, "_incidence")]],
                              color = .data[["sexe"]]), 
                size = 1, alpha = 0.5) +
     
     geom_line(data = emp_walkers, 
-                mapping = aes(x = .data[["age_grp.x"]],
+                mapping = aes(x = .data[["age_grp10"]],
                               y = .data[[paste0(dis, "_incidence")]],
                               group = .data[["sexe"]],
                               color = .data[["sexe"]]), 
@@ -196,7 +196,7 @@ km_total_day_IC * 1e-6
 
 
 # Total walking distances per day, by age group
-svyby(~nbkm_walking, by = ~age_grp.x, jour, svytotal, na.rm = T)  
+svyby(~nbkm_walking, by = ~age_grp10, jour, svytotal, na.rm = T)  
 
 
 
@@ -217,7 +217,7 @@ proportion_km <- emp_walkers %>%
   filter (pond_indc != "NA") %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_indc,
-                   strata = c(sexe, age_grp.x),
+                   strata = c(sexe, age_grp10),
                    nest = TRUE) %>% 
   group_by(dist_grp = factor(dist_grp, levels = c("0-1 km", "1-2 km", "2-5 km", "5-10 km", "10 km +"))) %>%   # Put distance range in the right order 
   summarise(total_pondere = survey_total (1, na.rm = TRUE)) %>%         # Sum of ponderation of individual for each distance group
@@ -271,26 +271,26 @@ km_mean * 60 / walk_speed
 
 
 # Mean walking distances per day, by age group
-svyby(~nbkm_walking, by = ~age_grp.x, jour, svymean, na.rm = T)
+svyby(~nbkm_walking, by = ~age_grp10, jour, svymean, na.rm = T)
 
 
 
 #################################################################
 ## Mean walking distances per day, per age group and per sex ----
-mean_distance_people <- svyby(~nbkm_walking, by = ~sexe + age_grp.x, jour, svymean, na.rm = T)
+mean_distance_people <- svyby(~nbkm_walking, by = ~sexe + age_grp10, jour, svymean, na.rm = T)
 
 
 # Plot : Mean walking distance by age group and sex
 zq <- qnorm(1-0.05/2)      # Level of confidence at 95%
 
 mean_distance_people <- jour %>% 
-  group_by(sexe , age_grp.x) %>% 
+  group_by(sexe , age_grp10) %>% 
   summarise(mean_distance = survey_mean(nbkm_walking, na.rm = TRUE)) %>% 
   rename(sex = sexe) 
 
 
 
-mean_km_walkers = ggplot(mean_distance_people, aes(x = age_grp.x, y = mean_distance,
+mean_km_walkers = ggplot(mean_distance_people, aes(x = age_grp10, y = mean_distance,
                                               ymin = mean_distance - zq*mean_distance_se, ymax = mean_distance + zq*mean_distance_se,
                                               fill = sex)) +
   geom_col(width = 0.7, position = position_dodge2(0.4)) +
@@ -307,10 +307,10 @@ ggsave(here("output", "Plots", "Description", "plot_mean_km_walkers.png"), plot 
 
 
   # Test Anova: Age difference
-anova_age <- svyglm(nbkm_walking ~ age_grp.x, jour)
+anova_age <- svyglm(nbkm_walking ~ age_grp10, jour)
 summary(anova_age)
 
-regTermTest(anova_age, ~ age_grp.x)
+regTermTest(anova_age, ~ age_grp10)
       # p_value = 9.1508e-10                Highly significant (p<0.001)
 
 
@@ -324,17 +324,17 @@ svyttest(nbkm_walking ~ sexe, jour)
   # T-test: Sex difference for each age category
 # test_t_sexe_age FUNCTION: Perform a T test for a given age category 
 test_t_sexe_age <- function(age_cat, design) {
-  sub_design <- subset(design, age_grp.x == age_cat)
+  sub_design <- subset(design, age_grp10 == age_cat)
   test <- svyttest(nbkm_walking ~ sexe, design = sub_design)          # T-test between sex 
   
   data.frame(
-    age_grp.x = age_cat,
+    age_grp10 = age_cat,
     statistic = test$statistic,
     p_value = test$p.value
   )
 }
 
-age_cat <- unique(jour$variables$age_grp.x)
+age_cat <- unique(jour$variables$age_grp10)
 # T-test on sex for each age category
 test_sex_per_age <- do.call(bind_rows, lapply(age_cat, test_t_sexe_age, design = jour))
 
@@ -482,7 +482,7 @@ step_total_day_IC * 1e-6
 
 
 # Total steps per day, by age group
-svyby(~step, by = ~age_grp.x, jour, svytotal, na.rm = T)  
+svyby(~step, by = ~age_grp10, jour, svytotal, na.rm = T)  
 
 
 
@@ -503,7 +503,7 @@ proportion_step <- emp_walkers_step %>%
   filter(!is.na(pond_indc)) %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_indc,
-                   strata = c(sexe, age_grp.x),
+                   strata = c(sexe, age_grp10),
                    nest = TRUE) %>% 
   group_by(step_grp = factor(step_grp, levels = c("0-2000", "2000-3000", "3000-4000", "4000-5000", "5000-6000", "6000-7000", "7000-8000", "8000-9000", "9000-10000", "10000-11000", "11000-12000"))) %>%   # Put distance range in the right order 
   summarise(total_pondere = survey_total (1, na.rm = TRUE)) %>%         # Sum of ponderation of individual for each step group
@@ -557,26 +557,26 @@ step_mean * 60 / (walk_speed * 1e3 / 0.686)
 
 
 # Mean walking distances per day, by age group
-svyby(~step, by = ~age_grp.x, jour, svymean, na.rm = T)
+svyby(~step, by = ~age_grp10, jour, svymean, na.rm = T)
 
 
 
 #################################################################
 ## Mean walking distances per day, per age group and per sex ----
-mean_step_people <- svyby(~step, by = ~sexe + age_grp.x, jour, svymean, na.rm = T)
+mean_step_people <- svyby(~step, by = ~sexe + age_grp10, jour, svymean, na.rm = T)
 
 
 # Plot : Mean walking distance by age group and sex
 zq <- qnorm(1-0.05/2)      # Level of confidence at 95%
 
 mean_step_people <- jour %>% 
-  group_by(sexe , age_grp.x) %>% 
+  group_by(sexe , age_grp10) %>% 
   summarise(mean_step = survey_mean(step, na.rm = TRUE)) %>% 
   rename(sex = sexe) 
 
 
 
-mean_step_walkers = ggplot(mean_step_people, aes(x = age_grp.x, y = mean_step,
+mean_step_walkers = ggplot(mean_step_people, aes(x = age_grp10, y = mean_step,
                                                    ymin = mean_step - zq*mean_step_se, ymax = mean_step + zq*mean_step_se,
                                                    fill = sex)) +
   geom_col(width = 0.7, position = position_dodge2(0.4)) +
@@ -593,10 +593,10 @@ ggsave(here("output", "Plots", "Description", "plot_mean_step_walkers.png"), plo
 
 
 # Test Anova: Age difference
-anova_age_step <- svyglm(step ~ age_grp.x, jour)
+anova_age_step <- svyglm(step ~ age_grp10, jour)
 summary(anova_age_step)
 
-regTermTest(anova_age_step, ~ age_grp.x)
+regTermTest(anova_age_step, ~ age_grp10)
 # p_value = 9.6648e-10                 Highly significant (p<0.001)
 
 
@@ -610,17 +610,17 @@ svyttest(step ~ sexe, jour)
 # T-test: Sex difference for each age category
 # test_t_sexe_age FUNCTION: Perform a T test for a given age category 
 test_t_sexe_age_step <- function(age_cat, design) {
-  sub_design <- subset(design, age_grp.x == age_cat)
+  sub_design <- subset(design, age_grp10 == age_cat)
   test <- svyttest(step ~ sexe, design = sub_design)          # T-test between sex 
   
   data.frame(
-    age_grp.x = age_cat,
+    age_grp10 = age_cat,
     statistic = test$statistic,
     p_value = test$p.value
   )
 }
 
-age_cat <- unique(jour$variables$age_grp.x)
+age_cat <- unique(jour$variables$age_grp10)
 # T-test on sex for each age category
 test_sex_per_age_step <- do.call(bind_rows, lapply(age_cat, test_t_sexe_age_step, design = jour))
 
@@ -742,13 +742,13 @@ drivers_2km <- emp_drivers %>%
   filter(pond_jour != "NA", mdisttot_fin1 > 0) %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_jour) %>% 
-  group_by(sexe, age_grp.x) %>% 
+  group_by(sexe, age_grp10) %>% 
   summarise(total = survey_total(mdisttot_fin1 <= 2, na.rm = TRUE)) %>% 
   rename(Sex = sexe)
 
 zq <- qnorm(1-0.05/2)
 
-nb_drivers_2km <- ggplot(drivers_2km, aes(x = age_grp.x, y = total,
+nb_drivers_2km <- ggplot(drivers_2km, aes(x = age_grp10, y = total,
                                             ymin = total - zq*total_se, ymax = total + zq*total_se, fill = Sex)) +
   geom_col(width = 0.7, position = position_dodge2(0.4))+
   geom_errorbar(position = position_dodge(0.7), width = 0.25) +
@@ -797,13 +797,13 @@ mean_drivers_2km <- emp_drivers %>%
   filter(pond_jour != "NA", mdisttot_fin1 > 0) %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_jour) %>% 
-  group_by(sexe, age_grp.x) %>% 
+  group_by(sexe, age_grp10) %>% 
   summarise(perc = 100 * survey_mean(mdisttot_fin1 <= 2, na.rm = TRUE)) %>% 
   rename(Sex = sexe)
 
 zq <- qnorm(1-0.05/2)
 
-perc_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp.x, y = perc,
+perc_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp10, y = perc,
                                             ymin = perc - zq*perc_se, ymax = perc + zq*perc_se, fill = Sex)) +
   geom_col(width = 0.7, position = position_dodge2(0.4))+
   geom_errorbar(position = position_dodge(0.7), width = 0.25) +
@@ -821,10 +821,10 @@ ggsave(here("output", "Plots", "Description", "plot_prop_drivers_2km.png"), plot
 # Survey design for statistical test
 
 # Test Anova: Age difference
-anova_age_drivers <- svyglm(perc ~ age_grp.x, )
+anova_age_drivers <- svyglm(perc ~ age_grp10, )
 summary(anova_age_drivers)
 
-regTermTest(anova_age_drivers, ~ age_grp.x)
+regTermTest(anova_age_drivers, ~ age_grp10)
 # p_value =                 Highly significant (p<0.001)
 
 
@@ -889,12 +889,12 @@ mean_drivers_2km <- emp_drivers %>%
   filter(pond_jour !="NA", mdisttot_fin1 > 0, mdisttot_fin1 <= 2) %>% 
   as_survey_design(ids = ident_ind, 
                    weights = pond_jour) %>% 
-  group_by(sexe, age_grp.x) %>% 
+  group_by(sexe, age_grp10) %>% 
   summarise(day_mean = survey_mean(mdisttot_fin1, na.rm = TRUE)) %>% 
   rename(Sex = sexe)
 
 
-mean_km_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp.x, y = day_mean,
+mean_km_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp10, y = day_mean,
                                             ymin = day_mean - zq*day_mean_se, ymax = day_mean + zq*day_mean_se, fill = Sex)) +
   scale_fill_manual(values = c("Female" = "darkorange1",
                                "Male" = "chartreuse4")) +
