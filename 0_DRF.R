@@ -106,27 +106,6 @@ rr_table_long <- rr_table_long %>%
   ))
 
 
-#for (dis in dis_vec) {
- # rr_distrib <- rr_table %>%
- #   rowwise() %>%
-  #  mutate(
-   #   disease = dis,
-    #  simulated_rr = list(
-     #   sort(generate_RR_distrib(                 # Sort the RR normal distributions in ascending order
-      #    get(paste0(dis, "_mid")),
-       #   get(paste0(dis, "_low")),
-        #  get(paste0(dis, "_up")),
-       #   1000
-      #  ))
-     # )
-    #) %>%
-    #unnest_longer(simulated_rr, indices_to = "simulation_id") %>%
-   # ungroup() %>%
-  #  select(1, disease, simulation_id, simulated_rr)
-  
- # rr_table_long <- bind_rows(rr_table_long, rr_distrib)
-#}
-
 
 ################################################################################################################################
 #                                         6. SORT THE RR DISTRIBUTIONS IN ASCENDING ORDER                                      #
