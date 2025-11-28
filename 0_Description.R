@@ -56,7 +56,7 @@ emp_drivers <- import(here("data_clean", "EMP_drivers.xlsx"))
 source(here("0_Parameters.R"))
 
 # Diseases considered
-dis_vec = c("cc", "dem", "bc", "cvd", "diab2", "mort")
+dis_vec = c("mort", "cvd", "bc", "cancer", "diab2", "dem", "dep")
 
 
 ################################################################################################################################
@@ -83,7 +83,7 @@ jour <- emp_walkers %>%
   filter(pond_jour != "NA") %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_jour,
-                   strata = c(sexe, age_grp10, quartile_rev, area_type),
+                   strata = c(sex, age_grp10, quartile_rev, area_type),
                    nest = TRUE)
 
 # Survey design ponderated by individual
@@ -91,7 +91,7 @@ indiv <- emp_walkers %>%
   filter (pond_indc != "NA") %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_indc,
-                   strata = c(sexe, age_grp10, quartile_rev, area_type),
+                   strata = c(sex, age_grp10, quartile_rev, area_type),
                    nest = TRUE)
 
 
@@ -102,9 +102,8 @@ indiv <- emp_walkers %>%
 
 ## Mortality rates distribution per sex and age group
 mortality <- indiv %>% 
-  group_by(sexe, age_grp10) %>% 
-  summarise(mort_rate_mean = survey_mean(mort_rate, proportion = TRUE, na.rm = TRUE)) %>% 
-  rename(sex = sexe)
+  group_by(sex, age_grp10) %>% 
+  summarise(mort_rate_mean = survey_mean(mort_rate, proportion = TRUE, na.rm = TRUE))
 
 mean_mortality_rates <- ggplot(mortality, aes(x = age_grp10, y = mort_rate_mean, fill = sex)) +
   geom_bar(width = 0.7, position = position_dodge2(0.7), stat = "identity") +
@@ -121,12 +120,6 @@ ggsave(here("output", "Plots", "Description", "plot_mean_mortality_rates.png"), 
 
 
 ## Incidence distribution per age and sex
-dis_names <- c(bc = "Breast cancer", 
-               cc="Colon cancer", 
-               cvd ="CVD", 
-               dem ="Dementia",
-               diab2 ="T2 Diabetes", 
-               mort ="Mortality")
 
 
 for(dis in dis_vec) {
@@ -134,21 +127,21 @@ for(dis in dis_vec) {
     geom_point(data = emp_walkers, 
                mapping = aes(x = .data[["age_grp10"]],
                              y = .data[[paste0(dis, "_incidence")]],
-                             color = .data[["sexe"]]), 
+                             color = .data[["sex"]]), 
                size = 1, alpha = 0.5) +
     
     geom_line(data = emp_walkers, 
                 mapping = aes(x = .data[["age_grp10"]],
                               y = .data[[paste0(dis, "_incidence")]],
-                              group = .data[["sexe"]],
-                              color = .data[["sexe"]]), 
-                method = "lm", size = 1) +
+                              group = .data[["sex"]],
+                              color = .data[["sex"]]), 
+                size = 1) +
     
     scale_color_manual(name = "Sex",
                        values = c("Female" = "darkorange1",
                                   "Male" = "chartreuse4")) +
     
-    labs(title = paste0(dis_names[[dis]]),
+    labs(title = names_disease[[dis]],
          y = "Incidence",
          x = "Age group") +
 
@@ -217,7 +210,7 @@ proportion_km <- emp_walkers %>%
   filter (pond_indc != "NA") %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_indc,
-                   strata = c(sexe, age_grp10),
+                   strata = c(sex, age_grp10),
                    nest = TRUE) %>% 
   group_by(dist_grp = factor(dist_grp, levels = c("0-1 km", "1-2 km", "2-5 km", "5-10 km", "10 km +"))) %>%   # Put distance range in the right order 
   summarise(total_pondere = survey_total (1, na.rm = TRUE)) %>%         # Sum of ponderation of individual for each distance group
@@ -242,9 +235,9 @@ prop_sex <-  emp_walkers %>%
   filter(pond_indc != "NA") %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_indc,
-                   strat = sexe,
+                   strat = sex,
                    nest = TRUE) %>% 
-  group_by (sex = sexe) %>% 
+  group_by (sex = sex) %>% 
   summarise(tot_km = survey_total(nbkm_walking)) %>% 
   mutate(proportion = tot_km / sum(tot_km))
 
@@ -277,16 +270,16 @@ svyby(~nbkm_walking, by = ~age_grp10, jour, svymean, na.rm = T)
 
 #################################################################
 ## Mean walking distances per day, per age group and per sex ----
-mean_distance_people <- svyby(~nbkm_walking, by = ~sexe + age_grp10, jour, svymean, na.rm = T)
+mean_distance_people <- svyby(~nbkm_walking, by = ~sex + age_grp10, jour, svymean, na.rm = T)
 
 
 # Plot : Mean walking distance by age group and sex
 zq <- qnorm(1-0.05/2)      # Level of confidence at 95%
 
 mean_distance_people <- jour %>% 
-  group_by(sexe , age_grp10) %>% 
+  group_by(sex , age_grp10) %>% 
   summarise(mean_distance = survey_mean(nbkm_walking, na.rm = TRUE)) %>% 
-  rename(sex = sexe) 
+  rename(sex = sex) 
 
 
 
@@ -315,17 +308,17 @@ regTermTest(anova_age, ~ age_grp10)
 
 
   # T-test: Sex difference 
-svyttest(nbkm_walking ~ sexe, jour)
+svyttest(nbkm_walking ~ sex, jour)
       # p-value = 0.08037                   Not statistically significant (>0.05) 
 
 
 
 
   # T-test: Sex difference for each age category
-# test_t_sexe_age FUNCTION: Perform a T test for a given age category 
-test_t_sexe_age <- function(age_cat, design) {
+# test_t_sex_age FUNCTION: Perform a T test for a given age category 
+test_t_sex_age <- function(age_cat, design) {
   sub_design <- subset(design, age_grp10 == age_cat)
-  test <- svyttest(nbkm_walking ~ sexe, design = sub_design)          # T-test between sex 
+  test <- svyttest(nbkm_walking ~ sex, design = sub_design)          # T-test between sex 
   
   data.frame(
     age_grp10 = age_cat,
@@ -336,7 +329,7 @@ test_t_sexe_age <- function(age_cat, design) {
 
 age_cat <- unique(jour$variables$age_grp10)
 # T-test on sex for each age category
-test_sex_per_age <- do.call(bind_rows, lapply(age_cat, test_t_sexe_age, design = jour))
+test_sex_per_age <- do.call(bind_rows, lapply(age_cat, test_t_sex_age, design = jour))
 
 
 
@@ -464,8 +457,8 @@ deaths_per_km_walked
 ##############################################################
 
 ## Total steps in 2019
-step_total_2019 <- as.numeric(svytotal(~step, jour)) *365.25/7                                      # Total steps per year
-step_total_2019_IC <- as.numeric(confint(svytotal(~step, jour) *365.25/7 ))                         # Confidence interval
+step_total_2019 <- as.numeric(svytotal(~step_commute, jour)) *365.25/7                                      # Total steps per year
+step_total_2019_IC <- as.numeric(confint(svytotal(~step_commute, jour) *365.25/7 ))                         # Confidence interval
 
 step_total_2019 * 1e-9 # billion steps
 step_total_2019_IC * 1e-9
@@ -475,14 +468,14 @@ step_total_2019 / (pop_tot * walk_speed)
 
 
 ## Total steps per day in 2019
-step_total_day <- svytotal(~step, jour)                   # Total steps per day
+step_total_day <- svytotal(~step_commute, jour)                   # Total steps per day
 step_total_day_IC <- as.numeric(confint(step_total_day))
 step_total_day *1e-6
 step_total_day_IC * 1e-6
 
 
 # Total steps per day, by age group
-svyby(~step, by = ~age_grp10, jour, svytotal, na.rm = T)  
+svyby(~step_commute, by = ~age_grp10, jour, svytotal, na.rm = T)  
 
 
 
@@ -490,7 +483,7 @@ svyby(~step, by = ~age_grp10, jour, svytotal, na.rm = T)
 emp_walkers_step <- emp_walkers %>%
   mutate(
     step_grp = cut(
-      step,
+      step_commute,
       breaks = c(0, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000),
       labels =  c("0-2000", "2000-3000", "3000-4000", "4000-5000", "5000-6000", "6000-7000", "7000-8000", "8000-9000", "9000-10000", "10000-11000", "11000-12000"),
       right = FALSE
@@ -503,7 +496,7 @@ proportion_step <- emp_walkers_step %>%
   filter(!is.na(pond_indc)) %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_indc,
-                   strata = c(sexe, age_grp10),
+                   strata = c(sex, age_grp10),
                    nest = TRUE) %>% 
   group_by(step_grp = factor(step_grp, levels = c("0-2000", "2000-3000", "3000-4000", "4000-5000", "5000-6000", "6000-7000", "7000-8000", "8000-9000", "9000-10000", "10000-11000", "11000-12000"))) %>%   # Put distance range in the right order 
   summarise(total_pondere = survey_total (1, na.rm = TRUE)) %>%         # Sum of ponderation of individual for each step group
@@ -528,10 +521,10 @@ prop_sex_step <-  emp_walkers_step %>%
   filter(pond_indc != "NA") %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_indc,
-                   strat = sexe,
+                   strat = sex,
                    nest = TRUE) %>% 
-  group_by (sex = sexe) %>% 
-  summarise(tot_step = survey_total(step)) %>% 
+  group_by (sex = sex) %>% 
+  summarise(tot_step = survey_total(step_commute)) %>% 
   mutate(proportion = tot_step / sum(tot_step))
 
 
@@ -544,7 +537,7 @@ prop_sex_step <-  emp_walkers_step %>%
 #                    MEAN NUMBER OF STEPS                    #
 ##############################################################
 ## Mean number of steps per day
-step_mean <- svymean(~step, jour, na.rm = TRUE)
+step_mean <- svymean(~step_commute, jour, na.rm = TRUE)
 step_mean
 
 step_mean_IC <- confint(step_mean)
@@ -557,22 +550,22 @@ step_mean * 60 / (walk_speed * 1e3 / 0.686)
 
 
 # Mean walking distances per day, by age group
-svyby(~step, by = ~age_grp10, jour, svymean, na.rm = T)
+svyby(~step_commute, by = ~age_grp10, jour, svymean, na.rm = T)
 
 
 
 #################################################################
 ## Mean walking distances per day, per age group and per sex ----
-mean_step_people <- svyby(~step, by = ~sexe + age_grp10, jour, svymean, na.rm = T)
+mean_step_people <- svyby(~step_commute, by = ~sex + age_grp10, jour, svymean, na.rm = T)
 
 
 # Plot : Mean walking distance by age group and sex
 zq <- qnorm(1-0.05/2)      # Level of confidence at 95%
 
 mean_step_people <- jour %>% 
-  group_by(sexe , age_grp10) %>% 
-  summarise(mean_step = survey_mean(step, na.rm = TRUE)) %>% 
-  rename(sex = sexe) 
+  group_by(sex , age_grp10) %>% 
+  summarise(mean_step = survey_mean(step_commute, na.rm = TRUE)) %>% 
+  rename(sex = sex) 
 
 
 
@@ -584,7 +577,7 @@ mean_step_walkers = ggplot(mean_step_people, aes(x = age_grp10, y = mean_step,
   scale_fill_manual(values = c("Female" = "darkorange1",
                                "Male" = "chartreuse4")) +
   labs(x = "Age group",
-       y = "Mean number of steps (steps per day)")
+       y = "Mean number of commute steps (steps per day)")
 plot(mean_step_walkers)
 
 # Export plot
@@ -593,7 +586,7 @@ ggsave(here("output", "Plots", "Description", "plot_mean_step_walkers.png"), plo
 
 
 # Test Anova: Age difference
-anova_age_step <- svyglm(step ~ age_grp10, jour)
+anova_age_step <- svyglm(step_commute ~ age_grp10, jour)
 summary(anova_age_step)
 
 regTermTest(anova_age_step, ~ age_grp10)
@@ -601,28 +594,9 @@ regTermTest(anova_age_step, ~ age_grp10)
 
 
 # T-test: Sex difference 
-svyttest(step ~ sexe, jour)
+svyttest(step_commute ~ sex, jour)
 # p-value = 0.01194                   Significant (<0.05) 
 
-
-
-
-# T-test: Sex difference for each age category
-# test_t_sexe_age FUNCTION: Perform a T test for a given age category 
-test_t_sexe_age_step <- function(age_cat, design) {
-  sub_design <- subset(design, age_grp10 == age_cat)
-  test <- svyttest(step ~ sexe, design = sub_design)          # T-test between sex 
-  
-  data.frame(
-    age_grp10 = age_cat,
-    statistic = test$statistic,
-    p_value = test$p.value
-  )
-}
-
-age_cat <- unique(jour$variables$age_grp10)
-# T-test on sex for each age category
-test_sex_per_age_step <- do.call(bind_rows, lapply(age_cat, test_t_sexe_age_step, design = jour))
 
 
 
@@ -632,7 +606,7 @@ test_sex_per_age_step <- do.call(bind_rows, lapply(age_cat, test_t_sexe_age_step
 ## Walking levels per area ----
 mean_step_area <- jour %>% 
   group_by(area_type) %>% 
-  summarise(mean_step = survey_mean(step, na.rm = TRUE)) %>% 
+  summarise(mean_step = survey_mean(step_commute, na.rm = TRUE)) %>% 
   mutate(area_type = factor(area_type, levels = c("rural", "semi_urban", "urban"))) %>% 
   mutate(
     ic_lower = mean_step - zq * mean_step_se,
@@ -658,7 +632,7 @@ mean_step_area = ggplot(mean_step_area, aes(x = area_type, y = mean_step,
                               "semi_urban" = "Semi-urban", 
                               "urban" = "Urban")) +
   labs(x = "Area type",
-       y = "Mean number of steps (steps per day)") +
+       y = "Mean number of commute steps (steps per day)") +
   theme_minimal()
 plot(mean_step_area)
 
@@ -667,7 +641,7 @@ ggsave(here("output", "Plots", "Description", "plot_mean_step_area.png"), plot =
 
 
 # Test Anova
-anova_area_step <- svyglm(step ~ area_type, jour)
+anova_area_step <- svyglm(step_commute ~ area_type, jour)
 summary(anova_area_step)
 
 regTermTest(anova_area_step, ~ area_type)
@@ -683,7 +657,7 @@ regTermTest(anova_area_step, ~ area_type)
 ## Walking levels per quartile of revenues ----
 mean_step_rev <- jour %>% 
   group_by(quartile_rev) %>% 
-  summarise(mean_step = survey_mean(step, na.rm = TRUE)) %>% 
+  summarise(mean_step = survey_mean(step_commute, na.rm = TRUE)) %>% 
   mutate(quartile_rev = factor(quartile_rev,
                                levels = c("1", "2", "3", "4"))) %>% 
   mutate(
@@ -706,7 +680,7 @@ plot_mean_step_rev = ggplot(mean_step_rev, aes(x = quartile_rev, y = mean_step,
                               "3" = "Q3",
                               "4" = "Q4")) +
   labs(x = "Income",
-       y = "Mean number of steps (steps per day)") +
+       y = "Mean number of commute steps (steps per day)") +
   theme_minimal() +
   theme(legend.position = "none")
 plot(plot_mean_step_rev)
@@ -716,7 +690,7 @@ ggsave(here("output", "Plots", "Description", "plot_mean_step_rev.png"), plot = 
 
 
 # Test Anova
-anova_rev_step <- svyglm(step ~ quartile_rev, jour)
+anova_rev_step <- svyglm(step_commute ~ quartile_rev, jour)
 summary(anova_rev_step)
 
 regTermTest(anova_rev_step, ~ quartile_rev)
@@ -742,9 +716,9 @@ drivers_2km <- emp_drivers %>%
   filter(pond_jour != "NA", mdisttot_fin1 > 0) %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_jour) %>% 
-  group_by(sexe, age_grp10) %>% 
+  group_by(sex, age_grp10) %>% 
   summarise(total = survey_total(mdisttot_fin1 <= 2, na.rm = TRUE)) %>% 
-  rename(Sex = sexe)
+  rename(Sex = sex)
 
 zq <- qnorm(1-0.05/2)
 
@@ -797,9 +771,9 @@ mean_drivers_2km <- emp_drivers %>%
   filter(pond_jour != "NA", mdisttot_fin1 > 0) %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_jour) %>% 
-  group_by(sexe, age_grp10) %>% 
+  group_by(sex, age_grp10) %>% 
   summarise(perc = 100 * survey_mean(mdisttot_fin1 <= 2, na.rm = TRUE)) %>% 
-  rename(Sex = sexe)
+  rename(Sex = sex)
 
 zq <- qnorm(1-0.05/2)
 
@@ -889,9 +863,9 @@ mean_drivers_2km <- emp_drivers %>%
   filter(pond_jour !="NA", mdisttot_fin1 > 0, mdisttot_fin1 <= 2) %>% 
   as_survey_design(ids = ident_ind, 
                    weights = pond_jour) %>% 
-  group_by(sexe, age_grp10) %>% 
+  group_by(sex, age_grp10) %>% 
   summarise(day_mean = survey_mean(mdisttot_fin1, na.rm = TRUE)) %>% 
-  rename(Sex = sexe)
+  rename(Sex = sex)
 
 
 mean_km_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp10, y = day_mean,
