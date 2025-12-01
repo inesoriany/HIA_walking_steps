@@ -102,8 +102,9 @@ diseases_10 <- diseases_5 %>%
 
 # Creation of subset uniting variables of EMP and calculations
 emp_subset <- emp %>% 
+  mutate(ID = row_number()) %>%                   # ID number for every individual
   select(
-    ident_ind,
+    ID,
     sexe,
     age,
     quartile_rev,
@@ -243,12 +244,24 @@ emp_subset <- emp_subset %>%
 
 
 ################################################################################################################################
-#                                                    5. EXPORT EMP SUBSET                                                      #
+#                                                   5. DISEASE EMP SUBSET                                                      #
+################################################################################################################################
+
+emp_long <- emp_subset %>%
+  pivot_longer(
+    cols = matches("(_rate|_incidence)$"),   # all rate and incidence columns
+    names_to = c("disease", ".value"),       # disease name + output column name
+    names_pattern = "(.*)_(rate|incidence)"  # regex: capture disease + type
+  )
+
+
+################################################################################################################################
+#                                                       6. EXPORT DATA                                                         #
 ################################################################################################################################
 
 export(emp_subset, here("data_clean", "EMP_walkers.xlsx"))
 
-
+export(emp_long, here("data_clean", "EMP_dis_walkers.xlsx"))
 
 
 
