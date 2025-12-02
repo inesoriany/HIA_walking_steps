@@ -45,6 +45,9 @@ emp_long <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 rr_distrib_table <- import(here("data_clean", "DRF", "rr_sim_interpolated.rds"))
 
 
+# Disability weights
+dw_table <- import(here("data", "dw_table.xlsx"))
+
 # Import functions
 source(here("0_Functions.R"))
 
@@ -77,7 +80,7 @@ rr_baseline <- rr_distrib_table %>%
 # Relative RR
 rr_distrib_table <- rr_distrib_table %>%
   left_join(rr_baseline, by = c("disease", "simulation_id")) %>%
-  mutate(relative_rr = rr2000 / rr_interpolated)
+  mutate(reduction_risk = (rr2000 - rr_interpolated) / rr2000)
 
 
 
@@ -96,7 +99,7 @@ emp_long <- emp_long %>%
 # Associate simulated RR
 emp_rr_adjusted <- emp_long %>%
   inner_join(rr_distrib_table, by = c("disease", "step"), relationship = "many-to-many") %>%
-  mutate(adjusted_rate = rate * relative_rr) %>%
+  mutate(adjusted_rate = rate * reduction_risk) %>%
   ungroup()
 
 
@@ -125,7 +128,7 @@ for (dis in dis_vec) {
     
     dis_rr <- rr_distrib_table %>%
       filter(disease == dis) %>%
-      select(simulation_id, step, relative_rr)
+      select(simulation_id, step, reduction_risk)
     
     dis_cases <- get(walkers_name) %>%
       left_join(dis_rr, by = "step", relationship = "many-to-many")
@@ -152,12 +155,12 @@ for (dis in dis_vec) {
     cases_name <- paste0(dis, "_cases")
       
     dis_cases <- get(cases_name) %>%
-      mutate(reduc_incidence = relative_rr * rate)
+      mutate(reduc_incidence = reduction_risk * rate)
       
     assign(cases_name, dis_cases)
   }
   
-
+  
     
 # Mean and 95% CI of prevented cases by individual
   for (dis in no_bc_vec) {
@@ -168,7 +171,7 @@ for (dis in dis_vec) {
     dis_cases_ic95 <- get(cases_name) %>%
       group_by(ID) %>%
       summarise(
-        cases_mid = mean(reduc_incidence, na.rm = TRUE),
+        cases_mid = median(reduc_incidence, na.rm = TRUE),
         cases_low = quantile(reduc_incidence, 0.025, na.rm = TRUE),
         cases_up  = quantile(reduc_incidence, 0.975, na.rm = TRUE),
         .groups = "drop"
@@ -189,23 +192,99 @@ for (dis in dis_vec) {
   bc_walkers <- reduc_incidence(bc_walkers)
   
 
-    
+
+##############################################################
+#                    DISABILITY WEIGHTS                      #
+##############################################################
+# Generate DW normal distributions
+set.seed(123)
+dw_distrib_table <- dw_table %>%
+  rowwise() %>%
+  mutate(dw_distrib = list(
+    generate_RR_distrib(dw_mid, dw_low, dw_up, 1000)
+  ))
+
+
+
+# Sort the DW distributions in ascending order
+dw_distrib_table <- dw_distrib_table %>% 
+  rowwise() %>% 
+  mutate(dw_distrib = list(sort(unlist(dw_distrib)))) %>%
+  ungroup()
+
+
+# Separate the dw_distrib column into multiple columns
+dw_distrib_table <- dw_distrib_table  %>% 
+  unnest_wider(dw_distrib, names_sep = "_") %>% 
+  pivot_longer(
+    cols = starts_with("dw_distrib_"), 
+    names_to = "simulation_id",                     # column name for the simulation ID
+    values_to = "simulated_dw"                      # column name for the simulated RR values
+  ) %>% 
+  mutate(simulation_id = as.numeric(str_remove(simulation_id, "dw_distrib_")))      # simulation ID as a numeric value
+
+
+
+# Randomly associate DW to each individual for each disease
+set.seed(123)
+for (dis in no_bc_vec) {
+  cases_name <- paste0(dis, "_cases")
+  
+  dis_dw <- dw_distrib_table %>%
+    filter(disease == dis) %>%
+    pull(simulated_dw)
+  
+  dis_cases <- get(cases_name) %>%
+    filter(disease == dis) %>%
+    mutate(
+      dw = sample(dis_dw, size = n(), replace = TRUE) 
+    )
+  
+  assign(cases_name, dis_cases)
+}
+
+
+
+
 
 ##############################################################     
 #                           DALY                             #
 ##############################################################
-for (dis in dis_vec) {
-  walkers_name <- paste0(dis, "_walkers")
-  dis_walkers <- get(walkers_name) 
+for (dis in no_bc_vec) {
+  cases_name <- paste0(dis, "_cases")
+  dis_walkers <- get(cases_name) 
 
-  for (bound in bound_vec) {
-    dis_walkers <- daly(dis_walkers, dis, bound)
-  }
-
+    dis_walkers <- daly(dis_walkers)
+    
   assign(walkers_name, dis_walkers)
 }
 
+
+
+# Mean and 95% CI of prevented cases by individual
+for (dis in no_bc_vec) {
+  walkers_name <- paste0(dis, "_walkers")
+  cases_name <- paste0(dis, "_cases")
+  cases_name_ic95 <- paste0(dis, "_cases_ic95")
   
+  dis_cases_ic95 <- get(cases_name) %>%
+    group_by(ID) %>%
+    summarise(
+      cases_mid = median(reduc_incidence, na.rm = TRUE),
+      cases_low = quantile(reduc_incidence, 0.025, na.rm = TRUE),
+      cases_up  = quantile(reduc_incidence, 0.975, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  assign(cases_name_ic95, dis_cases_ic95)
+  
+  # Add cases prevented in walkers dataset
+  walkers_updated <- get(walkers_name) %>% 
+    left_join(get(cases_name_ic95), by = "ID")
+  
+  assign(walkers_name, walkers_updated)
+}
+
   
 
 ##############################################################
@@ -262,7 +341,7 @@ health_walkers <- bind_rows(health_walkers_list)
 
 # SURVEY DESIGNS
 surv_dis <- health_walkers %>% 
-  as_survey_design(ids = ID,
+  as_survey_design(ids = ident_ind,
                    weights = pond_indc,
                    strata = c(sex, age_grp10, quartile_rev, disease),           # by sex and age group
                    nest = TRUE)
