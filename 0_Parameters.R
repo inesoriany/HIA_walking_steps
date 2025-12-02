@@ -58,38 +58,6 @@ rr_bc_men_low <- NA
 
 
 
-## DISABILITY WEIGHTS ----
-
-bc_dw_mid <-0.06758792
-bc_dw_low <-0.05164746
-bc_dw_up <-0.083671
-
-cancer_dw_mid <- 0.05584116
-cancer_dw_low <- 0.08662941
-cancer_dw_up <- 0.03288360
-
-cvd_dw_mid <-0.0526328
-cvd_dw_low <-0.04023609
-cvd_dw_up <-0.0645608
-
-diab2_dw_mid <- 0.06806817
-diab2_dw_low <-0.0504114
-diab2_dw_up <-0.08533913
-
-dem_dw_mid <-0.1518996
-dem_dw_low <-0.1250537
-dem_dw_up <-0.1758752
-
-dep_dw_mid <- NA
-dep_dw_low <- NA
-dep_dw_up <-  NA
-
-mort_dw_mid <- 1
-mort_dw_low <- 1
-mort_dw_up <- 1
-
-
-
 ## MEDICAL COSTS ----
 cc_cost <- 26716
 dem_cost <- 22748
