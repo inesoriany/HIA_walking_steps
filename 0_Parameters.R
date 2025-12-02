@@ -47,14 +47,14 @@ colors_disease <- c(
 ## BREAST CANCER ----
 # Relative risks (Monninkhof et al., 2007)
 ref_bc_w <- 60 
-rr_bc_women_lb <- .92 
+rr_bc_women_low <- .92 
 rr_bc_women <- .94
-rr_bc_women_ub <-.97
+rr_bc_women_up <-.97
 
 ref_bc_m <- NA
-rr_bc_men_ub <-NA
+rr_bc_men_up <-NA
 rr_bc_men <- NA
-rr_bc_men_lb <- NA
+rr_bc_men_low <- NA
 
 
 
@@ -80,6 +80,10 @@ dem_dw_mid <-0.1518996
 dem_dw_low <-0.1250537
 dem_dw_up <-0.1758752
 
+dep_dw_mid <- NA
+dep_dw_low <- NA
+dep_dw_up <-  NA
+
 mort_dw_mid <- 1
 mort_dw_low <- 1
 mort_dw_up <- 1
@@ -90,8 +94,10 @@ mort_dw_up <- 1
 cc_cost <- 26716
 dem_cost <- 22748
 bc_cost <- 46968
+cancer_cost <- 14808
 cvd_cost <- 20938
 diab2_cost <- 36514
+dep_cost <- NA
 mort_cost <- NA
 
 
