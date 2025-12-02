@@ -5,7 +5,7 @@
 # Files needed :
   # EMP_walkers.xlsx
   # rr_central_interpolated.rds
-  # 0_Functions.R
+  # 0_Functions_2.R
   # 0_Parameters.R
 
 # Files outputted :
@@ -46,7 +46,7 @@ rr_table <- import(here("data_clean", "DRF", "rr_central_interpolated.rds"))
 
 
 # Import functions
-source(here("0_Functions.R"))
+source(here("0_Functions_2.R"))
 
 
 
@@ -58,7 +58,10 @@ source(here("0_Functions.R"))
 source(here("0_Parameters.R"))
 
 # Diseases considered
-dis_vec = c("mort", "cvd", "diab2", "dem")
+dis_vec = c("mort", "cvd", "bc", "cancer", "diab2", "dem", "dep")
+morbi_vec = c("cvd", "bc", "cancer", "diab2", "dem", "dep")
+no_bc_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
+
 
 
 
@@ -75,7 +78,7 @@ health_walkers <- emp_walk %>%
 # Associate simulated RR
   # Central
 health_walkers_mid <- health_walkers
-  for (dis in dis_vec) {
+  for (dis in no_bc_vec) {
     health_walkers_mid <- health_walkers_mid %>% 
       left_join(
         rr_table %>% 
@@ -88,12 +91,12 @@ health_walkers_mid <- health_walkers
 
   # Lower bound
 health_walkers_low <- health_walkers
-  for (dis in dis_vec) {
+  for (dis in no_bc_vec) {
     health_walkers_low <- health_walkers_low %>% 
       left_join(
         rr_table %>% 
           filter(disease == dis) %>% 
-          select(step, low) %>% 
+          select(step, up) %>% 
           # To calculate the upper bound of reduction of the relative risk, use RR lower bound because the decrease will be higher,
           # i.e. the person exposed (walking) is less likely to have the disease 
           rename(!!paste0(dis, "_rr") := up),
@@ -103,12 +106,12 @@ health_walkers_low <- health_walkers
 
   # Upper bound
 health_walkers_up <- health_walkers
-  for (dis in dis_vec) {
+  for (dis in no_bc_vec) {
     health_walkers_up <- health_walkers_up %>% 
       left_join(
         rr_table %>% 
           filter(disease == dis) %>% 
-          select(step, up) %>% 
+          select(step, low) %>% 
           rename(!!paste0(dis, "_rr") := low),
         by = "step"
       )
@@ -137,21 +140,21 @@ health_walkers_up <- calc_HIA (health_walkers_up, "up", rr_table, dis_vec)
 surv_dis <- health_walkers_mid %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_indc,
-                   strata = c(sexe, age_grp.x, quartile_rev),           # by sex and age group
+                   strata = c(sex, age_grp10, quartile_rev),           # by sex and age group
                    nest = TRUE)
   # IC
     # Upper bound
     surv_dis_up <- health_walkers_up %>% 
       as_survey_design(ids = ident_ind,
                        weights = pond_indc,
-                       strata = c(sexe, age_grp.x, quartile_rev),           
+                       strata = c(sex, age_grp10, quartile_rev),           
                        nest = TRUE)
     
     # Lower bound
     surv_dis_low <- health_walkers_low %>% 
       as_survey_design(ids = ident_ind,
                        weights = pond_indc,
-                       strata = c(sexe, age_grp.x, quartile_rev),      
+                       strata = c(sex, age_grp10, quartile_rev),      
                        nest = TRUE)
 
 
