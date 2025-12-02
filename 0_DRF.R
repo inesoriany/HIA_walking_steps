@@ -3,7 +3,7 @@
 #################################################
 
 # Files needed:
-  # rr_table_quanti.xlsx
+  # rr_table_step.xlsx
 
 
 # Files outputted:
@@ -37,13 +37,13 @@ pacman::p_load(
 # RR table for each outcome
 
   # Central values
-  rr_table_mid <- import(here("data", "rr_table_quanti.xlsx"), sheet = "Central")
+  rr_table_mid <- import(here("data", "rr_table_step.xlsx"), sheet = "Central")
   
   # IC95 lower
-  rr_table_low <- import(here("data", "rr_table_quanti.xlsx"), sheet = "Lower")
+  rr_table_low <- import(here("data", "rr_table_step.xlsx"), sheet = "Lower")
   
   # IC95 upper
-  rr_table_up <- import(here("data", "rr_table_quanti.xlsx"), sheet = "Upper") 
+  rr_table_up <- import(here("data", "rr_table_step.xlsx"), sheet = "Upper") 
 
 
 # Import functions
@@ -129,7 +129,7 @@ rr_table_long <- rr_table_long %>%
   # Interpolation
 rr_central_list <- list()
 
-set.seed(456)
+set.seed(123)
 for (dis in dis_vec) {
   for (metric in c("mid", "low", "up")) {
     rr_central_list[[paste0(dis, "_", metric)]] <- interpolate_rr(rr_table, dis, metric)
@@ -153,7 +153,6 @@ rr_central_table <- rr_central_full %>%
 #    RR normal distributions interpolation   #
 ##############################################
 
-
 rr_table_long <- rr_table_long %>% 
   unnest_wider(rr_distrib, names_sep = "_") %>%     # separate the rr_distrib column into multiple columns
   pivot_longer(
@@ -161,11 +160,12 @@ rr_table_long <- rr_table_long %>%
     names_to = "simulation_id",                     # column name for the simulation ID
     values_to = "simulated_rr"                      # column name for the simulated RR values
   ) %>% 
-  mutate(simulation_id = as.numeric(str_remove(simulation_id, "rr_distrib_")))      # simulation ID as a numeric value
-
+  mutate(simulation_id = as.numeric(str_remove(simulation_id, "rr_distrib_")),      # simulation ID as a numeric value
+         simulated_rr = if_else(step >= 2000 & simulated_rr > 1, 1, simulated_rr))  # truncat simulated RR at 1 after 2000 steps
 
 
 # Interpolation
+set.seed(123)
 rr_table_interpolated <- rr_table_long %>% 
   group_by(disease, simulation_id) %>% 
   complete(step = seq(0, 12000, by = 100)) %>% 
