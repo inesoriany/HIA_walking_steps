@@ -105,6 +105,7 @@ emp_subset <- emp %>%
   mutate(ID = row_number()) %>%                   # ID number for every individual
   select(
     ID,
+    ident_ind,
     sexe,
     age,
     quartile_rev,
