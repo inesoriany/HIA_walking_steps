@@ -48,7 +48,7 @@ interpolate_rr <- function(df, disease, metric) {
 
 
 
-# FUNCTION generate_RR : Generate random RR values in a normal distribution based on existing RR and their IC (Monte-Carlo)
+# FUNCTION generate_RR : Generate random RR (dw) values in a normal distribution based on existing RR and their IC (Monte-Carlo)
 #set.seed()
 generate_RR_distrib = function (RR, low, sup, N) {          # N : number of random values
   lRR <- log(RR)                                            # Conversion in log scale
@@ -148,26 +148,6 @@ dis_setting = function (dis) {
 
 ## DISEASE RISK REDUCTION ----
 
-# FUNCTION reduction_risk : Calculate the disease risk reduction percentage for each individual with a linear regression
-# (% of decrease in disease risk comparing to the baseline : if people did not walk)
-reduction_risk = function(data, dis, bound, data_rr) {
-    rr_obs <- sym(paste0(dis, "_rr"))  
-    
-    rr2000 <- 1
-    
-      # Risk reduction
-    data <- data %>%
-      mutate(
-        !!paste0(dis, "_reduction_risk") := rr2000 / !!rr_obs
-      )
-      
-    if(any(data$mort_reduction_risk > (1 - 0.35), na.rm = TRUE)) {           # Cap mortality at 35%
-      data$mort_reduction_risk <- ifelse(data$mort_reduction_risk > (1 - 0.45), 1 - 0.45, data$mort_reduction_risk)
-    }
-    return(data)
-}
-    
-
 
 # FUNCTION log_reduction_risk : Calculate the disease risk reduction percentage for each individual with a log linear regression
 # (% of decrease in disease risk comparing to the baseline : if people did not walk)
@@ -216,8 +196,8 @@ reduc_incidence <- function(data) {
 # Goal : To know the number of sick or death years prevented for each individual by walking
 
 # FUNCTION daly : Calculate DALY (Disability-Adjusted Life Years) for each disease
-daly = function(data, dis, bound) { 
-  data[[paste0("daly_", bound)]] <- data$years_remaining * get((paste0(dis, "_dw_", bound))) * data[[paste0("cases_", bound)]] 
+daly = function(data) { 
+  data[["daly"]] <- data[["years_remaining"]] * data[["dw"]] * data[["reduc_incidence"]]
   return(data) }
 
 
