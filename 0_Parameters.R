@@ -17,6 +17,10 @@ urban_car_speed <-  32
 rural_car_speed <- 60 
 
 
+## BASELINE: 2000 steps daily
+  # Number of minimum weekly steps 
+week_base <- 7* 2000 / (80/0.715)     
+
 ##############################################################
 #                          Diseases                          #
 ##############################################################
