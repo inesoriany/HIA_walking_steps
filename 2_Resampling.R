@@ -28,7 +28,8 @@ pacman :: p_load(
   dplyr,        # Data management
   srvyr,        # Survey
   survey,
-  ggplot2       # Data visualization
+  ggplot2,      # Data visualization
+  cli           # Progression bar
 )
 
 
@@ -62,27 +63,28 @@ source(here("0_Parameters.R"))
 
 # Diseases considered
 dis_vec = c("mort", "cvd", "bc", "cancer", "diab2", "dem", "dep")
-no_bc_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
 
-# Bound 
-bound_vec = c("mid", "low", "up")
+
+# HIA outcomes
+outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 
 
 ################################################################################################################################
-#                                                  4. SIMULATED RELATIVE RR                                                    #
+#                                                 4. SIMULATED REDUCTION RR                                                    #
 ################################################################################################################################
 
-# Baseline step 2000
-rr_baseline <- rr_distrib_table %>%
-  filter(step == 2000) %>%
-  select(disease, simulation_id, rr2000 = rr_interpolated)
-
-# Relative RR
-rr_distrib_table <- rr_distrib_table %>%
-  left_join(rr_baseline, by = c("disease", "simulation_id")) %>%
-  mutate(reduction_risk = (rr2000 - rr_interpolated) / rr2000)
-
-
+## ALL DISEASES (EXCEPT BREAST CANCER)
+  # Baseline step 2000
+  rr_baseline <- rr_distrib_table %>%
+    filter(step == 2000) %>%
+    select(disease, simulation_id, rr2000 = rr_interpolated)
+  
+  
+  # Reduction risk 
+  rr_distrib_table <- rr_distrib_table %>%
+    left_join(rr_baseline, by = c("disease", "simulation_id")) %>%
+    mutate(reduction_risk = (rr2000 - rr_interpolated) / rr2000)
+  
 
 
 
@@ -96,18 +98,10 @@ emp_long <- emp_long %>%
   mutate(step = pmin(12000, round(step_commute / 100) * 100 + 2000))
 
 
-# Associate simulated RR
-emp_rr_adjusted <- emp_long %>%
-  inner_join(rr_distrib_table, by = c("disease", "step"), relationship = "many-to-many") %>%
-  mutate(adjusted_rate = rate * reduction_risk) %>%
-  ungroup()
-
-
-
 # EMP Dataset per disease
 for (dis in dis_vec) {
   assign(
-    paste0(dis, "_walkers"),
+    paste0(dis, "_replicate"),
     emp_long %>% filter(disease == dis)
   )
 }
@@ -120,82 +114,84 @@ for (dis in dis_vec) {
 ##############################################################
 #                DISEASE REDUCTION RISK                      #
 ##############################################################
-# Associate relative RR to each individual for each disease
+  
+for (dis in dis_vec) {
 
-  for (dis in no_bc_vec) {
-    walkers_name <- paste0(dis, "_walkers")
-    cases_name <- paste0(dis, "_cases")
-    
+  replicate_name <- paste0(dis, "_replicate")
+  dis_replicate <- get(replicate_name)
+
+  # --- breast cancer ---
+  if (dis == "bc") {
+
+    params <- dis_setting(dis)
+    set.seed(123)
+
+    rr_women_sim <- generate_RR_distrib(params$rr_women, params$rr_women_low, params$rr_women_up, N = 1000)
+    rr_men_sim   <- generate_RR_distrib(params$rr_men, params$rr_men_low, params$rr_men_up, N = 1000)
+
+    # Dupliquer chaque individu 1000 fois + assigner les 1000 RR
+    dis_replicate <- dis_replicate %>%
+      slice(rep(1:n(), each = 1000)) %>%
+      group_by(ID) %>%
+      mutate(
+        simulation_id = 1:1000,
+        rr_sim = if (sex[1] == "Female") rr_women_sim else rr_men_sim
+      ) %>%
+      ungroup()
+
+    # Calcul réduction de risque
+    dis_replicate <- log_reduction_risk(
+      data = dis_replicate,
+      dis = dis,
+      rr_women = dis_replicate$rr_sim,
+      rr_men   = dis_replicate$rr_sim,
+      ref_women = params$ref_women,
+      ref_men   = params$ref_men,
+      week_base = week_base
+    )
+
+  } else {
+
+    # --- other diseases ---
     dis_rr <- rr_distrib_table %>%
       filter(disease == dis) %>%
       select(simulation_id, step, reduction_risk)
-    
-    dis_cases <- get(walkers_name) %>%
+
+    dis_replicate <- dis_replicate %>%
       left_join(dis_rr, by = "step", relationship = "many-to-many")
-    
-    assign(cases_name, dis_cases)
   }
 
+  assign(replicate_name, dis_replicate)
+}
 
-# For breast cancer
-  params <- dis_setting("bc")
-  bc_walkers <- log_reduction_risk(bc_walkers, "bc", 
-                                   params$rr_women, params$rr_women_low, params$rr_women_up, 
-                                   params$rr_men, params$rr_men_low, params$rr_men_up,
-                                   params$ref_women, params$ref_men)
-
-
+  
+  
+  
+  
 
 ##############################################################
 #                      CASES PREVENTED                       #
 ##############################################################
 
 # Calculate prevented cases
-  for (dis in no_bc_vec) {
-    cases_name <- paste0(dis, "_cases")
-      
-    dis_cases <- get(cases_name) %>%
-      mutate(reduc_incidence = reduction_risk * rate)
-      
-    assign(cases_name, dis_cases)
-  }
+for (dis in dis_vec) {
+  replicate_name <- paste0(dis, "_replicate")
+    
+  dis_replicate <- get(replicate_name) %>% 
+    mutate(reduc_incidence = reduction_risk * rate)
+     
+  assign(replicate_name, dis_replicate)
+}
   
   
     
-# Mean and 95% CI of prevented cases by individual
-  for (dis in no_bc_vec) {
-    walkers_name <- paste0(dis, "_walkers")
-    cases_name <- paste0(dis, "_cases")
-    cases_name_ic95 <- paste0(dis, "_cases_ic95")
-    
-    dis_cases_ic95 <- get(cases_name) %>%
-      group_by(ID) %>%
-      summarise(
-        cases_mid = median(reduc_incidence, na.rm = TRUE),
-        cases_low = quantile(reduc_incidence, 0.025, na.rm = TRUE),
-        cases_up  = quantile(reduc_incidence, 0.975, na.rm = TRUE),
-        .groups = "drop"
-      )
-    
-    assign(cases_name_ic95, dis_cases_ic95)
-    
-    # Add cases prevented in walkers dataset
-    walkers_updated <- get(walkers_name) %>% 
-      left_join(get(cases_name_ic95), by = "ID")
-    
-    assign(walkers_name, walkers_updated)
-  }
-  
-
-  
-# For breast cancer
-  bc_walkers <- reduc_incidence(bc_walkers)
   
 
 
 ##############################################################
 #                    DISABILITY WEIGHTS                      #
 ##############################################################
+  
 # Generate DW normal distributions
 set.seed(123)
 dw_distrib_table <- dw_table %>%
@@ -227,20 +223,19 @@ dw_distrib_table <- dw_distrib_table  %>%
 
 # Randomly associate DW to each individual for each disease
 set.seed(123)
-for (dis in no_bc_vec) {
-  cases_name <- paste0(dis, "_cases")
+for (dis in dis_vec) {
+  replicate_name <- paste0(dis, "_replicate")
   
   dis_dw <- dw_distrib_table %>%
     filter(disease == dis) %>%
     pull(simulated_dw)
   
-  dis_cases <- get(cases_name) %>%
-    filter(disease == dis) %>%
+  dis_replicate <- get(replicate_name) %>%
     mutate(
       dw = sample(dis_dw, size = n(), replace = TRUE) 
     )
   
-  assign(cases_name, dis_cases)
+  assign(replicate_name, dis_replicate)
 }
 
 
@@ -250,107 +245,211 @@ for (dis in no_bc_vec) {
 ##############################################################     
 #                           DALY                             #
 ##############################################################
-for (dis in no_bc_vec) {
-  cases_name <- paste0(dis, "_cases")
-  dis_walkers <- get(cases_name) 
 
-    dis_walkers <- daly(dis_walkers)
+for (dis in dis_vec) {
+  replicate_name <- paste0(dis, "_replicate")
+  dis_replicate <- get(replicate_name) 
+
+    dis_replicate <- daly(dis_replicate)
     
-  assign(walkers_name, dis_walkers)
+  assign(replicate_name, dis_replicate)
 }
 
 
-
-# Mean and 95% CI of prevented cases by individual
-for (dis in no_bc_vec) {
-  walkers_name <- paste0(dis, "_walkers")
-  cases_name <- paste0(dis, "_cases")
-  cases_name_ic95 <- paste0(dis, "_cases_ic95")
-  
-  dis_cases_ic95 <- get(cases_name) %>%
-    group_by(ID) %>%
-    summarise(
-      cases_mid = median(reduc_incidence, na.rm = TRUE),
-      cases_low = quantile(reduc_incidence, 0.025, na.rm = TRUE),
-      cases_up  = quantile(reduc_incidence, 0.975, na.rm = TRUE),
-      .groups = "drop"
-    )
-  
-  assign(cases_name_ic95, dis_cases_ic95)
-  
-  # Add cases prevented in walkers dataset
-  walkers_updated <- get(walkers_name) %>% 
-    left_join(get(cases_name_ic95), by = "ID")
-  
-  assign(walkers_name, walkers_updated)
-}
 
   
 
 ##############################################################
-#                ECONOMIC IMPACT (MEDICAL)                   #
+#                    ECONOMIC IMPACT                         #
 ##############################################################
 
 for (dis in dis_vec) {
-  walkers_name <- paste0(dis, "_walkers")
-  dis_walkers <- get(walkers_name) 
+  replicate_name <- paste0(dis, "_replicate")
+  dis_replicate <- get(replicate_name) 
 
-  for (bound in bound_vec) {
-    dis_walkers <- medic_costs (dis_walkers, dis, bound)
-  }
+  dis_replicate <- medic_costs (dis_replicate, dis)
+  dis_replicate <- dis_replicate %>% 
+    mutate(soc_costs = daly*vsl)
+  
 
-  assign(walkers_name, dis_walkers)
+  assign(replicate_name, dis_replicate)
 }
 
 
 
+################################################################################################################################
+#                                               6. TOTAL BURDEN PER SIMULATION                                                 #
+################################################################################################################################
 
 ##############################################################
-#       TOTAL OF PREVENTED CASES, DALY, MEDICAL COSTS        #
+#                      ALL DISEASES                          #
 ##############################################################
 
+cli_progress_bar("Burden calculations", total = length(dis_vec) * 1000)
 
-# Associate all the disease results to walkers dataset
-health_walkers_list <- list()
-  
-  for (dis in dis_vec) {
-    walkers_name <- paste0(dis, "_walkers")
-    
-    walkers_data <- get(walkers_name) %>%
-      select(
-        ID, disease,
-        cases_mid, cases_low, cases_up,
-        daly_mid, daly_low, daly_up,
-        medic_costs_mid, medic_costs_low, medic_costs_up
-      )
-    
-    # Walkers dataset for 1 disease
-    emp_dis <- emp_long %>% filter(disease == dis)
-    
-    # Join
-    emp_dis_joined <- emp_dis %>%
-      left_join(walkers_data, by = c("ID", "disease"))
-    
-    health_walkers_list[[dis]] <- emp_dis_joined
-  }
-  
-health_walkers <- bind_rows(health_walkers_list)
-  
-
-
-
-# SURVEY DESIGNS
-surv_dis <- health_walkers %>% 
-  as_survey_design(ids = ident_ind,
-                   weights = pond_indc,
-                   strata = c(sex, age_grp10, quartile_rev, disease),           # by sex and age group
-                   nest = TRUE)
-
-burden <- data.frame()
 for (dis in dis_vec) {
-  dis_burden <- burden_prevented(surv_dis, dis, NULL)
-  burden <- bind_rows(burden, dis_burden)   
+  replicate_name <- paste0(dis, "_replicate")
+  burden_replicate_name <- paste0(dis, "_burden_replicate")
+  
+  dis_burden_replicate <- list() 
+  
+  for(i in 1:1000) {
+    cli_progress_update()  
+    message("Simulation ", i, " ~ ", dis)
+    
+    # Survey design
+    surv_dis_replicate <- get(replicate_name) %>% 
+      filter(simulation_id == i) %>% 
+      as_survey_design(ids = ident_ind, weights = pond_indc)
+    
+    # For 1 simulation, total burden
+    dis_burden_replicate[[i]] <- surv_dis_replicate %>% 
+      summarise(
+        tot_cases = survey_total(reduc_incidence, na.rm = TRUE),
+        tot_daly = survey_total(daly, na.rm = TRUE),
+        tot_medic_costs = survey_total(medic_costs, na.rm = TRUE),
+        tot_soc_costs = survey_total(soc_costs, na.rm = TRUE)
+      ) %>%
+      mutate(disease = dis, simulation_id = i)
+  }
+  
+  # All simulations in a data.frame
+  dis_burden_replicate <- bind_rows(dis_burden_replicate) %>% as.data.frame()
+  
+  assign(burden_replicate_name, dis_burden_replicate)
 }
+
+
+
+# Gather the results in a data.frame
+burden_replicate <- data.frame()
+
+for (dis in dis_vec) {
+  burden_replicate_name <- paste0(dis, "_burden_replicate")
+  
+  dis_burden_replicate <- get(burden_replicate_name)
+  
+  burden_replicate <- bind_rows(burden_replicate, dis_burden_replicate)
+}
+
+
+# Export results
+export(burden_replicate, here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
+
+
+
+##############################################################
+#                         PER AGE                            #
+##############################################################
+cli_progress_bar("Burden calculations", total = length(dis_vec) * 1000)
+
+for (dis in dis_vec) {
+  replicate_name <- paste0(dis, "_replicate")
+  burden_replicate_age_name <- paste0(dis, "_burden_replicate_age")
+  
+  dis_burden_replicate <- list()  # liste pour stocker chaque simulation
+  
+  for(i in 1:1000) {
+    cli_progress_update()
+    message("Simulation ", i, " ~ ", dis)
+    
+    surv_dis_replicate <- get(replicate_name) %>% 
+      filter(simulation_id == i) %>% 
+      as_survey_design(ids = ident_ind, weights = pond_indc)
+    
+    dis_burden_replicate[[i]] <- surv_dis_replicate %>% 
+      group_by(age_grp10) %>% 
+      summarise(
+        tot_cases = survey_total(reduc_incidence, na.rm = TRUE),
+        tot_daly = survey_total(daly, na.rm = TRUE),
+        tot_medic_costs = survey_total(medic_costs, na.rm = TRUE),
+        tot_soc_costs = survey_total(soc_costs, na.rm = TRUE)
+      ) %>%
+      mutate(disease = dis, simulation_id = i)
+  }
+  
+  # Combiner toutes les simulations
+  dis_burden_replicate <- bind_rows(dis_burden_replicate) %>% as.data.frame()
+  assign(burden_replicate_age_name, dis_burden_replicate)
+  
+}
+
+
+# Gather the results in a data.frame
+burden_replicate_age <- data.frame()
+
+for (dis in dis_vec) {
+  burden_replicate_age_name <- paste0(dis, "_burden_replicate_age")
+  
+  dis_burden_replicate_age <- get(burden_replicate_age_name)
+  
+  burden_replicate_age <- bind_rows(burden_replicate_age, dis_burden_replicate_age)
+}
+
+
+# Export results
+export(burden_replicate_age, here("output", "RDS", "2019", "Resampling", "HIA_per_age_1000replicate.rds"))
+
+
+
+
+
+################################################################################################################################
+#                         7. IC and MEDIAN - TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                        #
+################################################################################################################################
+
+##############################################################
+#                       ALL DISEASES                         #
+##############################################################
+
+# Import data
+burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
+
+
+# IC95 and median (Monte Carlo)
+set.seed(123)
+burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, outcome_vec, calc_replicate_IC) %>% 
+  mutate(disease = recode(disease, !!!names_disease))
+
+
+# Rubin's rule
+Rubin_burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, outcome_vec, calc_IC_Rubin) %>% 
+  mutate(disease = recode(disease, !!!names_disease))
+
+
+
+
+
+##############################################################
+#                         PER AGE                            #
+##############################################################
+
+# Import data
+burden_replicate_age <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
+
+
+# IC95 and median (Monte Carlo)
+set.seed(123)
+burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, outcome_vec, calc_replicate_IC) %>% 
+  mutate(disease = recode(disease, !!!names_disease))
+
+
+# Rubin's rule
+Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, outcome_vec, calc_IC_Rubin) %>% 
+  mutate(disease = recode(disease, !!!names_disease))
+
+
+##############################################################
+#                         MORBIDITY                          #
+##############################################################
+morbidity_burden <- data.frame()
+
+
+
+################################################################################################################################
+#                                                      8. VISUALIZATION                                                        #
+################################################################################################################################
+
 
 
 
