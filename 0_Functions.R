@@ -151,24 +151,38 @@ dis_setting = function (dis) {
 
 # FUNCTION log_reduction_risk : Calculate the disease risk reduction percentage for each individual with a log linear regression
 # (% of decrease in disease risk comparing to the baseline : if people did not walk)
-log_reduction_risk = function(data, dis, rr_women, rr_women_low, rr_women_up, rr_men, rr_men_low, rr_men_up, ref_women, ref_men) {
-  data[["relative_rr_mid"]] <- ifelse(                                       # Calculate risk reduction percentage
-    data$sex == "Female",
-    1-(exp(log(rr_women) * data$week_time / ref_women)),                     # for women % of decrease for this disease risk
-    1-(exp(log(rr_men) * data$week_time / ref_men)) )                        # for men % of decrease for this disease risk
+
+log_reduction_risk = function(data, dis, rr_women, rr_men, ref_women, ref_men, week_base) {
   
-  data[["relative_rr_low"]] <- ifelse(                                       # Low bound    
-    data$sex == "Female",
-    1-(exp(log(rr_women_low) * data$week_time / ref_women)),                       
-    1-(exp(log(rr_men_low) * data$week_time / ref_men)) )                          
+  # --- For women ---
+  RR_baseline_w <- exp(log(rr_women) * (week_base / ref_women))
+  RR_obs_w    <- exp(log(rr_women) * ((data$week_time + week_base) / ref_women))
+  RR_rel_w      <- RR_obs_w / RR_baseline_w
   
-  data[["relative_rr_up"]] <- ifelse(                                       # Upper bound    
+  # --- For men ---
+  RR_baseline_m <- exp(log(rr_men) * (week_base / ref_men))
+  RR_obs_m    <- exp(log(rr_men) * ((data$week_time + week_base)/ ref_men))
+  RR_rel_m      <- RR_obs_m / RR_baseline_m
+  
+  # --- Réduction de risque par rapport au baseline ---
+  data[["reduction_risk"]] <- ifelse(
     data$sex == "Female",
-    1-(exp(log(rr_women_up) * data$week_time / ref_women)),                       
-    1-(exp(log(rr_men_up) * data$week_time / ref_men)) )                         
+    1 - RR_rel_w,
+    1 - RR_rel_m
+  )
   
   return(data)
 }
+
+log_reduction_risk_1 = function(data, dis, rr_women, rr_men, ref_women, ref_men) {
+  data[["reduction_risk"]] <- ifelse(                                                        # Calculate risk reduction percentage
+    data$sex == "Female",
+    1-(exp(log(rr_women) * (data$week_time - week_base) / (ref_women - week_base))),          # for women % of decrease for this disease risk
+    1-(exp(log(rr_men) * (data$week_time - week_base) / (ref_men - week_base))) )             # for men % of decrease for this disease risk
+  
+  return(data)
+}
+
 
 
 
@@ -210,8 +224,8 @@ daly = function(data) {
 ## MEDICAL COSTS ----
 
 # FUNCTION medic_costs : Calculate the medical costs associated with the reduced disease incidence for each individual
-medic_costs = function(data, dis, bound) {
-  data [[paste0("medic_costs_", bound)]] <- get(paste0(dis, "_cost")) * data[[paste0("cases_", bound)]] 
+medic_costs = function(data, dis) {
+  data [[paste0("medic_costs")]] <- get(paste0(dis, "_cost")) * data[[paste0("reduc_incidence")]] 
   return(data)
 }
 
@@ -260,7 +274,72 @@ burden_prevented <- function(survey_data, dis, group){
 }
 
 
+##############################################################
+#                        MONTE-CARLO                         #
+##############################################################
 
+# FUNCTION calc_replicate_IC : Calculate interval of confidence by combining replications obtained with generated RR samples to generate a posterior distribution for each outcome
+#set.seed()
+calc_replicate_IC = function(data, outcome){
+  vec = c()
+  se_name = paste0(outcome, "_se")
+  
+  for (i in 1:nrow(data)){
+    sam = rnorm(n=200, mean = as.numeric(data[i,outcome]), sd = as.numeric(data[i,se_name]) ) # Generation of samples : uncertainty estimation
+    vec = c(vec, sam)
+  }
+  IC = quantile(vec, probs = c(0.025, 0.5, 0.975))
+  return(IC)  
+}
+
+
+##############################################################
+#                       RUBIN'S RULE                         #
+##############################################################
+
+# FUNCTION calc_IC_Rubin : Calculate interval of confidence with using Rubin's rules
+calc_IC_Rubin = function(data, outcome){
+  zq <- qnorm(1-0.05/2)
+  se_name = paste0(outcome, "_se")
+  
+  theta =  sum(data[,outcome])/nrow(data)                             # Pooled mean differences
+  V_w = sum((data[,se_name] )^2)/nrow(data)                           # Within imputation variance
+  V_b = sum((data[,outcome] - theta )^2) / (nrow(data)-1)             # Between imputation variance
+  
+  V_tot = V_w + V_b +  V_b / (nrow(data))                             # Total variance    
+  
+  IC = (c(theta-zq*sqrt(V_tot), theta,theta+zq*sqrt(V_tot)))     # Confidence interval
+  return(IC)  
+}
+
+
+
+##############################################################
+#                 UNCERTAINTIES ANALYSIS                     #
+##############################################################
+
+# FUNCTION HIA_burden_IC : Get a table with HIA outcomes and IC 
+#set.seed() if use calc_replicate_IC
+HIA_burden_IC = function(data, dis_vec, outcome_vec, IC_func ) {
+  HIA_burden <- data.frame() 
+  for (dis in dis_vec) {
+    data_dis <- data %>% 
+      filter(disease == dis)                                             # Filter for the corresponding disease
+    
+    HIA_dis <- data.frame(disease = dis)                                 # 1 line = 1 disease
+    
+    for (out in outcome_vec) {
+      IC <- IC_func(data_dis, out)                                       # Calculate IC for the corresponding outcome with the chosen method
+      
+      HIA_dis <- HIA_dis %>%                                             # All outcomes for 1 disease
+        mutate(!!sym(out) := round(IC[2], 3),
+               !!sym(paste0(out, "_low")) := round(IC[1], 3),
+               !!sym(paste0(out, "_sup")) := round(IC[3], 3))
+    }
+    HIA_burden <- bind_rows(HIA_burden, HIA_dis)                         # Gather all outcomes for all diseases
+  }
+  return(HIA_burden)
+}
 
 
 
