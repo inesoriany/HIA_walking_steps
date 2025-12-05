@@ -4,7 +4,6 @@
 
 
 
-
 ###########################################################################################################################################################################
 ###########################################################################################################################################################################
 #                                                                          HIA - 2019                                                                                     #
@@ -68,27 +67,10 @@ age_vec <- c("20-24", "25-34", "35-44", "45-54", "55-64", "65-75", "75-89")
 sex_vec <- c("Female", "Male")
 
 
-################################################################################################################################
-#                                                 4. SIMULATED REDUCTION RR                                                    #
-################################################################################################################################
-
-## ALL DISEASES (EXCEPT BREAST CANCER)
-  # Baseline step 2000
-  rr_baseline <- rr_distrib_table %>%
-    filter(step == 2000) %>%
-    select(disease, simulation_id, rr2000 = rr_interpolated)
-  
-  
-  # Reduction risk 
-  rr_distrib_table <- rr_distrib_table %>%
-    left_join(rr_baseline, by = c("disease", "simulation_id")) %>%
-    mutate(reduction_risk = (rr2000 - rr_interpolated) / rr2000)
-  
-
 
 
 ################################################################################################################################
-#                                                    4. DATA PREPARATION                                                       #
+#                                                    3. DATA PREPARATION                                                       #
 ################################################################################################################################
 
 # Initialization
@@ -107,59 +89,77 @@ for (dis in dis_vec) {
 
 
 ################################################################################################################################
-#                                                 5. HEALTH IMPACT ASSESSMENT                                                  #
+#                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
 ################################################################################################################################
 
 ##############################################################
 #                DISEASE REDUCTION RISK                      #
 ##############################################################
-  
-for (dis in dis_vec) {
 
+## --------------------------------------------
+## ALL DISEASES (EXCEPT BREAST CANCER)
+## --------------------------------------------
+
+# Baseline step 2000
+rr_baseline <- rr_distrib_table %>%
+  filter(step == 2000) %>%
+  select(disease, simulation_id, rr2000 = rr_interpolated)
+
+# Reduction risk for all diseases except breast cancer
+rr_distrib_table <- rr_distrib_table %>%
+  left_join(rr_baseline, by = c("disease", "simulation_id")) %>%
+  mutate(reduction_risk = (rr2000 - rr_interpolated) / rr2000)
+
+
+
+
+
+for (dis in dis_vec) {
+  
   replicate_name <- paste0(dis, "_replicate")
   dis_replicate <- get(replicate_name)
-
-  # --- breast cancer ---
+  
+  # --------------------------------------
+  # BREAST CANCER (special case)
+  # --------------------------------------
   if (dis == "bc") {
-
+    
     params <- dis_setting(dis)
     set.seed(123)
-
+    
     rr_women_sim <- generate_RR_distrib(params$rr_women, params$rr_women_low, params$rr_women_up, N = 1000)
-    rr_men_sim   <- generate_RR_distrib(params$rr_men, params$rr_men_low, params$rr_men_up, N = 1000)
-
-    # Dupliquer chaque individu 1000 fois + assigner les 1000 RR
+    rr_men_sim   <- generate_RR_distrib(params$rr_men,   params$rr_men_low,   params$rr_men_up,   N = 1000)
+    
     dis_replicate <- dis_replicate %>%
       slice(rep(1:n(), each = 1000)) %>%
       group_by(ID) %>%
       mutate(
         simulation_id = 1:1000,
-        rr_sim = if (sex[1] == "Female") rr_women_sim else rr_men_sim
+        rr_sim = ifelse(sex[1] == "Female", rr_women_sim, rr_men_sim)
       ) %>%
       ungroup()
-
-    # Calcul réduction de risque
-    dis_replicate <- log_reduction_risk(
-      data = dis_replicate,
-      dis = dis,
-      rr_women = dis_replicate$rr_sim,
-      rr_men   = dis_replicate$rr_sim,
-      ref_women = params$ref_women,
-      ref_men   = params$ref_men,
-      week_base = week_base
-    )
-
+    
+    dis_replicate <- log_reduction_risk(data = dis_replicate,
+                                        dis = dis,
+                                        rr_women = dis_replicate$rr_sim,
+                                        rr_men   = dis_replicate$rr_sim,
+                                        ref_women = params$ref_women,
+                                        ref_men   = params$ref_men,
+                                        week_base = week_base)
+    
+    # --------------------------------------
+    # OTHER DISEASES
+    # --------------------------------------
   } else {
-
-    # --- other diseases ---
+    
     dis_rr <- rr_distrib_table %>%
       filter(disease == dis) %>%
       select(simulation_id, step, reduction_risk)
-
+    
     dis_replicate <- dis_replicate %>%
       left_join(dis_rr, by = "step", relationship = "many-to-many")
   }
-
+  
   assign(replicate_name, dis_replicate)
 }
 
@@ -175,10 +175,10 @@ for (dis in dis_vec) {
 # Calculate prevented cases
 for (dis in dis_vec) {
   replicate_name <- paste0(dis, "_replicate")
-    
-  dis_replicate <- get(replicate_name) %>% 
-    mutate(reduc_incidence = reduction_risk * rate)
-     
+  dis_replicate <- get(replicate_name) 
+  
+  dis_replicate <- reduc_incidence(dis_replicate)
+  
   assign(replicate_name, dis_replicate)
 }
   
@@ -405,7 +405,10 @@ export(burden_replicate_age, here("output", "RDS", "2019", "Resampling", "HIA_pe
 burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
 
 
-# IC95 and median (Monte Carlo)
+# --------------------------------------
+# MONTE-CARLO
+# --------------------------------------
+# IC95 and median 
   # Per disease
   set.seed(123)
   burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, NULL, outcome_vec, calc_replicate_IC) %>% 
@@ -427,14 +430,15 @@ burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000
     mutate(disease = "All") %>%
     select(disease, everything()) 
   
-
   # Gather results
   burden <- bind_rows(burden_per_disease, burden_morbidity, burden_global)
   
 
   
   
-# Rubin's rule
+# --------------------------------------
+# RUBIN'S RULE
+# --------------------------------------
   # Per disease
   Rubin_burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, NULL, outcome_vec, calc_IC_Rubin) %>% 
     select(-c(age_grp10, sex))
@@ -467,6 +471,9 @@ burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000
 burden_replicate_age <- import(here("output", "RDS", "2019", "Resampling", "HIA_per_age_1000replicate.rds"))
 
 
+# --------------------------------------
+# MONTE-CARLO
+# --------------------------------------
 # IC95 and median (Monte Carlo)
 set.seed(123)
 burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NULL, outcome_vec, calc_replicate_IC) %>% 
@@ -474,7 +481,9 @@ burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NULL, ou
   
 
 
-# Rubin's rule
+# --------------------------------------
+# RUBIN'S RULE
+# --------------------------------------
 Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NULL, outcome_vec, calc_IC_Rubin) %>% 
   select(-c(sex))
 
