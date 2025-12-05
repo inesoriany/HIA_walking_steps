@@ -68,6 +68,12 @@ dis_vec = c("mort", "cvd", "bc", "cancer", "diab2", "dem", "dep")
 # HIA outcomes
 outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 
+# Age categories
+age_vec <- c("20-24", "25-34", "35-44", "45-54", "55-64", "65-75", "75-89")
+
+# Sex categories
+sex_vec <- c("Female", "Male")
+
 
 ################################################################################################################################
 #                                                 4. SIMULATED REDUCTION RR                                                    #
@@ -347,7 +353,7 @@ for (dis in dis_vec) {
   replicate_name <- paste0(dis, "_replicate")
   burden_replicate_age_name <- paste0(dis, "_burden_replicate_age")
   
-  dis_burden_replicate <- list()  # liste pour stocker chaque simulation
+  dis_burden_replicate <- list() 
   
   for(i in 1:1000) {
     cli_progress_update()
@@ -407,16 +413,58 @@ burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000
 
 
 # IC95 and median (Monte Carlo)
-set.seed(123)
-burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, outcome_vec, calc_replicate_IC) %>% 
-  mutate(disease = recode(disease, !!!names_disease))
+  # Per disease
+  set.seed(123)
+  burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, NULL, outcome_vec, calc_replicate_IC) %>% 
+    mutate(disease = recode(disease, !!!names_disease)) %>% 
+    select(-c(age_grp10, sex))
 
+  # Total for morbidity
+  burden_morbidity <- burden_per_disease %>%
+    filter(disease != "mort") %>% 
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "Morbidity") %>%
+    select(disease, everything()) 
+  
+  
+  # Total for all diseases
+  burden_global <- burden_per_disease %>%
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "All") %>%
+    select(disease, everything()) 
+  
 
+  # Gather results
+  burden <- bind_rows(burden_per_disease, burden_morbidity, burden_global)
+  
+
+  
+  
 # Rubin's rule
-Rubin_burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, outcome_vec, calc_IC_Rubin) %>% 
-  mutate(disease = recode(disease, !!!names_disease))
+  # Per disease
+  Rubin_burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, NULL, outcome_vec, calc_IC_Rubin) %>% 
+    mutate(disease = recode(disease, !!!names_disease)) %>% 
+    select(-c(age_grp10, sex))
 
-
+  # Total for morbidity
+  Rubin_burden_morbidity <- Rubin_burden_per_disease %>%
+    filter(disease != "mort") %>% 
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "Morbidity") %>%
+    select(disease, everything()) 
+  
+  # Total for all diseases
+  Rubin_burden_global <- Rubin_burden_per_disease %>%
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "All") %>%
+    select(disease, everything()) 
+  
+  # Gather results
+  Rubin_burden <- bind_rows(Rubin_burden_per_disease,Rubin_burden_morbidity, Rubin_burden_global)
 
 
 
@@ -425,30 +473,46 @@ Rubin_burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, outcome_vec
 ##############################################################
 
 # Import data
-burden_replicate_age <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
+burden_replicate_age <- import(here("output", "RDS", "2019", "Resampling", "HIA_per_age_1000replicate.rds"))
 
 
 # IC95 and median (Monte Carlo)
 set.seed(123)
-burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, outcome_vec, calc_replicate_IC) %>% 
-  mutate(disease = recode(disease, !!!names_disease))
+burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NULL, outcome_vec, calc_replicate_IC) %>% 
+  mutate(disease = recode(disease, !!!names_disease)) %>% 
+  select(-c(sex))
+  
 
 
 # Rubin's rule
-Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, outcome_vec, calc_IC_Rubin) %>% 
-  mutate(disease = recode(disease, !!!names_disease))
+Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NULL, outcome_vec, calc_IC_Rubin) %>% 
+  mutate(disease = recode(disease, !!!names_disease)) %>% 
+  select(-c(sex))
 
 
-##############################################################
-#                         MORBIDITY                          #
-##############################################################
-morbidity_burden <- data.frame()
 
 
 
 ################################################################################################################################
 #                                                      8. VISUALIZATION                                                        #
 ################################################################################################################################
+
+
+
+
+
+################################################################################################################################
+#                                                       9. EXPORT DATA                                                         #
+################################################################################################################################
+
+# Tables of HIA outcomes
+export(burden, here("output", "Plots", "2019", "Resampling", "HIA_per_disease.xlsx"))
+export(Rubin_burden, here("output", "Plots", "2019", "Resampling", "HIA_per_disease_Rubin.xlsx"))
+export(burden_per_age, here("output", "Plots", "2019", "Resampling", "HIA_per_age.xlsx"))
+export(Rubin_burden_per_age, here("output", "Plots", "2019", "Resampling", "HIA_per_age_Rubin.xlsx"))
+
+       
+       
 
 
 
