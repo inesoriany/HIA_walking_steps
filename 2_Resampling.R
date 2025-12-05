@@ -2,13 +2,6 @@
 ############ HEALTH IMPACT ASSESSMENT ###########
 #################################################
 
-# Files needed :
-# EMP_walkers.xlsx
-# rr_central_interpolated.rds
-# 0_Functions.R
-# 0_Parameters.R
-
-# Files outputted :
 
 
 
@@ -416,7 +409,6 @@ burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000
   # Per disease
   set.seed(123)
   burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, NULL, outcome_vec, calc_replicate_IC) %>% 
-    mutate(disease = recode(disease, !!!names_disease)) %>% 
     select(-c(age_grp10, sex))
 
   # Total for morbidity
@@ -445,7 +437,6 @@ burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000
 # Rubin's rule
   # Per disease
   Rubin_burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, NULL, outcome_vec, calc_IC_Rubin) %>% 
-    mutate(disease = recode(disease, !!!names_disease)) %>% 
     select(-c(age_grp10, sex))
 
   # Total for morbidity
@@ -479,40 +470,66 @@ burden_replicate_age <- import(here("output", "RDS", "2019", "Resampling", "HIA_
 # IC95 and median (Monte Carlo)
 set.seed(123)
 burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NULL, outcome_vec, calc_replicate_IC) %>% 
-  mutate(disease = recode(disease, !!!names_disease)) %>% 
   select(-c(sex))
   
 
 
 # Rubin's rule
 Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NULL, outcome_vec, calc_IC_Rubin) %>% 
-  mutate(disease = recode(disease, !!!names_disease)) %>% 
   select(-c(sex))
 
 
 
-
-
-################################################################################################################################
-#                                                      8. VISUALIZATION                                                        #
-################################################################################################################################
-
+##############################################################
+#                         PER SEX                            #
+##############################################################
 
 
 
 
 ################################################################################################################################
-#                                                       9. EXPORT DATA                                                         #
+#                                              8. REDUCTION IN MORTALITY RISK                                                  #
+################################################################################################################################
+
+
+
+
+################################################################################################################################
+#                                                     9. VISUALIZATION                                                         #
+################################################################################################################################
+
+# Plot : Median DALY prevented by walking in 2019 according to age group
+plot_daly_prevented <- ggplot(burden_per_age, aes(x = age_grp10, y = tot_daly, fill = disease)) +
+  geom_bar(width = 0.7, position = "stack", stat = "identity")  +
+  scale_fill_manual(values = colors_disease, labels = names_disease) +
+  xlab("Age group") +
+  ylab("Median DALY") +
+  theme_minimal()
+
+plot_daly_prevented
+
+
+
+################################################################################################################################
+#                                               10. ECONOMIC UNIT VALUE (€)                                                    #
+################################################################################################################################
+
+
+
+################################################################################################################################
+#                                                      11. EXPORT DATA                                                         #
 ################################################################################################################################
 
 # Tables of HIA outcomes
-export(burden, here("output", "Plots", "2019", "Resampling", "HIA_per_disease.xlsx"))
-export(Rubin_burden, here("output", "Plots", "2019", "Resampling", "HIA_per_disease_Rubin.xlsx"))
-export(burden_per_age, here("output", "Plots", "2019", "Resampling", "HIA_per_age.xlsx"))
-export(Rubin_burden_per_age, here("output", "Plots", "2019", "Resampling", "HIA_per_age_Rubin.xlsx"))
+export(burden, here("output", "Tables", "2019", "Resampling", "HIA_per_disease.xlsx"))
+export(Rubin_burden, here("output", "Tables", "2019", "Resampling", "HIA_per_disease_Rubin.xlsx"))
+export(burden_per_age, here("output", "Tables", "2019", "Resampling", "HIA_per_age.xlsx"))
+export(Rubin_burden_per_age, here("output", "Tables", "2019", "Resampling", "HIA_per_age_Rubin.xlsx"))
 
        
-       
+# Plot
+ggsave(here("output", "Plots", "2019", "DALY_prevented.png"), plot = plot_daly_prevented)
+
 
 
 
