@@ -32,7 +32,7 @@ names_disease <- c(
   "cvd" = "Cardiovascular disease incidence",
   "dem" = "Dementia",
   "diab2" = "Type 2 diabetes",
-  "dep" = "Depressive symptoms",
+  "dep" = "Depressive episodes",
   "mort" = "All-cause mortality"
 )
 
@@ -46,6 +46,7 @@ colors_disease <- c(
   "dep" = "slateblue",
   "mort" = "steelblue"
 )
+
 
 
 ## BREAST CANCER ----
