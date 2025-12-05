@@ -372,36 +372,36 @@ export(ic95_rr, here("data_clean", "DRF", "rr_interpolated_mean.csv"))
 
 
 # Graphs (all central DRF curves)
-ggsave(here("output", "Plots", "DRF", "drf_central_mort.png"), plot = graph_drf_central_mort)
-ggsave(here("output", "Plots", "DRF", "drf_central_cvd.png"), plot = graph_drf_central_cvd)
-ggsave(here("output", "Plots", "DRF", "drf_central_cancer.png"), plot = graph_drf_central_cancer)
-ggsave(here("output", "Plots", "DRF", "drf_central_diab2.png"), plot = graph_drf_central_diab2)
-ggsave(here("output", "Plots", "DRF", "drf_central_dem.png"), plot = graph_drf_central_dem)
-ggsave(here("output", "Plots", "DRF", "drf_central_dep.png"), plot = graph_drf_central_dep)
+ggsave(here("output", "Plots", "DRF", "Central", "drf_central_mort.png"), plot = graph_drf_central_mort)
+ggsave(here("output", "Plots", "DRF", "Central", "drf_central_cvd.png"), plot = graph_drf_central_cvd)
+ggsave(here("output", "Plots", "DRF", "Central", "drf_central_cancer.png"), plot = graph_drf_central_cancer)
+ggsave(here("output", "Plots", "DRF", "Central", "drf_central_diab2.png"), plot = graph_drf_central_diab2)
+ggsave(here("output", "Plots", "DRF", "Central", "drf_central_dem.png"), plot = graph_drf_central_dem)
+ggsave(here("output", "Plots", "DRF", "Central", "drf_central_dep.png"), plot = graph_drf_central_dep)
 
-ggsave(here("output", "Plots", "DRF", "central_drf_all.png"), plot = combined_plot_central_drf)
+ggsave(here("output", "Plots", "DRF", "Central", "central_drf_all.png"), plot = combined_plot_central_drf)
 
 
 
 # Graphs (all DRF curves simulated)
-ggsave(here("output", "Plots", "DRF", "drf_mort.png"), plot = graph_drf_sim_mort)
-ggsave(here("output", "Plots", "DRF", "drf_cvd.png"), plot = graph_drf_sim_cvd)
-ggsave(here("output", "Plots", "DRF", "drf_cancer.png"), plot = graph_drf_sim_cancer)
-ggsave(here("output", "Plots", "DRF", "drf_diab2.png"), plot = graph_drf_sim_diab2)
-ggsave(here("output", "Plots", "DRF", "drf_dem.png"), plot = graph_drf_sim_dem)
-ggsave(here("output", "Plots", "DRF", "drf_dep.png"), plot = graph_drf_sim_dep)
+ggsave(here("output", "Plots", "DRF", "Simulation", "drf_mort.png"), plot = graph_drf_sim_mort)
+ggsave(here("output", "Plots", "DRF", "Simulation", "drf_cvd.png"), plot = graph_drf_sim_cvd)
+ggsave(here("output", "Plots", "DRF", "Simulation", "drf_cancer.png"), plot = graph_drf_sim_cancer)
+ggsave(here("output", "Plots", "DRF", "Simulation", "drf_diab2.png"), plot = graph_drf_sim_diab2)
+ggsave(here("output", "Plots", "DRF", "Simulation", "drf_dem.png"), plot = graph_drf_sim_dem)
+ggsave(here("output", "Plots", "DRF", "Simulation", "drf_dep.png"), plot = graph_drf_sim_dep)
 
-ggsave(here("output", "Plots", "DRF", "drf_all.png"), plot = combined_plot_drf)
+ggsave(here("output", "Plots", "DRF", "Simulation", "drf_all.png"), plot = combined_plot_drf)
 
 
 
 # Graphs (mean + IC95)
-ggsave(here("output", "Plots", "DRF", "drf_mort_mean.png"), plot = graph_drf_mort)
-ggsave(here("output", "Plots", "DRF", "drf_cvd_mean.png"), plot = graph_drf_cvd)
-ggsave(here("output", "Plots", "DRF", "drf_cancer_mean.png"), plot = graph_drf_cancer)
-ggsave(here("output", "Plots", "DRF", "drf_diab2_mean.png"), plot = graph_drf_diab2)
-ggsave(here("output", "Plots", "DRF", "drf_dem_mean.png"), plot = graph_drf_dem)
-ggsave(here("output", "Plots", "DRF", "drf_dep_mean.png"), plot = graph_drf_dep)
+ggsave(here("output", "Plots", "DRF", "Simulation", "Mean", "drf_mort_mean.png"), plot = graph_drf_mort)
+ggsave(here("output", "Plots", "DRF", "Simulation", "Mean", "drf_cvd_mean.png"), plot = graph_drf_cvd)
+ggsave(here("output", "Plots", "DRF", "Simulation", "Mean", "drf_cancer_mean.png"), plot = graph_drf_cancer)
+ggsave(here("output", "Plots", "DRF", "Simulation", "Mean", "drf_diab2_mean.png"), plot = graph_drf_diab2)
+ggsave(here("output", "Plots", "DRF", "Simulation", "Mean", "drf_dem_mean.png"), plot = graph_drf_dem)
+ggsave(here("output", "Plots", "DRF", "Simulation", "Mean", "drf_dep_mean.png"), plot = graph_drf_dep)
 
-ggsave(here("output", "Plots", "DRF", "drf_all_mean.png"), plot = combined_plot_mean_drf)
+ggsave(here("output", "Plots", "DRF", "Simulation", "Mean", "drf_all_mean.png"), plot = combined_plot_mean_drf)
 
