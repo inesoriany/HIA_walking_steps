@@ -318,29 +318,50 @@ calc_IC_Rubin = function(data, outcome){
 #                 UNCERTAINTIES ANALYSIS                     #
 ##############################################################
 
-# FUNCTION HIA_burden_IC : Get a table with HIA outcomes and IC 
-#set.seed() if use calc_replicate_IC
-HIA_burden_IC = function(data, dis_vec, outcome_vec, IC_func ) {
-  HIA_burden <- data.frame() 
-  for (dis in dis_vec) {
-    data_dis <- data %>% 
-      filter(disease == dis)                                             # Filter for the corresponding disease
-    
-    HIA_dis <- data.frame(disease = dis)                                 # 1 line = 1 disease
-    
-    for (out in outcome_vec) {
-      IC <- IC_func(data_dis, out)                                       # Calculate IC for the corresponding outcome with the chosen method
-      
-      HIA_dis <- HIA_dis %>%                                             # All outcomes for 1 disease
-        mutate(!!sym(out) := round(IC[2], 3),
-               !!sym(paste0(out, "_low")) := round(IC[1], 3),
-               !!sym(paste0(out, "_sup")) := round(IC[3], 3))
+# FUNCTION HIA_burden_age_IC : Get a table with HIA outcomes and IC 
+  # set.seed() if use calc_replicate_IC
+HIA_burden_IC = function(data, dis_vec, age_vec, sex_vec, outcome_vec, IC_func){
+  
+  HIA_burden <- data.frame()
+  
+  # If age_vec is NULL → no loop for age
+  if (is.null(age_vec)) age_vec <- NA
+  
+  # If sex_vec is NULL → no loop for sex
+  if (is.null(sex_vec)) sex_vec <- NA
+  
+  for (dis in dis_vec){
+    for (age in age_vec){
+      for (sx in sex_vec){
+        
+        data_sub <- data %>%
+          filter(
+            disease == dis,
+            if (!is.na(age)) age_grp10 == age else TRUE,
+            if (!is.na(sx)) sex == sx else TRUE
+          )
+        
+        if (nrow(data_sub) == 0) next
+        
+        row <- data.frame(
+          disease = dis,
+          age_grp10 = if (!is.na(age)) age else NA,
+          sex = if (!is.na(sx)) sx else NA
+        )
+        
+        for (out in outcome_vec){
+          IC <- IC_func(data_sub, out)
+          row[[out]] <- round(IC[2], 3)                         # Median
+          row[[paste0(out, "_low")]] <- round(IC[1], 3)         # Low bound
+          row[[paste0(out, "_sup")]] <- round(IC[3], 3)         # Up bound
+        }
+        
+        HIA_burden <- bind_rows(HIA_burden, row)
+      }
     }
-    HIA_burden <- bind_rows(HIA_burden, HIA_dis)                         # Gather all outcomes for all diseases
   }
+  
   return(HIA_burden)
 }
-
-
 
 
