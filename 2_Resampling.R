@@ -75,7 +75,7 @@ sex_vec <- c("Female", "Male")
 
 # Initialization
 emp_long <- emp_long %>% 
-  # Round the number of steps to the nearest hundred
+  # Round the number of steps to the nearest hundred and baseline at 2000 steps
   mutate(step = pmin(12000, round(step_commute / 100) * 100 + 2000))
 
 
@@ -113,7 +113,7 @@ rr_distrib_table <- rr_distrib_table %>%
 
 
 
-
+# Associate disease risk reductions to individuals
 for (dis in dis_vec) {
   
   replicate_name <- paste0(dis, "_replicate")
@@ -127,8 +127,8 @@ for (dis in dis_vec) {
     params <- dis_setting(dis)
     set.seed(123)
     
-    rr_women_sim <- generate_RR_distrib(params$rr_women, params$rr_women_low, params$rr_women_up, N = 1000)
-    rr_men_sim   <- generate_RR_distrib(params$rr_men,   params$rr_men_low,   params$rr_men_up,   N = 1000)
+    rr_women_sim <- generate_RR_distrib(params$rr_women_mid, params$rr_women_low, params$rr_women_up, N = 1000)
+    rr_men_sim   <- generate_RR_distrib(params$rr_men_mid,   params$rr_men_low,   params$rr_men_up,   N = 1000)
     
     dis_replicate <- dis_replicate %>%
       slice(rep(1:n(), each = 1000)) %>%
@@ -338,7 +338,7 @@ export(burden_replicate, here("output", "RDS", "2019", "Resampling", "HIA_1000re
 
 
 ##############################################################
-#                         PER AGE                            #
+#                        PER AGE                             #
 ##############################################################
 cli_progress_bar("Burden calculations", total = length(dis_vec) * 1000)
 
@@ -490,7 +490,7 @@ Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NU
 
 
 ##############################################################
-#                         PER SEX                            #
+#                         PER SEX ?                          #
 ##############################################################
 
 
