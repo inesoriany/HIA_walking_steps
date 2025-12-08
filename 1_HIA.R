@@ -84,9 +84,9 @@ for (dis in dis_vec) {
 #                DISEASE REDUCTION RISK                      #
 ##############################################################
 
-## --------------------------------------------
-## ALL DISEASES (EXCEPT BREAST CANCER)
-## --------------------------------------------
+## -------------------------------------------------------
+## REDUCTION RISK FOR ALL DISEASES (EXCEPT BREAST CANCER)
+## -------------------------------------------------------
 
 # Baseline step 2000
 rr_baseline <- rr_central_table %>%
@@ -111,16 +111,17 @@ for (bound in bound_vec) {
 
 
 
+## -------------------------------------------------------
+## ASSOCIATION RISK REDUCTIONS TO INDIVIDUALS
+## -------------------------------------------------------
 
-# Associate disease risk reductions to individuals
 for (dis in dis_vec) {
   for (bound in bound_vec) {
     walkers_name_bound <- paste0(dis, "_walkers_", bound)
     dis_walkers_bound <- get(walkers_name_bound)
     
-    # --------------------------------------
+  
     # BREAST CANCER (special case)
-    # --------------------------------------
     if (dis == "bc") {
       
       params <- dis_setting(dis)
@@ -134,9 +135,7 @@ for (dis in dis_vec) {
                                               week_base = week_base)
       
       
-      # --------------------------------------
       # OTHER DISEASES
-      # --------------------------------------
     } else {
       
       dis_rr <- rr_central_table %>%
@@ -196,42 +195,63 @@ for (bound in bound_vec) {
 #                                              5. TOTAL OF PREVENTED CASES                                                     #
 ################################################################################################################################
 
-# Total of prevented cases per bound
-for(bound in bound_vec) {
-  cases_prev_name <- paste0("cases_prev_", bound)
-  cases_prev_bound <- data.frame()
+hw_list <- list(
+  low = health_walkers_low,
+  mid = health_walkers_mid,
+  up  = health_walkers_up)
   
-  health_walkers_bound <- get(paste0("health_walkers_", bound))
-  
-  # Survey design
-  health_walkers_svy <- health_walkers_bound %>%
-    as_survey_design(ids = ident_ind,
-                     strata = c(age_grp10, sex),
-                     weights = pond_indc,
-                     nest = TRUE)
-  
-  for (dis in dis_vec) {
-    dis_cases <- health_walkers_svy %>%
-      filter(disease == dis) %>%
-      group_by(age_grp10, sex) %>%
-      summarise(tot_cases = survey_total(reduc_incidence, na.rm = TRUE)) %>% 
-      mutate(disease = dis)
-    
-    # Results for all diseases
-    cases_prev_bound <- bind_rows(cases_prev_bound, dis_cases)
-  }
-  
-  # Results for all diseases per bound
-  assign(cases_prev_name, cases_prev_bound)
-}
+
+##############################################################
+#                        PER DISEASE                         #
+##############################################################
+# Total of prevented cases
+cases <- cases_prevented (data = hw_list,
+                               bound_vec = c("low", "mid", "up"),
+                               dis_vec = dis_vec,
+                               group = NULL)
 
 
 
 # Gather results with IC
-IC_cases_prev <- cases_prev_mid %>% 
-  mutate(tot_cases_low = cases_prev_low[,"tot_cases"], 
-         tot_cases_up = cases_prev_up[,"tot_cases"])
+IC_cases <- cases$mid %>% 
+  mutate(tot_cases_low = cases$low[,"tot_cases"], 
+         tot_cases_up = cases$up[,"tot_cases"])
 
+
+
+##############################################################
+#                      PER SEX AND AGE                       #
+##############################################################
+# Total of prevented cases per sex and age categories
+cases_sex_age <- cases_prevented (data = hw_list,
+                               bound_vec = c("low", "mid", "up"),
+                               dis_vec = dis_vec,
+                               group = c("age_grp10", "sex"))
+
+
+
+# Gather results with IC
+IC_cases_sex_age <- cases_sex_age$mid %>% 
+  mutate(tot_cases_low = cases_sex_age$low[,"tot_cases"], 
+         tot_cases_up = cases_sex_age$up[,"tot_cases"])
+
+
+
+##############################################################
+#                          PER SEX                           #
+##############################################################
+# Total of prevented cases per sex
+cases_sex <- cases_prevented (data = hw_list,
+                                  bound_vec = c("low", "mid", "up"),
+                                  dis_vec = dis_vec,
+                                  group = "sex")
+
+
+
+# Gather results with IC
+IC_cases_sex <- cases_sex$mid %>% 
+  mutate(tot_cases_low = cases_sex$low[,"tot_cases"], 
+         tot_cases_up = cases_sex$up[,"tot_cases"])
 
 
 
@@ -255,6 +275,7 @@ IC_cases_prev <- cases_prev_mid %>%
 ################################################################################################################################
 # Tables
 export(IC_cases_prev, here("output", "Tables", "2019", "Prev_cases_2019.xlsx"))
+export(IC_cases_sex_age, here("output", "Tables", "2019", "Prev_cases_2019_sex_age.xlsx"))
 
 
 
