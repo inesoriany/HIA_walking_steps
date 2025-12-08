@@ -62,7 +62,7 @@ bound_vec <- c("mid", "low", "up")
 
 # Initialization
 emp_walk <- emp_walk %>% 
-  # Round the number of steps to the nearest hundred and baselin at 2000
+  # Round the number of steps to the nearest hundred and baseline at 2000
   mutate(step = pmin(12000, round(step_commute / 10) * 10 + 2000))
 
 
@@ -215,7 +215,8 @@ cases <- cases_prevented (data = hw_list,
 # Gather results with IC
 IC_cases <- cases$mid %>% 
   mutate(tot_cases_low = cases$low[,"tot_cases"], 
-         tot_cases_up = cases$up[,"tot_cases"])
+         tot_cases_up = cases$up[,"tot_cases"]) %>% 
+  select(disease, tot_cases, tot_cases_se, tot_cases_low, tot_cases_up) 
 
 
 
@@ -226,14 +227,15 @@ IC_cases <- cases$mid %>%
 cases_sex_age <- cases_prevented (data = hw_list,
                                bound_vec = c("low", "mid", "up"),
                                dis_vec = dis_vec,
-                               group = c("age_grp10", "sex"))
+                               group = c("age_grp10", "sex")) 
 
 
 
 # Gather results with IC
 IC_cases_sex_age <- cases_sex_age$mid %>% 
   mutate(tot_cases_low = cases_sex_age$low[,"tot_cases"], 
-         tot_cases_up = cases_sex_age$up[,"tot_cases"])
+         tot_cases_up = cases_sex_age$up[,"tot_cases"]) %>% 
+  select(disease, sex, age_grp10, tot_cases, tot_cases_se, tot_cases_low, tot_cases_up)
 
 
 
@@ -251,21 +253,27 @@ cases_sex <- cases_prevented (data = hw_list,
 # Gather results with IC
 IC_cases_sex <- cases_sex$mid %>% 
   mutate(tot_cases_low = cases_sex$low[,"tot_cases"], 
-         tot_cases_up = cases_sex$up[,"tot_cases"])
+         tot_cases_up = cases_sex$up[,"tot_cases"]) %>% 
+  select(disease, sex, tot_cases, tot_cases_se, tot_cases_low, tot_cases_up)
 
 
 
 ################################################################################################################################
 #                                                     6. VISUALIZATION                                                         #
 ################################################################################################################################
-  
 
+# Plot : Cases prevented by walking in 2019 according to sex 
+plot_cases_prev <- ggplot(IC_cases_sex, aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
+  geom_bar(width = 0.7, position = position_dodge2(.7), stat = "identity")  +
+  geom_errorbar(position = position_dodge(.7), width = .25) +
+  scale_fill_manual(values = c("Female" = "darkorange1",
+                               "Male" = "chartreuse4")) +
+  scale_x_discrete(labels = names_disease) + 
+  ylab ("Cases prevented") +
+  xlab("Disease") +
+  theme_minimal()
 
-
-
-
-
-
+plot_cases_prev
 
 
 
@@ -274,10 +282,13 @@ IC_cases_sex <- cases_sex$mid %>%
 #                                                      7. EXPORT DATA                                                          #
 ################################################################################################################################
 # Tables
-export(IC_cases_prev, here("output", "Tables", "2019", "Prev_cases_2019.xlsx"))
-export(IC_cases_sex_age, here("output", "Tables", "2019", "Prev_cases_2019_sex_age.xlsx"))
+export(rr_central_table, here("data_clean", "DRF", "reduction_risk_central.xlsx"))
+export(IC_cases, here("output", "Tables", "2019", "cases_prev_2019.xlsx"))
+export(IC_cases_sex_age, here("output", "Tables", "2019", "cases_prev_2019_sex_age.xlsx"))
+export(IC_cases_sex, here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
 
-
+# Plot 
+ggsave(here("output", "Plots", "2019", "cases_prevented.png"), plot = plot_cases_prev)
 
 
 
