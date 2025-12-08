@@ -146,6 +146,10 @@ dis_setting = function (dis) {
 #                DISEASE REDUCTION RISK                      #
 ##############################################################
 
+## -------------------------------------------------------
+## CALCULATE RISK REDUCTION FOR BREAST CANCER)
+## -------------------------------------------------------
+
 # FUNCTION log_reduction_risk : Calculate the disease risk reduction percentage for each individual with a log linear regression
   # (% of decrease in disease risk comparing to the baseline : 2000 steps per day)
 
@@ -170,6 +174,53 @@ log_reduction_risk = function(data, dis, rr_women, rr_men, ref_women, ref_men, w
   
   return(data)
 }
+
+
+
+## -------------------------------------------------------
+## ASSOCIATION RISK REDUCTIONS TO INDIVIDUALS
+## -------------------------------------------------------
+reduction_risk <- function(data_list, rr_table, week_base, dis_vec, bound_vec) {
+  
+  result_list <- list()
+  
+  for(bound in bound_vec) {
+    bound_list <- list()
+    
+    for(dis in dis_vec) {
+      dis_data <- data_list[[bound]][[dis]]
+      
+      if(dis == "bc") {
+        params <- dis_setting(dis)
+        
+        dis_data <- log_reduction_risk(
+          data      = dis_data,
+          dis       = dis,
+          rr_women  = params[[paste0("rr_women_", bound)]],
+          rr_men    = params[[paste0("rr_men_", bound)]],
+          ref_women = params$ref_women,
+          ref_men   = params$ref_men,
+          week_base = week_base
+        )
+        
+      } else {
+        dis_rr <- rr_table %>%
+          filter(disease == dis) %>%
+          select(step, reduction_risk = !!sym(paste0("reduction_risk_", bound)))
+        
+        dis_data <- dis_data %>%
+          left_join(dis_rr, by = "step")
+      }
+      
+      bound_list[[dis]] <- dis_data
+    }
+    
+    result_list[[bound]] <- bound_list
+  }
+  
+  return(result_list)
+}
+
 
 
 
@@ -219,10 +270,107 @@ medic_costs = function(data, dis) {
 
 
 
+##############################################################
+#                        CALCULATE HIA                       #
+##############################################################
+
+## -------------------------------------------------------
+## CENTRAL VALUE ANALYSIS: Cases prevented
+## -------------------------------------------------------
+# FUNCTION calc_cases: Calculate the disease reduction percentage, reduced incidence, DALY and medical costs prevented for each individual
+calc_cases <- function(data_list, rr_table, week_base, dis_vec, bound_vec) {
+  
+  # 1. Reduction risk
+  risk_list <- reduction_risk(data_list, rr_table, week_base, dis_vec, bound_vec)
+  
+  # 2. Number of prevented cases
+  cases_list <- list()
+  
+  for(bound in bound_vec) {
+    bound_cases <- list()
+    
+    for(dis in dis_vec) {
+      dis_data <- risk_list[[bound]][[dis]]
+      
+      dis_data <- reduc_incidence(dis_data)
+      
+      bound_cases[[dis]] <- dis_data
+    }
+    
+  
+  # 3. Gather results per bound
+    cases_list[[bound]] <- bind_rows(bound_cases, .id = "disease")
+  }
+    
+  return(cases_list)
+}
+
+
+
+
+## -------------------------------------------------------
+## RESAMPLING ANALYSIS
+## -------------------------------------------------------
+# FUNCTION calc_HIA
+
+
+
 
 ##############################################################
 #                        HIA OUTCOMES                        #
 ##############################################################
+## -------------------------------------------------------
+## CENTRAL VALUE ANALYSIS: Cases prevented
+## -------------------------------------------------------
+
+# FUNCTION cases_prevented : Total of prevented cases
+cases_prevented <- function(data, bound_vec, dis_vec, group) {
+  
+  result_list <- list()
+  
+  for(bound in bound_vec) {
+    health_walkers_bound <- data[[bound]]
+    
+    # Survey design
+    health_walkers_svy <- health_walkers_bound %>%
+      as_survey_design(ids = ident_ind,
+                       strata = c(age_grp10, sex),
+                       weights = pond_indc,
+                       nest = TRUE)
+    
+    
+    cases_prev_bound <- data.frame()
+    for(dis in dis_vec) {
+      
+      dis_cases <- health_walkers_svy %>%
+        filter(disease == dis)
+      
+        dis_cases <- dis_cases %>%
+          group_by(across(all_of(group))) %>%
+          summarise(tot_cases = survey_total(reduc_incidence, na.rm = TRUE)) %>%
+          ungroup()
+      
+      # Add disease
+      dis_cases <- dis_cases %>%
+        mutate(disease = dis)
+      
+      # Results for all diseases
+      cases_prev_bound <- bind_rows(cases_prev_bound, dis_cases)
+    }
+    
+    # Results for all diseases per bound
+    result_list[[bound]] <- cases_prev_bound
+  }
+  return(result_list)
+}
+
+
+
+
+## -------------------------------------------------------
+## RESAMPLING ANALYSIS
+## -------------------------------------------------------
+
 # FUNCTION burden_prevented : Total of prevented cases, DALY and saved medical costs, for each disease
 burden_prevented <- function(survey_data, dis, group){
   
