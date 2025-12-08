@@ -60,25 +60,35 @@ bound_vec <- c("mid", "low", "up")
 #                                                    4. DATA PREPARATION                                                       #
 ################################################################################################################################
 
+##############################################################
+#                     WALKERS DATASET                        #
+##############################################################
+
 # Initialization
 emp_walk <- emp_walk %>% 
   # Round the number of steps to the nearest hundred and baseline at 2000
   mutate(step = pmin(12000, round(step_commute / 10) * 10 + 2000))
 
 
-# EMP Dataswet per disease
-for (dis in dis_vec) {
-  for (bound in bound_vec) {
-    assign(
-      paste0(dis, "_walkers_", bound),
-      emp_walk %>% filter(disease == dis))
+
+# EMP Dataset per disease and bound
+walkers_list <- list()
+
+for(bound in bound_vec) {
+  bound_list <- list()
+  
+  for(dis in dis_vec) {
+    dis_walkers <- emp_walk %>% filter(disease == dis)
+    
+    bound_list[[dis]] <- dis_walkers
   }
+  
+  walkers_list[[bound]] <- bound_list
 }
 
 
-################################################################################################################################
-#                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
-################################################################################################################################
+
+
 
 ##############################################################
 #                DISEASE REDUCTION RISK                      #
@@ -103,88 +113,24 @@ for (bound in bound_vec) {
     mutate(!!paste0("reduction_risk_", bound) := 
              (.data[[paste0("rr2000_", bound)]] - .data[[bound]]) /.data[[paste0("rr2000_", bound)]]) 
 }
-  # Rename column: To calculate the upper bound of reduction of the relative risk, use RR lower bound because the decrease will be higher i.e. the person exposed (walking) is less likely to have the disease 
-  rr_central_table <- rr_central_table %>% 
-    rename(reduction_risk_low = reduction_risk_up,
-           reduction_risk_up = reduction_risk_low)
+# Rename column: To calculate the upper bound of reduction of the relative risk, use RR lower bound because the decrease will be higher i.e. the person exposed (walking) is less likely to have the disease 
+rr_central_table <- rr_central_table %>% 
+  rename(reduction_risk_low = reduction_risk_up,
+         reduction_risk_up = reduction_risk_low)
 
 
 
-
-## -------------------------------------------------------
-## ASSOCIATION RISK REDUCTIONS TO INDIVIDUALS
-## -------------------------------------------------------
-
-for (dis in dis_vec) {
-  for (bound in bound_vec) {
-    walkers_name_bound <- paste0(dis, "_walkers_", bound)
-    dis_walkers_bound <- get(walkers_name_bound)
-    
-  
-    # BREAST CANCER (special case)
-    if (dis == "bc") {
-      
-      params <- dis_setting(dis)
-      
-      dis_walkers_bound <- log_reduction_risk(data = dis_walkers_bound,
-                                              dis  = dis,
-                                              rr_women = params[[paste0("rr_women_", bound)]],
-                                              rr_men   = params[[paste0("rr_men_",   bound)]],
-                                              ref_women = params$ref_women,
-                                              ref_men   = params$ref_men,
-                                              week_base = week_base)
-      
-      
-      # OTHER DISEASES
-    } else {
-      
-      dis_rr <- rr_central_table %>%
-        filter(disease == dis) %>%
-        select(step, reduction_risk =!!sym(paste0("reduction_risk_", bound)))
-      
-      dis_walkers_bound <- dis_walkers_bound %>%
-        left_join(dis_rr, by = "step")
-    }
-    
-    assign(walkers_name_bound, dis_walkers_bound)
-  }
-}
+################################################################################################################################
+#                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
+################################################################################################################################
+cases_list <- calc_cases(data_list = walkers_list,
+                         rr_table = rr_central_table,
+                         week_base = week_base,
+                         dis_vec = dis_vec,
+                         bound_vec = bound_vec)
 
 
 
-
-##############################################################
-#                      CASES PREVENTED                       #
-##############################################################
-
-# Calculate prevented cases
-for (dis in dis_vec) {
-  for (bound in bound_vec) {
-    walkers_name_bound <- paste0(dis, "_walkers_", bound)
-    dis_walkers_bound <- get(walkers_name_bound)
-    
-    dis_walkers_bound <- reduc_incidence(dis_walkers_bound)
-    
-    assign(walkers_name_bound, dis_walkers_bound)
-  }
-}
-
-
-# Associate in a data.frame
-for (bound in bound_vec) {
-  
-  health_walkers <- data.frame()
-  
-  for (dis in dis_vec) {
-    
-    walkers_name_bound <- paste0(dis, "_walkers_", bound)
-    dis_walkers_bound <- get(walkers_name_bound)
-    
-    health_walkers <- bind_rows(health_walkers, dis_walkers_bound)
-  }
-  
-  assign(paste0("health_walkers_", bound), health_walkers)
-}
 
 
 
@@ -195,17 +141,12 @@ for (bound in bound_vec) {
 #                                              5. TOTAL OF PREVENTED CASES                                                     #
 ################################################################################################################################
 
-hw_list <- list(
-  low = health_walkers_low,
-  mid = health_walkers_mid,
-  up  = health_walkers_up)
-  
 
 ##############################################################
 #                        PER DISEASE                         #
 ##############################################################
 # Total of prevented cases
-cases <- cases_prevented (data = hw_list,
+cases <- cases_prevented (data = cases_list,
                                bound_vec = c("low", "mid", "up"),
                                dis_vec = dis_vec,
                                group = NULL)
@@ -224,7 +165,7 @@ IC_cases <- cases$mid %>%
 #                      PER SEX AND AGE                       #
 ##############################################################
 # Total of prevented cases per sex and age categories
-cases_sex_age <- cases_prevented (data = hw_list,
+cases_sex_age <- cases_prevented (data = cases_list,
                                bound_vec = c("low", "mid", "up"),
                                dis_vec = dis_vec,
                                group = c("age_grp10", "sex")) 
@@ -243,7 +184,7 @@ IC_cases_sex_age <- cases_sex_age$mid %>%
 #                          PER SEX                           #
 ##############################################################
 # Total of prevented cases per sex
-cases_sex <- cases_prevented (data = hw_list,
+cases_sex <- cases_prevented (data = cases_list,
                                   bound_vec = c("low", "mid", "up"),
                                   dis_vec = dis_vec,
                                   group = "sex")
@@ -266,8 +207,7 @@ IC_cases_sex <- cases_sex$mid %>%
 plot_cases_prev <- ggplot(IC_cases_sex, aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
   geom_bar(width = 0.7, position = position_dodge2(.7), stat = "identity")  +
   geom_errorbar(position = position_dodge(.7), width = .25) +
-  scale_fill_manual(values = c("Female" = "darkorange1",
-                               "Male" = "chartreuse4")) +
+  scale_fill_manual(values = colors_sex) +
   scale_x_discrete(labels = names_disease) + 
   ylab ("Cases prevented") +
   xlab("Disease") +
@@ -277,9 +217,15 @@ plot_cases_prev
 
 
 
+################################################################################################################################
+#                                                      7. DESCRIPTION                                                         #
+################################################################################################################################
+
+
+
 
 ################################################################################################################################
-#                                                      7. EXPORT DATA                                                          #
+#                                                      8. EXPORT DATA                                                          #
 ################################################################################################################################
 # Tables
 export(rr_central_table, here("data_clean", "DRF", "reduction_risk_central.xlsx"))
