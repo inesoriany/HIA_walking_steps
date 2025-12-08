@@ -128,16 +128,16 @@ graph_DRF <- function(dis, data, rr_mean, rr_lci, rr_uci) {
 
 # FUNCTION dis_setting : Get the corresponding parameters for each disease
 dis_setting = function (dis) {
-  rr_women <-  get(paste0("rr_", dis, "_women"))
+  rr_women_mid <-  get(paste0("rr_", dis, "_women"))
   rr_women_low <-  get(paste0("rr_", dis, "_women_low"))
   rr_women_up <-  get(paste0("rr_", dis, "_women_up"))
-  rr_men <- get(paste0("rr_", dis, "_men"))
+  rr_men_mid <- get(paste0("rr_", dis, "_men"))
   rr_men_low <-  get(paste0("rr_", dis, "_men_low"))
   rr_men_up <-  get(paste0("rr_", dis, "_men_up"))
   ref_women <-  get(paste0("ref_", dis, "_w"))
   ref_men <- get(paste0("ref_", dis, "_m"))
-  return(data.frame("rr_men" = rr_men, "rr_men_low" = rr_men_low, "rr_men_up" = rr_men_up,
-                    "rr_women" = rr_women, "rr_women_low" = rr_women_low, "rr_women_up" = rr_women_up,
+  return(data.frame("rr_men_mid" = rr_men_mid, "rr_men_low" = rr_men_low, "rr_men_up" = rr_men_up,
+                    "rr_women_mid" = rr_women_mid, "rr_women_low" = rr_women_low, "rr_women_up" = rr_women_up,
                     "ref_women" = ref_women, "ref_men" = ref_men))
 }
 
@@ -146,11 +146,8 @@ dis_setting = function (dis) {
 #                DISEASE REDUCTION RISK                      #
 ##############################################################
 
-## DISEASE RISK REDUCTION ----
-
-
 # FUNCTION log_reduction_risk : Calculate the disease risk reduction percentage for each individual with a log linear regression
-# (% of decrease in disease risk comparing to the baseline : if people did not walk)
+  # (% of decrease in disease risk comparing to the baseline : 2000 steps per day)
 
 log_reduction_risk = function(data, dis, rr_women, rr_men, ref_women, ref_men, week_base) {
   
@@ -164,7 +161,7 @@ log_reduction_risk = function(data, dis, rr_women, rr_men, ref_women, ref_men, w
   RR_obs_m    <- exp(log(rr_men) * ((data$week_time + week_base)/ ref_men))
   RR_rel_m      <- RR_obs_m / RR_baseline_m
   
-  # --- Réduction de risque par rapport au baseline ---
+  # --- Risk reduction compared to baseline ---
   data[["reduction_risk"]] <- ifelse(
     data$sex == "Female",
     1 - RR_rel_w,
@@ -174,29 +171,16 @@ log_reduction_risk = function(data, dis, rr_women, rr_men, ref_women, ref_men, w
   return(data)
 }
 
-log_reduction_risk_1 = function(data, dis, rr_women, rr_men, ref_women, ref_men) {
-  data[["reduction_risk"]] <- ifelse(                                                        # Calculate risk reduction percentage
-    data$sex == "Female",
-    1-(exp(log(rr_women) * (data$week_time - week_base) / (ref_women - week_base))),          # for women % of decrease for this disease risk
-    1-(exp(log(rr_men) * (data$week_time - week_base) / (ref_men - week_base))) )             # for men % of decrease for this disease risk
-  
-  return(data)
-}
 
 
-
-
-
-
-## REDUCED DISEASE INCIDENCE ----
+##############################################################
+#                           CASES                            #
+##############################################################
 
 # FUNCTION reduc_incidence : Calculate the reduced disease incidence (number of prevented new cases)
 reduc_incidence <- function(data) {
-  
  data <- data %>% 
-   mutate(cases_mid = rate * relative_rr_mid,
-          cases_low = rate * relative_rr_low,
-          cases_up = rate * relative_rr_up)
+   mutate(reduc_incidence = reduction_risk * rate)
   
   return(data)
 }
@@ -211,8 +195,11 @@ reduc_incidence <- function(data) {
 
 # FUNCTION daly : Calculate DALY (Disability-Adjusted Life Years) for each disease
 daly = function(data) { 
-  data[["daly"]] <- data[["years_remaining"]] * data[["dw"]] * data[["reduc_incidence"]]
-  return(data) }
+  data <- data %>% 
+    mutate(daly = years_remaining * dw * reduc_incidence)
+
+  return(data) 
+}
 
 
 
@@ -226,22 +213,9 @@ daly = function(data) {
 # FUNCTION medic_costs : Calculate the medical costs associated with the reduced disease incidence for each individual
 medic_costs = function(data, dis) {
   data [[paste0("medic_costs")]] <- get(paste0(dis, "_cost")) * data[[paste0("reduc_incidence")]] 
+  
   return(data)
 }
-
-
-
-##############################################################
-#                        CALCULATE HIA                       #
-##############################################################
-
-# FUNCTION calc_HIA : Calculate the reduced incidence, DALY and medical costs prevented for each individual
-
-
-
-#calc_HIA = function(data, bound, data_rr, dis_vec){
-  
- 
 
 
 
@@ -272,6 +246,15 @@ burden_prevented <- function(survey_data, dis, group){
   
   return(dis_burden)
 }
+
+
+
+
+################################################################################################################################
+################################################################################################################################
+#                                                       2. RESAMPLING                                                          #
+################################################################################################################################
+################################################################################################################################
 
 
 ##############################################################
