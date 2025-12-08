@@ -2,14 +2,6 @@
 ############ HEALTH IMPACT ASSESSMENT ###########
 #################################################
 
-# Files needed :
-  # EMP_walkers.xlsx
-  # rr_central_interpolated.rds
-  # 0_Functions_2.R
-  # 0_Parameters.R
-
-# Files outputted :
-
 
 
 ###########################################################################################################################################################################
@@ -38,15 +30,15 @@ pacman :: p_load(
 #                                                     2. IMPORT DATA                                                           #
 ################################################################################################################################
 # Walkers dataset
-emp_walk <- import(here("data_clean", "EMP_walkers.xlsx"))
+emp_walk <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 
 
 # RR by step, simulated dose-response relationships
-rr_table <- import(here("data_clean", "DRF", "rr_central_interpolated.rds"))
+rr_central_table <- import(here("data_clean", "DRF", "rr_central_interpolated.rds"))
 
 
 # Import functions
-source(here("0_Functions_2.R"))
+source(here("0_Functions.R"))
 
 
 
@@ -59,10 +51,9 @@ source(here("0_Parameters.R"))
 
 # Diseases considered
 dis_vec = c("mort", "cvd", "bc", "cancer", "diab2", "dem", "dep")
-morbi_vec = c("cvd", "bc", "cancer", "diab2", "dem", "dep")
-no_bc_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
 
-
+# Bound
+bound_vec <- c("mid", "low", "up")
 
 
 ################################################################################################################################
@@ -70,153 +61,200 @@ no_bc_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
 ################################################################################################################################
 
 # Initialization
-health_walkers <- emp_walk %>% 
-  # Round the number of steps to the nearest ten
+emp_walk <- emp_walk %>% 
+  # Round the number of steps to the nearest hundred and baselin at 2000
   mutate(step = pmin(12000, round(step_commute / 10) * 10 + 2000))
 
 
-# Associate simulated RR
-  # Central
-health_walkers_mid <- health_walkers
-  for (dis in no_bc_vec) {
-    health_walkers_mid <- health_walkers_mid %>% 
-      left_join(
-        rr_table %>% 
-          filter(disease == dis) %>% 
-          select(step, mid) %>% 
-          rename(!!paste0(dis, "_rr") := mid),
-        by = "step" 
-      )
-  }
-
-  # Lower bound
-health_walkers_low <- health_walkers
-  for (dis in no_bc_vec) {
-    health_walkers_low <- health_walkers_low %>% 
-      left_join(
-        rr_table %>% 
-          filter(disease == dis) %>% 
-          select(step, up) %>% 
-          # To calculate the upper bound of reduction of the relative risk, use RR lower bound because the decrease will be higher,
-          # i.e. the person exposed (walking) is less likely to have the disease 
-          rename(!!paste0(dis, "_rr") := up),
-        by = "step"
-      )
-  }
-
-  # Upper bound
-health_walkers_up <- health_walkers
-  for (dis in no_bc_vec) {
-    health_walkers_up <- health_walkers_up %>% 
-      left_join(
-        rr_table %>% 
-          filter(disease == dis) %>% 
-          select(step, low) %>% 
-          rename(!!paste0(dis, "_rr") := low),
-        by = "step"
-      )
-  }
-
-
-
-################################################################################################################################
-#                                                 5. HEALTH IMPACT ASSESSMENT                                                  #
-################################################################################################################################
-
-health_walkers_mid <- calc_HIA (health_walkers_mid, "mid", rr_table, dis_vec)
-
-health_walkers_low <- calc_HIA (health_walkers_low, "low", rr_table, dis_vec)
-
-health_walkers_up <- calc_HIA (health_walkers_up, "up", rr_table, dis_vec)
-
-
-
-
-##############################################################
-#                      HIA OUTCOMES                          #     with cases, DALY and medical costs
-##############################################################
-
-## Survey design ----
-surv_dis <- health_walkers_mid %>% 
-  as_survey_design(ids = ident_ind,
-                   weights = pond_indc,
-                   strata = c(sex, age_grp10, quartile_rev),           # by sex and age group
-                   nest = TRUE)
-  # IC
-    # Upper bound
-    surv_dis_up <- health_walkers_up %>% 
-      as_survey_design(ids = ident_ind,
-                       weights = pond_indc,
-                       strata = c(sex, age_grp10, quartile_rev),           
-                       nest = TRUE)
-    
-    # Lower bound
-    surv_dis_low <- health_walkers_low %>% 
-      as_survey_design(ids = ident_ind,
-                       weights = pond_indc,
-                       strata = c(sex, age_grp10, quartile_rev),      
-                       nest = TRUE)
-
-
-## Total of prevented cases, DALY and saved costs, for each disease in 2019
-burden <- data.frame()
+# EMP Dataswet per disease
 for (dis in dis_vec) {
-  dis_burden <- burden_prevented(surv_dis, dis, NULL)
-  burden <- bind_rows(burden, dis_burden)   
+  for (bound in bound_vec) {
+    assign(
+      paste0(dis, "_walkers_", bound),
+      emp_walk %>% filter(disease == dis))
+  }
 }
+
+
+################################################################################################################################
+#                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
+################################################################################################################################
+
+##############################################################
+#                DISEASE REDUCTION RISK                      #
+##############################################################
+
+## --------------------------------------------
+## ALL DISEASES (EXCEPT BREAST CANCER)
+## --------------------------------------------
+
+# Baseline step 2000
+rr_baseline <- rr_central_table %>%
+  filter(step == 2000) %>%
+  select(disease, rr2000_mid = mid, rr2000_low = low, rr2000_up = up)
+
+rr_central_table <- rr_central_table %>%
+  left_join(rr_baseline, by = "disease")
+
+
+# Reduction risk for all diseases except breast cancer
+for (bound in bound_vec) {
+  rr_central_table <- rr_central_table %>%
+    mutate(!!paste0("reduction_risk_", bound) := 
+             (.data[[paste0("rr2000_", bound)]] - .data[[bound]]) /.data[[paste0("rr2000_", bound)]]) 
+}
+  # Rename column: To calculate the upper bound of reduction of the relative risk, use RR lower bound because the decrease will be higher i.e. the person exposed (walking) is less likely to have the disease 
+  rr_central_table <- rr_central_table %>% 
+    rename(reduction_risk_low = reduction_risk_up,
+           reduction_risk_up = reduction_risk_low)
+
+
+
+
+
+# Associate disease risk reductions to individuals
+for (dis in dis_vec) {
+  for (bound in bound_vec) {
+    walkers_name_bound <- paste0(dis, "_walkers_", bound)
+    dis_walkers_bound <- get(walkers_name_bound)
     
-  # IC
-    # Upper bound
-    burden_up <- data.frame()
-    burden_low <- data.frame()
-    for(dis in dis_vec) {
-      dis_burden_up <- burden_prevented(surv_dis_up, dis, NULL)
-      burden_up <- bind_rows(burden_up, dis_burden_up) 
+    # --------------------------------------
+    # BREAST CANCER (special case)
+    # --------------------------------------
+    if (dis == "bc") {
       
-      # Lower bound
-      dis_burden_low <- burden_prevented(surv_dis_low, dis, NULL)
-      burden_low <- bind_rows(burden_low, dis_burden_low) 
+      params <- dis_setting(dis)
+      
+      dis_walkers_bound <- log_reduction_risk(data = dis_walkers_bound,
+                                              dis  = dis,
+                                              rr_women = params[[paste0("rr_women_", bound)]],
+                                              rr_men   = params[[paste0("rr_men_",   bound)]],
+                                              ref_women = params$ref_women,
+                                              ref_men   = params$ref_men,
+                                              week_base = week_base)
+      
+      
+      # --------------------------------------
+      # OTHER DISEASES
+      # --------------------------------------
+    } else {
+      
+      dis_rr <- rr_central_table %>%
+        filter(disease == dis) %>%
+        select(step, reduction_risk =!!sym(paste0("reduction_risk_", bound)))
+      
+      dis_walkers_bound <- dis_walkers_bound %>%
+        left_join(dis_rr, by = "step")
     }
     
-    
-  # Gather results with IC
-  burden_IC <- burden %>% 
-    mutate(cases_low = burden_low[,"tot_cases"], cases_up = burden_up[,"tot_cases"],
-           daly_low = burden_low[,"tot_daly"], daly_up = burden_up[,"tot_daly"],
-           medic_costs_low = burden_low[,"tot_medic_costs"], medic_costs_up = burden_up[,"tot_medic_costs"])
+    assign(walkers_name_bound, dis_walkers_bound)
+  }
+}
 
 
-  
-  
+
+
 ##############################################################
-#                    ECONOMIC IMPACT (2)                     #
+#                      CASES PREVENTED                       #
 ##############################################################
-  
-  
-## SOCIAL COSTS (intangible)----
-  # Add social costs
-  burden_IC <- burden_IC %>% 
-    mutate(tot_soc_costs = tot_daly*vsl,
-           soc_costs_low = daly_low*vsl,
-           soc_costs_up = daly_up*vsl)
-  
-  # Reorganize columns
-  burden_IC <- burden_IC %>% 
-    select(disease,
-           tot_cases, tot_cases_se, cases_low, cases_up,
-           tot_daly, tot_daly_se, daly_low, daly_up,
-           tot_medic_costs, tot_medic_costs_se, medic_costs_low, medic_costs_up,
-           tot_soc_costs, soc_costs_low, soc_costs_up) %>% 
-    mutate(disease = recode_factor(disease, 
-                                   bc = "Breast cancer", 
-                                   cc="Colon cancer" , 
-                                   cvd ="CVD" , 
-                                   dem ="Dementia",
-                                   diab2 ="T2 Diabetes" , 
-                                   dep = "Depression",
-                                   mort ="Mortality")) 
-  
+
+# Calculate prevented cases
+for (dis in dis_vec) {
+  for (bound in bound_vec) {
+    walkers_name_bound <- paste0(dis, "_walkers_", bound)
+    dis_walkers_bound <- get(walkers_name_bound)
     
+    dis_walkers_bound <- reduc_incidence(dis_walkers_bound)
+    
+    assign(walkers_name_bound, dis_walkers_bound)
+  }
+}
+
+
+# Associate in a data.frame
+for (bound in bound_vec) {
+  
+  health_walkers <- data.frame()
+  
+  for (dis in dis_vec) {
+    
+    walkers_name_bound <- paste0(dis, "_walkers_", bound)
+    dis_walkers_bound <- get(walkers_name_bound)
+    
+    health_walkers <- bind_rows(health_walkers, dis_walkers_bound)
+  }
+  
+  assign(paste0("health_walkers_", bound), health_walkers)
+}
+
+
+
+
+
+
+################################################################################################################################
+#                                              5. TOTAL OF PREVENTED CASES                                                     #
+################################################################################################################################
+
+# Total of prevented cases per bound
+for(bound in bound_vec) {
+  cases_prev_name <- paste0("cases_prev_", bound)
+  cases_prev_bound <- data.frame()
+  
+  health_walkers_bound <- get(paste0("health_walkers_", bound))
+  
+  # Survey design
+  health_walkers_svy <- health_walkers_bound %>%
+    as_survey_design(ids = ident_ind,
+                     strata = c(age_grp10, sex),
+                     weights = pond_indc,
+                     nest = TRUE)
+  
+  for (dis in dis_vec) {
+    dis_cases <- health_walkers_svy %>%
+      filter(disease == dis) %>%
+      group_by(age_grp10, sex) %>%
+      summarise(tot_cases = survey_total(reduc_incidence, na.rm = TRUE)) %>% 
+      mutate(disease = dis)
+    
+    # Results for all diseases
+    cases_prev_bound <- bind_rows(cases_prev_bound, dis_cases)
+  }
+  
+  # Results for all diseases per bound
+  assign(cases_prev_name, cases_prev_bound)
+}
+
+
+
+# Gather results with IC
+IC_cases_prev <- cases_prev_mid %>% 
+  mutate(tot_cases_low = cases_prev_low[,"tot_cases"], 
+         tot_cases_up = cases_prev_up[,"tot_cases"])
+
+
+
+
+################################################################################################################################
+#                                                     6. VISUALIZATION                                                         #
+################################################################################################################################
+  
+
+
+
+
+
+
+
+
+
+
+
+################################################################################################################################
+#                                                      7. EXPORT DATA                                                          #
+################################################################################################################################
+# Tables
+export(IC_cases_prev, here("output", "Tables", "2019", "Prev_cases_2019.xlsx"))
 
 
 
