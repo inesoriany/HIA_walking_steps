@@ -29,9 +29,9 @@ week_base <- 7* 2000 / (80/0.715)
 names_disease <- c(
   "bc" = "Breast cancer incidence",
   "cancer" = "Cancer incidence",
-  "cvd" = "Cardiovascular disease incidence",
+  "cvd" = "CVD incidence",
   "dem" = "Dementia",
-  "diab2" = "Type 2 diabetes",
+  "diab2" = "T2 diabetes",
   "dep" = "Depressive episodes",
   "mort" = "All-cause mortality"
 )
@@ -47,6 +47,10 @@ colors_disease <- c(
   "mort" = "steelblue"
 )
 
+# Sex colour
+colors_sex <- c(
+  "Female" = "darkorange1",
+  "Male" = "chartreuse4")
 
 
 ## BREAST CANCER ----
