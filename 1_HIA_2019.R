@@ -20,7 +20,9 @@ pacman :: p_load(
   dplyr,        # Data management
   srvyr,        # Survey
   survey,
-  ggplot2       # Data visualization
+  ggplot2,      # Data visualization
+  patchwork,    # Plot combination
+  ggbreak       # Break 
 )
 
 
@@ -50,7 +52,7 @@ source(here("0_Functions.R"))
 source(here("0_Parameters.R"))
 
 # Diseases considered
-dis_vec = c("mort", "cvd", "bc", "cancer", "diab2", "dem", "dep")
+dis_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
 
 # Bound
 bound_vec <- c("mid", "low", "up")
@@ -197,6 +199,22 @@ IC_cases_sex <- cases_sex$mid %>%
          tot_cases_up = cases_sex$up[,"tot_cases"]) %>% 
   select(disease, sex, tot_cases, tot_cases_se, tot_cases_low, tot_cases_up)
 
+  # Re-organize by decreasing order
+  IC_tot_cases_sex <- IC_cases_sex %>% 
+    left_join(IC_cases %>% select(disease, TOTAL_mixed = tot_cases), by = "disease") %>% 
+    arrange(desc(tot_cases)) %>%                      
+    mutate(disease = factor(disease, levels = unique(disease)))
+
+
+
+  # Except depression
+  IC_no_dep_sex <- IC_cases_sex %>% 
+    filter(disease != "dep") 
+
+  # Depression
+  IC_dep_sex <- IC_cases_sex %>% 
+    filter(disease == "dep") 
+
 
 
 ################################################################################################################################
@@ -204,7 +222,28 @@ IC_cases_sex <- cases_sex$mid %>%
 ################################################################################################################################
 
 # Plot : Cases prevented by walking in 2019 according to sex 
-plot_cases_prev <- ggplot(IC_cases_sex, aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
+plot_cases_prev <- ggplot(IC_tot_cases_sex, aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
+  geom_bar(width = 0.7, position = position_dodge2(.7), stat = "identity")  +
+  geom_errorbar(position = position_dodge(.7), width = .25) +
+  scale_fill_manual(values = colors_sex) +
+  scale_x_discrete(labels = names_disease) + 
+  scale_y_break(c(60000, 100000)) +
+  ylab ("Cases prevented") +
+  xlab("Disease") +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(vjust = -0.5),
+    axis.text.x.top = element_blank(),      # supprime labels X en haut
+    axis.ticks.x.top = element_blank()      # supprime les ticks X en haut
+  )
+
+plot_cases_prev
+
+
+
+
+# Plot : Cases prevented (EXCEPT DEPRESSION)
+plot_no_dep_prev <- ggplot(IC_no_dep_sex, aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
   geom_bar(width = 0.7, position = position_dodge2(.7), stat = "identity")  +
   geom_errorbar(position = position_dodge(.7), width = .25) +
   scale_fill_manual(values = colors_sex) +
@@ -213,7 +252,29 @@ plot_cases_prev <- ggplot(IC_cases_sex, aes(x = disease, y = tot_cases, ymin = t
   xlab("Disease") +
   theme_minimal()
 
-plot_cases_prev
+plot_no_dep_prev
+
+
+# Plot : DEPRESSION
+plot_dep_prev <- ggplot(IC_dep_sex, aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
+  geom_bar(width = 0.7, position = position_dodge2(.7), stat = "identity")  +
+  geom_errorbar(position = position_dodge(.7), width = .25) +
+  scale_fill_manual(values = colors_sex) +
+  scale_x_discrete(labels = names_disease) + 
+  ylab ("Cases prevented") +
+  xlab("Disease") +
+  theme_minimal()
+
+plot_dep_prev
+
+
+# Plot : Combine plot 
+
+combined_plot_dep <- plot_no_dep_prev + plot_dep_prev + plot_layout(ncol = 2)
+
+combined_plot_dep
+
+
 
 
 
@@ -235,7 +296,7 @@ export(IC_cases_sex, here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"
 
 # Plot 
 ggsave(here("output", "Plots", "2019", "cases_prevented.png"), plot = plot_cases_prev)
-
+ggsave(here("output", "Plots", "2019", "dep_cases_prevented.png"), plot = combined_plot_dep)
 
 
 
