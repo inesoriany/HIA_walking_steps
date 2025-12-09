@@ -27,9 +27,9 @@ week_base <- 7* 2000 / (80/0.715)
 
 # Disease name
 names_disease <- c(
-  "bc" = "Breast cancer incidence",
-  "cancer" = "Cancer incidence",
-  "cvd" = "CVD incidence",
+  "bc" = "Breast cancer",
+  "cancer" = "Cancer",
+  "cvd" = "CVD",
   "dem" = "Dementia",
   "diab2" = "T2 diabetes",
   "dep" = "Depressive episodes",
