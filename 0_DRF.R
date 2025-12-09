@@ -210,6 +210,13 @@ ic95_rr <- rr_table_interpolated %>%
 #                                                 7. VISUALIZATION OF DRF                                                      #
 ################################################################################################################################
 
+# Import data
+rr_central_table <- import(here("data_clean", "DRF", "rr_central_interpolated.rds"))
+rr_table_interpolated <- import(here("data_clean", "DRF", "rr_sim_interpolated.rds"))
+ic95_rr <- import(here("data_clean", "DRF", "rr_interpolated_mean.csv"))
+
+
+
 
 # All-cause mortality
   # Central value
