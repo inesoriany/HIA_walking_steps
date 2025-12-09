@@ -590,12 +590,12 @@ anova_age_step <- svyglm(step_commute ~ age_grp10, jour)
 summary(anova_age_step)
 
 regTermTest(anova_age_step, ~ age_grp10)
-# p_value = 9.6648e-10                 Highly significant (p<0.001)
+# p_value = 5.5593e-10                 Highly significant (p<0.001)
 
 
 # T-test: Sex difference 
 svyttest(step_commute ~ sex, jour)
-# p-value = 0.01194                   Significant (<0.05) 
+# p-value = 0.08037                  Significant (<0.05) 
 
 
 
@@ -869,7 +869,7 @@ mean_drivers_2km <- emp_drivers %>%
 
 
 mean_km_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp10, y = day_mean,
-                                            ymin = day_mean - zq*day_mean_se, ymax = day_mean + zq*day_mean_se, fill = Sex)) +
+                                            ymin = day_mean - zq*day_mean_se, ymax = day_mean + zq*day_mean_se, fill = sex)) +
   scale_fill_manual(values = c("Female" = "darkorange1",
                                "Male" = "chartreuse4")) +
   geom_col(width = 0.7, position = position_dodge2(0.4)) +
