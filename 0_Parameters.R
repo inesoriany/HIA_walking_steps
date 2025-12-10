@@ -53,17 +53,23 @@ colors_sex <- c(
   "Male" = "chartreuse4")
 
 
-## BREAST CANCER ----
-# Relative risks (Monninkhof et al., 2007)
-ref_bc_w <- 60 
-rr_bc_women_low <- .92 
-rr_bc_women <- .94
-rr_bc_women_up <-.97
 
-ref_bc_m <- NA
-rr_bc_men_up <-NA
-rr_bc_men <- NA
-rr_bc_men_low <- NA
+## DEPRESSION ----
+  # Duration of a depression episode
+  duration_dep <- 2      # months
+
+
+## BREAST CANCER ----
+  # Relative risks (Monninkhof et al., 2007)
+  ref_bc_w <- 60 
+  rr_bc_women_low <- .92 
+  rr_bc_women <- .94
+  rr_bc_women_up <-.97
+  
+  ref_bc_m <- NA
+  rr_bc_men_up <-NA
+  rr_bc_men <- NA
+  rr_bc_men_low <- NA
 
 
 
