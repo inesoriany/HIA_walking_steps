@@ -248,6 +248,11 @@ reduc_incidence <- function(data) {
 daly = function(data) { 
   data <- data %>% 
     mutate(daly = years_remaining * dw * reduc_incidence)
+  
+  if (dis == "dep") {
+    data <- data %>% 
+      mutate(daly = years_remaining * dw * reduc_incidence * duration_dep/12) 
+  }
 
   return(data) 
 }
