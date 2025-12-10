@@ -508,7 +508,8 @@ Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NU
 ################################################################################################################################
 
 # Plot : Median DALY prevented by walking in 2019 according to age group
-plot_daly_prevented <- ggplot(burden_per_age, aes(x = age_grp10, y = tot_daly, fill = disease)) +
+plot_daly_prevented <- burden_per_age %>% filter(disease != "bc") %>% 
+  ggplot(aes(x = age_grp10, y = tot_daly, fill = disease)) +
   geom_bar(width = 0.7, position = "stack", stat = "identity")  +
   scale_fill_manual(values = colors_disease, labels = names_disease) +
   xlab("Age group") +
