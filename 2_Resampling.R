@@ -370,7 +370,6 @@ for (dis in dis_vec) {
   # Combiner toutes les simulations
   dis_burden_replicate <- bind_rows(dis_burden_replicate) %>% as.data.frame()
   assign(burden_replicate_age_name, dis_burden_replicate)
-  
 }
 
 
