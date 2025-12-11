@@ -645,7 +645,7 @@ anova_area_step <- svyglm(step_commute ~ area_type, jour)
 summary(anova_area_step)
 
 regTermTest(anova_area_step, ~ area_type)
-# p_value = 6.0834e-12                 Highly significant (p<0.0001)
+# p_value = 3.6767e-12                Highly significant (p<0.0001)
 
 
 
@@ -694,7 +694,7 @@ anova_rev_step <- svyglm(step_commute ~ quartile_rev, jour)
 summary(anova_rev_step)
 
 regTermTest(anova_rev_step, ~ quartile_rev)
-# p_value = 3.248e-07                   Highly significant (p<0.0001)
+# p_value = 4.0731e-07                    Highly significant (p<0.0001)
 
 
 
