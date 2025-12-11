@@ -27,7 +27,6 @@ week_base <- 7* 2000 / (80/0.715)
 
 # Disease name
 names_disease <- c(
-  "bc" = "Breast cancer",
   "cancer" = "Cancer",
   "cvd" = "CVD",
   "dem" = "Dementia",
@@ -38,8 +37,7 @@ names_disease <- c(
 
 # Disease colour
 colors_disease <- c(
-  "bc" = "firebrick2",
-  "cancer" = "darkorange",      
+  "cancer" = "firebrick2",      
   "cvd" = "gold" ,
   "dem" = "pink" ,
   "diab2" = "palegreen3",
