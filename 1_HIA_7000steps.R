@@ -45,7 +45,7 @@ source(here("0_Functions.R"))
 source(here("0_Parameters.R"))
 
 # Diseases considered
-dis_vec = c("mort", "cvd", "bc", "cancer", "diab2", "dem", "dep")
+dis_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
 
 # Bound
 bound_vec <- c("mid", "low", "up")
@@ -141,20 +141,103 @@ IC_add_RECO_cases_sex <- IC_2019_sex %>%
 
 
 
+## -------------------------------------------------------
+## DECREASING ORDER
+## -------------------------------------------------------
+order_disease <- IC_2019_cases_sex %>% 
+  group_by(disease) %>% 
+  summarise(tot = sum(tot_cases)) %>% 
+  arrange(desc(tot)) %>% 
+  pull(disease)
+
+IC_2019_cases_sex$disease <- factor(IC_2019_cases_sex$disease,
+                                    levels = order_disease)
+
+IC_RECO_cases_sex$disease <- factor(IC_RECO_cases_sex$disease,
+                                    levels = order_disease)
+
+
+
+##############################################################
+#                          GLOBAL                            #
+##############################################################
+# Total of prevented cases
+RECO_cases <- cases_prevented (data = RECO_cases_list,
+                                   bound_vec = c("low", "mid", "up"),
+                                   dis_vec = dis_vec,
+                                   group = NULL)
+
+
+
+# Gather results with IC
+IC_RECO_cases <- RECO_cases$mid %>% 
+  mutate(tot_cases_low = RECO_cases$low[,"tot_cases"], 
+         tot_cases_up = RECO_cases$up[,"tot_cases"]) %>% 
+  select(disease, tot_cases, tot_cases_se, tot_cases_low, tot_cases_up)
+
+
+
+## -------------------------------------------------------
+## ADDITIONNAL GAINS
+## -------------------------------------------------------
+# Import 2019 cases prevented
+IC_2019_cases <- import(here("output", "Tables", "2019", "cases_prev_2019.xlsx"))
+
+# Data preparation
+IC_2019 <- IC_2019_cases %>% 
+  rename_with(.fn = ~ paste0(.x, "_2019"),
+              .cols = -c (disease))
+
+IC_RECO <- IC_RECO_cases %>% 
+  rename_with(.fn = ~ paste0(.x, "_RECO"),
+              .cols = -c (disease))
+
+
+# Additional prevented cases for each disease according to sex
+IC_add_RECO_cases <- IC_2019 %>%
+  left_join(IC_RECO, by = "disease", suffix = c("_2019", "_RECO")) %>%
+  mutate(across(
+    ends_with("_RECO"),
+    ~ . - get(sub("_RECO$", "_2019", cur_column())),
+    .names = "{.col}_diff"
+  ))
+
+
+## -------------------------------------------------------
+## MORBIDITY
+## -------------------------------------------------------
+IC_RECO_cases %>% 
+  filter(disease != "mort") %>% 
+  summarise(tot_cases = sum(tot_cases, na.rm = TRUE),
+            tot_cases_low = sum(tot_cases_low, na.rm = TRUE),
+            tot_cases_up = sum(tot_cases_up, na.rm = TRUE))
+
+
+
+## -------------------------------------------------------
+## ALL DISEASES
+## -------------------------------------------------------
+IC_RECO_cases %>% 
+  summarise(tot_cases = sum(tot_cases, na.rm = TRUE),
+            tot_cases_low = sum(tot_cases_low, na.rm = TRUE),
+            tot_cases_up = sum(tot_cases_up, na.rm = TRUE))
+
+
 
 ################################################################################################################################
 #                                                     6. VISUALIZATION                                                         #
 ################################################################################################################################
 
 # Plot : Cases prevented had the 2019 population walked 7000 steps according to sex, compared to 2019 levels
-plot_RECO_cases_prev <- ggplot() +
-  geom_bar(data = IC_2019_cases_sex, 
+plot_RECO_cases_prev <- 
+  ggplot() +
+  geom_bar(data = IC_2019_cases_sex %>%  filter(disease != "bc"),
            mapping = aes(x = disease, y = tot_cases, fill = sex, alpha = "2019 baseline"),
            width = 0.7,
            position = position_dodge2(0.7),
            stat = "identity") +
   
-  geom_errorbar(data = IC_2019_cases_sex,
+  geom_errorbar(data = IC_2019_cases_sex %>%  filter(disease != "bc"),
                 mapping = aes(x = disease, ymin = tot_cases_low, ymax = tot_cases_up, group = sex, alpha = "2019 baseline"),
                 position = position_dodge(0.7),
                 width = 0.25) +
@@ -162,7 +245,7 @@ plot_RECO_cases_prev <- ggplot() +
   scale_fill_manual(values = colors_sex) +
   
   
-  geom_bar(data = IC_RECO_cases_sex, 
+  geom_bar(data = IC_RECO_cases_sex %>%  filter(disease != "bc"), 
            mapping = aes(x = disease, y = tot_cases, fill = sex, alpha = "7000 steps recommendation"),
            width = 0.7,
            position = position_dodge2(0.7),
@@ -170,7 +253,7 @@ plot_RECO_cases_prev <- ggplot() +
   scale_alpha_manual(name   = "Scenario",
                      values = c("2019 baseline" = 1, "7000 steps recommendation" = 0.4)) +
   
-  geom_errorbar(data = IC_RECO_cases_sex,
+  geom_errorbar(data = IC_RECO_cases_sex %>%  filter(disease != "bc"),
                 mapping = aes(x = disease, ymin = tot_cases_low, ymax = tot_cases_up, group = sex, alpha = "7000 steps recommendation"),
                 position = position_dodge(0.7),
                 width = 0.25) +
