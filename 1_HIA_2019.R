@@ -213,7 +213,8 @@ IC_cases_sex <- cases_sex$mid %>%
 ################################################################################################################################
 
 # Plot : Cases prevented by walking in 2019 according to sex 
-plot_cases_prev <- ggplot(IC_tot_cases_sex, aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
+plot_cases_prev <-
+  ggplot(IC_tot_cases_sex, aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
   geom_bar(width = 0.7, position = position_dodge2(.7), stat = "identity")  +
   geom_errorbar(position = position_dodge(.7), width = .25) +
   scale_fill_manual(values = colors_sex) +
@@ -234,8 +235,8 @@ plot_cases_prev
 
 
 # Plot : Cases prevented (EXCEPT DEPRESSION)
-plot_no_dep_prev <- IC_tot_cases_sex %>% filter(disease != "dep") %>% 
-  ggplot(aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
+plot_no_dep_prev <- 
+  ggplot(IC_tot_cases_sex, aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
   geom_bar(width = 0.7, position = position_dodge2(.7), stat = "identity")  +
   geom_errorbar(position = position_dodge(.7), width = .25) +
   scale_fill_manual(values = colors_sex) +
