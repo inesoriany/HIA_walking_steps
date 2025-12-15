@@ -190,27 +190,14 @@ reduction_risk <- function(data_list, rr_table, week_base, dis_vec, bound_vec) {
     for(dis in dis_vec) {
       dis_data <- data_list[[bound]][[dis]]
       
-      if(dis == "bc") {
-        params <- dis_setting(dis)
+      rr_disease <- ifelse(dis == "bc", "cancer", dis)
+      
+      dis_rr <- rr_table %>%
+        filter(disease == rr_disease) %>%
+        select(step, reduction_risk = !!sym(paste0("reduction_risk_", bound)))
         
-        dis_data <- log_reduction_risk(
-          data      = dis_data,
-          dis       = dis,
-          rr_women  = params[[paste0("rr_women_", bound)]],
-          rr_men    = params[[paste0("rr_men_", bound)]],
-          ref_women = params$ref_women,
-          ref_men   = params$ref_men,
-          week_base = week_base
-        )
-        
-      } else {
-        dis_rr <- rr_table %>%
-          filter(disease == dis) %>%
-          select(step, reduction_risk = !!sym(paste0("reduction_risk_", bound)))
-        
-        dis_data <- dis_data %>%
-          left_join(dis_rr, by = "step")
-      }
+      dis_data <- dis_data %>%
+        left_join(dis_rr, by = "step")
       
       bound_list[[dis]] <- dis_data
     }
@@ -231,7 +218,7 @@ reduction_risk <- function(data_list, rr_table, week_base, dis_vec, bound_vec) {
 # FUNCTION reduc_incidence : Calculate the reduced disease incidence (number of prevented new cases)
 reduc_incidence <- function(data) {
  data <- data %>% 
-   mutate(reduc_incidence = reduction_risk * rate)
+   mutate(cases = reduction_risk * rate)
   
   return(data)
 }
@@ -247,11 +234,11 @@ reduc_incidence <- function(data) {
 # FUNCTION daly : Calculate DALY (Disability-Adjusted Life Years) for each disease
 daly = function(data) { 
   data <- data %>% 
-    mutate(daly = years_remaining * dw * reduc_incidence)
+    mutate(daly = years_remaining * dw * cases)
   
   if (dis == "dep") {
     data <- data %>% 
-      mutate(daly = years_remaining * dw * reduc_incidence * duration_dep/12) 
+      mutate(daly = years_remaining * dw * cases * duration_dep/12) 
   }
 
   return(data) 
@@ -268,7 +255,7 @@ daly = function(data) {
 
 # FUNCTION medic_costs : Calculate the medical costs associated with the reduced disease incidence for each individual
 medic_costs = function(data, dis) {
-  data [[paste0("medic_costs")]] <- get(paste0(dis, "_cost")) * data[[paste0("reduc_incidence")]] 
+  data [[paste0("medic_costs")]] <- get(paste0(dis, "_cost")) * data[[paste0("cases")]] 
   
   return(data)
 }
@@ -280,34 +267,50 @@ medic_costs = function(data, dis) {
 ##############################################################
 
 ## -------------------------------------------------------
-## CENTRAL VALUE ANALYSIS: Cases prevented
+## CENTRAL VALUE ANALYSIS
 ## -------------------------------------------------------
-# FUNCTION calc_cases: Calculate the disease reduction percentage, reduced incidence, DALY and medical costs prevented for each individual
-calc_cases <- function(data_list, rr_table, week_base, dis_vec, bound_vec) {
+# FUNCTION calc_HIA : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for each individual
+calc_HIA <- function(data_list, rr_table, dw_table, week_base, dis_vec, bound_vec) {
   
   # 1. Reduction risk
   risk_list <- reduction_risk(data_list, rr_table, week_base, dis_vec, bound_vec)
   
-  # 2. Number of prevented cases
-  cases_list <- list()
+
+  burden_list <- list()
   
   for(bound in bound_vec) {
-    bound_cases <- list()
+    bound_burden <- list()
     
     for(dis in dis_vec) {
       dis_data <- risk_list[[bound]][[dis]]
       
-      dis_data <- reduc_incidence(dis_data)
+        # Disability weights
+          dw_value <- dw_table %>%
+            filter(disease == dis) %>%
+            pull(!!sym(paste0("dw_", bound)))
+          
+          dis_data <- dis_data %>% 
+            mutate(dw = dw_value)
       
-      bound_cases[[dis]] <- dis_data
+      # 2. Cases prevented
+       dis_data <- reduc_incidence(dis_data)
+      
+      # 3. DALY prevented
+      dis_data <- daly(dis_data)
+      
+      # 4. Medical costs prevented
+      dis_data <- medic_costs(dis_data, dis)
+      
+      
+      bound_burden[[dis]] <- dis_data
     }
     
   
   # 3. Gather results per bound
-    cases_list[[bound]] <- bind_rows(bound_cases, .id = "disease")
+    burden_list[[bound]] <- bind_rows(bound_burden, .id = "disease")
   }
     
-  return(cases_list)
+  return(burden_list)
 }
 
 
@@ -316,7 +319,7 @@ calc_cases <- function(data_list, rr_table, week_base, dis_vec, bound_vec) {
 ## -------------------------------------------------------
 ## RESAMPLING ANALYSIS
 ## -------------------------------------------------------
-# FUNCTION calc_HIA
+# FUNCTION calc_HIA_replicate
 
 
 
@@ -328,56 +331,78 @@ calc_cases <- function(data_list, rr_table, week_base, dis_vec, bound_vec) {
 ## CENTRAL VALUE ANALYSIS: Cases prevented
 ## -------------------------------------------------------
 
-# FUNCTION cases_prevented : Total of prevented cases
-cases_prevented <- function(data, bound_vec, dis_vec, group) {
+# FUNCTION burden_prevented : Total of prevented cases, DALY and saved medical costs, for each bound
+burden_prevented <- function(data_list, dis_vec, bound_vec, group){
   
-  result_list <- list()
+  # 1. Survey designs per bound
+  survey_list <- list()
+  for(bound in bound_vec){
+    survey_list[[bound]] <- HIA_list[[bound]] %>%
+      as_survey_design(
+        ids = ident_ind,
+        weights = pond_indc,
+        nest = TRUE
+      )
+  }
   
-  for(bound in bound_vec) {
-    health_walkers_bound <- data[[bound]]
+  # 2. Calculate prevented cases, daly, medical costs per disease and per bound
+  all_results <- list()
+  
+  for(bound in bound_vec){
+    bound_svy <- survey_list[[bound]]
     
-    # Survey design
-    health_walkers_svy <- health_walkers_bound %>%
-      as_survey_design(ids = ident_ind,
-                       strata = c(age_grp10, sex),
-                       weights = pond_indc,
-                       nest = TRUE)
+    dis_res_list <- list()
     
-    
-    cases_prev_bound <- data.frame()
-    for(dis in dis_vec) {
+    for(dis in dis_vec){
+      dis_res <- bound_svy %>%
+        filter(disease == dis) %>%
+        group_by(across(all_of(group))) %>%
+        summarise(
+          tot_cases      = survey_total(cases, na.rm = TRUE),
+          tot_daly       = survey_total(daly, na.rm = TRUE),
+          tot_medic_costs = survey_total(medic_costs, na.rm = TRUE)
+        ) %>%
+        ungroup() %>%
+        mutate(bound = bound,
+               disease = dis)
       
-      dis_cases <- health_walkers_svy %>%
-        filter(disease == dis)
-      
-        dis_cases <- dis_cases %>%
-          group_by(across(all_of(group))) %>%
-          summarise(tot_cases = survey_total(reduc_incidence, na.rm = TRUE)) %>%
-          ungroup()
-      
-      # Add disease
-      dis_cases <- dis_cases %>%
-        mutate(disease = dis)
-      
-      # Results for all diseases
-      cases_prev_bound <- bind_rows(cases_prev_bound, dis_cases)
+      dis_res_list[[dis]] <- dis_res
     }
     
-    # Results for all diseases per bound
-    result_list[[bound]] <- cases_prev_bound
+    all_results[[bound]] <- bind_rows(dis_res_list)
   }
-  return(result_list)
+  
+  # 3. Combine bound
+  long_df <- bind_rows(all_results)
+  
+  # Pivot_wider
+  results <- long_df %>%
+    pivot_wider(
+      id_cols = c(disease, all_of(group)),
+      names_from = bound,
+      values_from = c(tot_cases, tot_daly, tot_medic_costs),
+      names_glue = "{.value}_{bound}"
+    )
+  
+  # 4. Total of social costs
+  results <- results %>%
+    mutate(
+      tot_soc_costs_mid = tot_daly_mid * vsl,
+      tot_soc_costs_low = tot_daly_low * vsl,
+      tot_soc_costs_up  = tot_daly_up * vsl
+    )
+  
+  
+  return(results)
 }
-
-
 
 
 ## -------------------------------------------------------
 ## RESAMPLING ANALYSIS
 ## -------------------------------------------------------
 
-# FUNCTION burden_prevented : Total of prevented cases, DALY and saved medical costs, for each disease
-burden_prevented <- function(survey_data, dis, group){
+# FUNCTION burden_prevented_replicate : Total of prevented cases, DALY and saved medical costs, for each disease
+burden_prevented_NO <- function(survey_data, dis, group){
   
   dis_burden <- survey_data %>%
     filter(disease == dis) %>%
