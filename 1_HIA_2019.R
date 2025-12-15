@@ -18,6 +18,7 @@ pacman :: p_load(
   rio,          # Data importation
   here,         # Localization of files 
   dplyr,        # Data management
+  tidyr,        # Pivot tables
   srvyr,        # Survey
   survey,
   ggplot2,      # Data visualization
@@ -39,6 +40,10 @@ emp_walk <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 rr_central_table <- import(here("data_clean", "DRF", "rr_central_interpolated.rds"))
 
 
+# Disability weights
+dw_table <- import(here("data", "dw_table.xlsx"))
+
+
 # Import functions
 source(here("0_Functions.R"))
 
@@ -52,10 +57,11 @@ source(here("0_Functions.R"))
 source(here("0_Parameters.R"))
 
 # Diseases considered
-dis_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
+dis_vec = c("mort", "bc", "cvd", "cancer", "diab2", "dem", "dep")
 
 # Bound
 bound_vec <- c("mid", "low", "up")
+
 
 
 ################################################################################################################################
@@ -125,11 +131,12 @@ rr_central_table <- rr_central_table %>%
 ################################################################################################################################
 #                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
 ################################################################################################################################
-cases_list <- calc_cases(data_list = walkers_list,
-                         rr_table = rr_central_table,
-                         week_base = week_base,
-                         dis_vec = dis_vec,
-                         bound_vec = bound_vec)
+HIA_list <- calc_HIA(data_list = walkers_list,
+                       rr_table = rr_central_table,
+                       dw_table = dw_table,
+                       week_base = week_base,
+                       dis_vec = dis_vec,
+                       bound_vec = bound_vec)
 
 
 
@@ -140,26 +147,32 @@ cases_list <- calc_cases(data_list = walkers_list,
 
 
 ################################################################################################################################
-#                                              5. TOTAL OF PREVENTED CASES                                                     #
+#                                   5. HIA OUTCOMES : Total of prevented cases, DALY, costs                                    #
 ################################################################################################################################
+
+##############################################################
+#                      SURVEY DESIGNS                        #
+##############################################################
+survey_list <- list()
+
+for(bound in bound_vec){
+  surv_HIA_bound <- HIA_list[[bound]] %>%
+    as_survey_design(
+      ids = ident_ind,
+      weights = pond_indc,
+      nest = TRUE
+    )
+  survey_list[[bound]] <- surv_HIA_bound
+}
 
 
 ##############################################################
 #                        PER DISEASE                         #
 ##############################################################
-# Total of prevented cases
-cases <- cases_prevented (data = cases_list,
-                               bound_vec = c("low", "mid", "up"),
-                               dis_vec = dis_vec,
-                               group = NULL)
-
-
-
-# Gather results with IC
-IC_cases <- cases$mid %>% 
-  mutate(tot_cases_low = cases$low[,"tot_cases"], 
-         tot_cases_up = cases$up[,"tot_cases"]) %>% 
-  select(disease, tot_cases, tot_cases_se, tot_cases_low, tot_cases_up) 
+burden <- burden_prevented(data_list = HIA_list, 
+                           dis_vec = dis_vec,
+                           bound_vec,
+                           group = NULL)
 
 
 
@@ -167,18 +180,10 @@ IC_cases <- cases$mid %>%
 #                      PER SEX AND AGE                       #
 ##############################################################
 # Total of prevented cases per sex and age categories
-cases_sex_age <- cases_prevented (data = cases_list,
-                               bound_vec = c("low", "mid", "up"),
-                               dis_vec = dis_vec,
-                               group = c("age_grp10", "sex")) 
-
-
-
-# Gather results with IC
-IC_cases_sex_age <- cases_sex_age$mid %>% 
-  mutate(tot_cases_low = cases_sex_age$low[,"tot_cases"], 
-         tot_cases_up = cases_sex_age$up[,"tot_cases"]) %>% 
-  select(disease, sex, age_grp10, tot_cases, tot_cases_se, tot_cases_low, tot_cases_up)
+burden_sex_age <- burden_prevented(data_list = HIA_list, 
+                                   dis_vec = dis_vec,
+                                   bound_vec,
+                                   group = c("age_grp10", "sex"))
 
 
 
@@ -186,23 +191,18 @@ IC_cases_sex_age <- cases_sex_age$mid %>%
 #                          PER SEX                           #
 ##############################################################
 # Total of prevented cases per sex
-cases_sex <- cases_prevented (data = cases_list,
-                                  bound_vec = c("low", "mid", "up"),
-                                  dis_vec = dis_vec,
-                                  group = "sex")
+burden_sex <- burden_prevented(data_list = HIA_list, 
+                                   dis_vec = dis_vec,
+                                   bound_vec,
+                                   group = "sex")
 
 
 
-# Gather results with IC
-IC_cases_sex <- cases_sex$mid %>% 
-  mutate(tot_cases_low = cases_sex$low[,"tot_cases"], 
-         tot_cases_up = cases_sex$up[,"tot_cases"]) %>% 
-  select(disease, sex, tot_cases, tot_cases_se, tot_cases_low, tot_cases_up)
 
   # Re-organize by decreasing order
-  IC_tot_cases_sex <- IC_cases_sex %>% 
-    left_join(IC_cases %>% select(disease, TOTAL_mixed = tot_cases), by = "disease") %>% 
-    arrange(desc(tot_cases)) %>%                      
+  burden_sex_order <- burden_sex %>% 
+    left_join(burden %>% select(disease, TOTAL_mixed = tot_cases_mid), by = "disease") %>% 
+    arrange(desc(tot_cases_mid)) %>%                      
     mutate(disease = factor(disease, levels = unique(disease))) 
 
 
@@ -213,8 +213,8 @@ IC_cases_sex <- cases_sex$mid %>%
 ################################################################################################################################
 
 # Plot : Cases prevented by walking in 2019 according to sex 
-plot_cases_prev <-
-  ggplot(IC_tot_cases_sex, aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
+plot_cases_prev <- burden_sex_order %>% filter (disease != "bc") %>% 
+  ggplot(aes(x = disease, y = tot_cases_mid, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
   geom_bar(width = 0.7, position = position_dodge2(.7), stat = "identity")  +
   geom_errorbar(position = position_dodge(.7), width = .25) +
   scale_fill_manual(values = colors_sex) +
@@ -235,8 +235,8 @@ plot_cases_prev
 
 
 # Plot : Cases prevented (EXCEPT DEPRESSION)
-plot_no_dep_prev <- 
-  ggplot(IC_tot_cases_sex, aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
+plot_no_dep_prev <- burden_sex_order %>%  filter(!disease %in% c("bc", "dep")) %>% 
+  ggplot(aes(x = disease, y = tot_cases_mid, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
   geom_bar(width = 0.7, position = position_dodge2(.7), stat = "identity")  +
   geom_errorbar(position = position_dodge(.7), width = .25) +
   scale_fill_manual(values = colors_sex) +
@@ -249,8 +249,8 @@ plot_no_dep_prev
 
 
 # Plot : DEPRESSION
-plot_dep_prev <- IC_tot_cases_sex %>% filter(disease == "dep") %>% 
-  ggplot(aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
+plot_dep_prev <- burden_sex_order %>% filter(disease == "dep") %>% 
+  ggplot(aes(x = disease, y = tot_cases_mid, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
   geom_bar(width = 0.7, position = position_dodge2(.7), stat = "identity")  +
   geom_errorbar(position = position_dodge(.7), width = .25) +
   scale_fill_manual(values = colors_sex) +
@@ -284,9 +284,9 @@ combined_plot_dep
 ################################################################################################################################
 # Tables
 export(rr_central_table, here("data_clean", "DRF", "reduction_risk_central.xlsx"))
-export(IC_cases, here("output", "Tables", "2019", "cases_prev_2019.xlsx"))
-export(IC_cases_sex_age, here("output", "Tables", "2019", "cases_prev_2019_sex_age.xlsx"))
-export(IC_cases_sex, here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
+export(burden, here("output", "Tables", "2019", "cases_prev_2019.xlsx"))
+export(burden_sex_age, here("output", "Tables", "2019", "cases_prev_2019_sex_age.xlsx"))
+export(burden_sex, here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
 
 # Plot 
 ggsave(here("output", "Plots", "2019", "cases_prevented.png"), plot = plot_cases_prev)
