@@ -337,7 +337,7 @@ burden_prevented <- function(data_list, dis_vec, bound_vec, group){
   # 1. Survey designs per bound
   survey_list <- list()
   for(bound in bound_vec){
-    survey_list[[bound]] <- HIA_list[[bound]] %>%
+    survey_list[[bound]] <- data_list[[bound]] %>%
       as_survey_design(
         ids = ident_ind,
         weights = pond_indc,
