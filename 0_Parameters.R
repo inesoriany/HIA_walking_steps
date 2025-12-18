@@ -57,27 +57,13 @@ colors_sex <- c(
   duration_dep <- 2      # months
 
 
-## BREAST CANCER ----
-  # Relative risks (Monninkhof et al., 2007)
-  ref_bc_w <- 60 
-  rr_bc_women_low <- .92 
-  rr_bc_women <- .94
-  rr_bc_women_up <-.97
-  
-  ref_bc_m <- NA
-  rr_bc_men_up <-NA
-  rr_bc_men <- NA
-  rr_bc_men_low <- NA
-
-
 
 ## MEDICAL COSTS ----
-cc_cost <- 26716
-dem_cost <- 22748
-bc_cost <- 46968
-cancer_cost <- 14808
-cvd_cost <- 20938
-diab2_cost <- 36514
+bc_cost <- 44087
+cancer_cost <- 14807
+cvd_cost <- 55702
+dem_cost <- 16839
+diab2_cost <- 75201
 dep_cost <- NA
 mort_cost <- NA
 
