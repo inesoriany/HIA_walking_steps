@@ -184,8 +184,7 @@ burden_sex <- burden_prevented(data_list = HIA_list,
   burden_sex_order <- burden_sex %>% 
     left_join(burden %>% select(disease, TOTAL_mixed = tot_cases_mid), by = "disease") %>% 
     arrange(desc(tot_cases_mid)) %>%                      
-    mutate(disease = factor(disease, levels = unique(disease))) 
-
+    mutate(disease = factor(disease, levels = unique(disease)))
 
 
 
@@ -200,7 +199,7 @@ plot_cases_prev <- burden_sex_order %>% filter (disease != "bc") %>%
   geom_errorbar(position = position_dodge(.7), width = .25) +
   scale_fill_manual(values = colors_sex) +
   scale_x_discrete(labels = names_disease) + 
-  scale_y_break(c(60000, 100000)) +
+  scale_y_break(c(55000, 100000)) +
   ylab ("Cases prevented") +
   xlab("Disease") +
   theme_minimal() +
