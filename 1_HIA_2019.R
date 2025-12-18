@@ -44,6 +44,7 @@ rr_central_table <- import(here("data_clean", "DRF", "rr_central_interpolated.rd
 dw_table <- import(here("data", "dw_table.xlsx"))
 
 
+
 # Import functions
 source(here("0_Functions.R"))
 
@@ -142,29 +143,9 @@ HIA_list <- calc_HIA(data_list = walkers_list,
 
 
 
-
-
-
-
 ################################################################################################################################
 #                                   5. HIA OUTCOMES : Total of prevented cases, DALY, costs                                    #
 ################################################################################################################################
-
-##############################################################
-#                      SURVEY DESIGNS                        #
-##############################################################
-survey_list <- list()
-
-for(bound in bound_vec){
-  surv_HIA_bound <- HIA_list[[bound]] %>%
-    as_survey_design(
-      ids = ident_ind,
-      weights = pond_indc,
-      nest = TRUE
-    )
-  survey_list[[bound]] <- surv_HIA_bound
-}
-
 
 ##############################################################
 #                        PER DISEASE                         #
