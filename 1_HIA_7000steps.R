@@ -32,6 +32,9 @@ emp_step <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 # Risk reductions
 reduc_rr_table <- import(here("data_clean", "DRF", "reduction_risk_central.xlsx"))
 
+# Disability weights
+dw_table <- import(here("data", "dw_table.xlsx"))
+
 # Import functions
 source(here("0_Functions.R"))
 
@@ -45,7 +48,7 @@ source(here("0_Functions.R"))
 source(here("0_Parameters.R"))
 
 # Diseases considered
-dis_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
+dis_vec = c("mort", "bc", "cvd", "cancer", "diab2", "dem", "dep")
 
 # Bound
 bound_vec <- c("mid", "low", "up")
@@ -82,34 +85,47 @@ for(bound in bound_vec) {
 ################################################################################################################################
 #                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
 ################################################################################################################################
-RECO_cases_list <- calc_cases(data_list = RECO_walkers_list,
-                         rr_table = reduc_rr_table,
-                         week_base = week_base,
-                         dis_vec = dis_vec,
-                         bound_vec = bound_vec)
+
+RECO_HIA_list <- calc_HIA(data_list = RECO_walkers_list,
+                          rr_table = reduc_rr_table,
+                          dw_table = dw_table,
+                          week_base = week_base,
+                          dis_vec = dis_vec,
+                          bound_vec = bound_vec)
+
 
 
 
 ################################################################################################################################
-#                                              5. TOTAL OF PREVENTED CASES                                                     #
+#                                   5. HIA OUTCOMES : Total of prevented cases, DALY, costs                                    #
 ################################################################################################################################
+
+##############################################################
+#                        PER DISEASE                         #
+##############################################################
+RECO_burden <- burden_prevented(data_list = RECO_HIA_list, 
+                                dis_vec = dis_vec,
+                                bound_vec,
+                                group = NULL)
+
 
 ##############################################################
 #                          PER SEX                           #
 ##############################################################
-# Total of prevented cases per sex
-RECO_cases_sex <- cases_prevented (data = RECO_cases_list,
-                              bound_vec = c("low", "mid", "up"),
-                              dis_vec = dis_vec,
-                              group = "sex")
+RECO_burden_sex <- burden_prevented(data_list = RECO_HIA_list, 
+                                    dis_vec = dis_vec,
+                                    bound_vec,
+                                    group = "sex")
 
 
 
-# Gather results with IC
-IC_RECO_cases_sex <- RECO_cases_sex$mid %>% 
-  mutate(tot_cases_low = RECO_cases_sex$low[,"tot_cases"], 
-         tot_cases_up = RECO_cases_sex$up[,"tot_cases"]) %>% 
-  select(disease, sex, tot_cases, tot_cases_se, tot_cases_low, tot_cases_up)
+
+# Re-organize by decreasing order
+RECO_burden_sex_order <- RECO_burden_sex %>% 
+  left_join(RECO_burden %>% select(disease, TOTAL_mixed = tot_cases_mid), by = "disease") %>% 
+  arrange(desc(tot_cases_mid)) %>%                      
+  mutate(disease = factor(disease, levels = unique(disease))) 
+
 
 
 
@@ -117,21 +133,21 @@ IC_RECO_cases_sex <- RECO_cases_sex$mid %>%
 ## ADDITIONNAL GAINS
 ## -------------------------------------------------------
 # Import 2019 cases prevented
-IC_2019_cases_sex <- import(here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
+burden_sex_2019 <- import(here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
 
 # Data preparation
-IC_2019_sex <- IC_2019_cases_sex %>% 
+burden_2019 <- burden_sex_2019 %>% 
   rename_with(.fn = ~ paste0(.x, "_2019"),
               .cols = -c (disease, sex))
 
-IC_RECO_sex <- IC_RECO_cases_sex %>% 
+RECO_burden <- RECO_burden_sex %>% 
   rename_with(.fn = ~ paste0(.x, "_RECO"),
               .cols = -c (disease, sex))
 
 
 # Additional prevented cases for each disease according to sex
-IC_add_RECO_cases_sex <- IC_2019_sex %>%
-  left_join(IC_RECO_sex, by = c("sex", "disease"), suffix = c("_2019", "_RECO")) %>%
+add_RECO_burden_sex <- burden_2019 %>%
+  left_join(RECO_burden, by = c("sex", "disease"), suffix = c("_2019", "_RECO")) %>%
   mutate(across(
     ends_with("_RECO"),
     ~ . - get(sub("_RECO$", "_2019", cur_column())),
@@ -144,9 +160,9 @@ IC_add_RECO_cases_sex <- IC_2019_sex %>%
 ## -------------------------------------------------------
 ## DECREASING ORDER
 ## -------------------------------------------------------
-order_disease <- IC_2019_cases_sex %>% 
+order_disease <- burden_sex_2019 %>% 
   group_by(disease) %>% 
-  summarise(tot = sum(tot_cases)) %>% 
+  summarise(tot = sum(tot_cases_mid)) %>% 
   arrange(desc(tot)) %>% 
   pull(disease)
 
@@ -274,8 +290,8 @@ plot_RECO_cases_prev
 #                                                      8. EXPORT DATA                                                          #
 ################################################################################################################################
 # Tables
-export(IC_RECO_cases_sex, here("output", "Tables", "7000 steps", "cases_prev_7000steps.xlsx"))
-export(IC_add_RECO_cases_sex, here("output", "Tables", "7000 steps", "add_cases_prev_7000steps.xlsx"))
+export(RECO_burden_sex, here("output", "Tables", "7000 steps", "cases_prev_7000steps.xlsx"))
+export(add_RECO_burden_sex, here("output", "Tables", "7000 steps", "add_cases_prev_7000steps.xlsx"))
 
 # Plot 
 ggsave(here("output", "Plots", "7000 steps", "cases_prev_7000steps.png"), plot = plot_RECO_cases_prev)
