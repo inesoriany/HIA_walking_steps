@@ -18,10 +18,11 @@ pacman :: p_load(
   rio,          # Data importation
   here,         # Localization of files 
   dplyr,        # Data management
+  stringr,      # Text extraction
   srvyr,        # Survey
   survey,
   ggplot2,      # Data visualization
-  cli           # Progression bar
+  progress      # Progression bar
 )
 
 
@@ -35,7 +36,7 @@ emp_long <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 
 
 # RR by step, simulated dose-response relationships
-rr_distrib_table <- import(here("data_clean", "DRF", "rr_sim_interpolated.rds"))
+rr_distrib_table <- import(here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
 
 
 # Disability weights
@@ -80,117 +81,19 @@ emp_long <- emp_long %>%
 
 
 # EMP Dataset per disease
+replicate_list <- list() 
+
 for (dis in dis_vec) {
-  assign(
-    paste0(dis, "_replicate"),
-    emp_long %>% filter(disease == dis)
-  )
+  replicate_list[[dis]] <- emp_long %>% 
+    filter(disease == dis)
 }
 
 
-################################################################################################################################
-#                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
-################################################################################################################################
 
 ##############################################################
-#                DISEASE REDUCTION RISK                      #
+#              DISABILITY WEIGHTS DISTRIBUTIONS              #
 ##############################################################
 
-## --------------------------------------------
-## ALL DISEASES (EXCEPT BREAST CANCER)
-## --------------------------------------------
-
-# Baseline step 2000
-rr_baseline <- rr_distrib_table %>%
-  filter(step == 2000) %>%
-  select(disease, simulation_id, rr2000 = rr_interpolated)
-
-# Reduction risk for all diseases except breast cancer
-rr_distrib_table <- rr_distrib_table %>%
-  left_join(rr_baseline, by = c("disease", "simulation_id")) %>%
-  mutate(reduction_risk = (rr2000 - rr_interpolated) / rr2000)
-
-
-
-
-# Associate disease risk reductions to individuals
-for (dis in dis_vec) {
-  
-  replicate_name <- paste0(dis, "_replicate")
-  dis_replicate <- get(replicate_name)
-  
-  # --------------------------------------
-  # BREAST CANCER (special case)
-  # --------------------------------------
-  if (dis == "bc") {
-    
-    params <- dis_setting(dis)
-    set.seed(123)
-    
-    rr_women_sim <- generate_RR_distrib(params$rr_women_mid, params$rr_women_low, params$rr_women_up, N = 1000)
-    rr_men_sim   <- generate_RR_distrib(params$rr_men_mid,   params$rr_men_low,   params$rr_men_up,   N = 1000)
-    
-    dis_replicate <- dis_replicate %>%
-      slice(rep(1:n(), each = 1000)) %>%
-      group_by(ID) %>%
-      mutate(
-        simulation_id = 1:1000,
-        rr_sim = ifelse(sex[1] == "Female", rr_women_sim, rr_men_sim)
-      ) %>%
-      ungroup()
-    
-    dis_replicate <- log_reduction_risk(data = dis_replicate,
-                                        dis = dis,
-                                        rr_women = dis_replicate$rr_sim,
-                                        rr_men   = dis_replicate$rr_sim,
-                                        ref_women = params$ref_women,
-                                        ref_men   = params$ref_men,
-                                        week_base = week_base)
-    
-    # --------------------------------------
-    # OTHER DISEASES
-    # --------------------------------------
-  } else {
-    
-    dis_rr <- rr_distrib_table %>%
-      filter(disease == dis) %>%
-      select(simulation_id, step, reduction_risk)
-    
-    dis_replicate <- dis_replicate %>%
-      left_join(dis_rr, by = "step", relationship = "many-to-many")
-  }
-  
-  assign(replicate_name, dis_replicate)
-}
-
-  
-  
-  
-  
-
-##############################################################
-#                      CASES PREVENTED                       #
-##############################################################
-
-# Calculate prevented cases
-for (dis in dis_vec) {
-  replicate_name <- paste0(dis, "_replicate")
-  dis_replicate <- get(replicate_name) 
-  
-  dis_replicate <- reduc_incidence(dis_replicate)
-  
-  assign(replicate_name, dis_replicate)
-}
-  
-  
-    
-  
-
-
-##############################################################
-#                    DISABILITY WEIGHTS                      #
-##############################################################
-  
 # Generate DW normal distributions
 set.seed(123)
 dw_distrib_table <- dw_table %>%
@@ -220,172 +123,49 @@ dw_distrib_table <- dw_distrib_table  %>%
 
 
 
-# Randomly associate DW to each individual for each disease
-set.seed(123)
-for (dis in dis_vec) {
-  replicate_name <- paste0(dis, "_replicate")
-  
-  dis_dw <- dw_distrib_table %>%
-    filter(disease == dis) %>%
-    pull(simulated_dw)
-  
-  dis_replicate <- get(replicate_name) %>%
-    mutate(
-      dw = sample(dis_dw, size = n(), replace = TRUE) 
-    )
-  
-  assign(replicate_name, dis_replicate)
-}
+
+################################################################################################################################
+#                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
+################################################################################################################################
+# Calculate for each individual the number of prevented cases, DALY and costs with the 1000 simulated parameters
+HIA_replicate_list <- calc_HIA_replicate(data_list = replicate_list,
+                                        rr_distrib_table = rr_distrib_table,
+                                        dw_distrib_table = dw_distrib_table,
+                                        dis_vec = dis_vec,
+                                        vsl,
+                                        baseline_step)
 
 
-
-
-
-##############################################################     
-#                           DALY                             #
-##############################################################
-
-for (dis in dis_vec) {
-  replicate_name <- paste0(dis, "_replicate")
-  dis_replicate <- get(replicate_name) 
-
-    dis_replicate <- daly(dis_replicate)
-    
-  assign(replicate_name, dis_replicate)
-}
-
-
-
-  
-
-##############################################################
-#                    ECONOMIC IMPACT                         #
-##############################################################
-
-for (dis in dis_vec) {
-  replicate_name <- paste0(dis, "_replicate")
-  dis_replicate <- get(replicate_name) 
-
-  dis_replicate <- medic_costs (dis_replicate, dis)
-  dis_replicate <- dis_replicate %>% 
-    mutate(soc_costs = daly*vsl)
-  
-
-  assign(replicate_name, dis_replicate)
-}
 
 
 
 ################################################################################################################################
-#                                               6. TOTAL BURDEN PER SIMULATION                                                 #
+#                                               5. TOTAL BURDEN PER SIMULATION                                                 #
 ################################################################################################################################
 
 ##############################################################
 #                      ALL DISEASES                          #
 ##############################################################
-
-cli_progress_bar("Burden calculations", total = length(dis_vec) * 1000)
-
-for (dis in dis_vec) {
-  replicate_name <- paste0(dis, "_replicate")
-  burden_replicate_name <- paste0(dis, "_burden_replicate")
+# Total of prevented burden of each disease for each simulation 
+burden_replicate <- burden_replicate_prevented(data_list = HIA_replicate_list,
+                                               dis_vec,
+                                               group = NULL)
   
-  dis_burden_replicate <- list() 
   
-  for(i in 1:1000) {
-    cli_progress_update()  
-    message("Simulation ", i, " ~ ", dis)
-    
-    # Survey design
-    surv_dis_replicate <- get(replicate_name) %>% 
-      filter(simulation_id == i) %>% 
-      as_survey_design(ids = ident_ind, weights = pond_indc)
-    
-    # For 1 simulation, total burden
-    dis_burden_replicate[[i]] <- surv_dis_replicate %>% 
-      summarise(
-        tot_cases = survey_total(reduc_incidence, na.rm = TRUE),
-        tot_daly = survey_total(daly, na.rm = TRUE),
-        tot_medic_costs = survey_total(medic_costs, na.rm = TRUE),
-        tot_soc_costs = survey_total(soc_costs, na.rm = TRUE)
-      ) %>%
-      mutate(disease = dis, simulation_id = i)
-  }
-  
-  # All simulations in a data.frame
-  dis_burden_replicate <- bind_rows(dis_burden_replicate) %>% as.data.frame()
-  
-  assign(burden_replicate_name, dis_burden_replicate)
-}
-
-
-
-# Gather the results in a data.frame
-burden_replicate <- data.frame()
-
-for (dis in dis_vec) {
-  burden_replicate_name <- paste0(dis, "_burden_replicate")
-  
-  dis_burden_replicate <- get(burden_replicate_name)
-  
-  burden_replicate <- bind_rows(burden_replicate, dis_burden_replicate)
-}
-
-
-# Export results
+# Export : Table of HIA outcomes per simulation
 export(burden_replicate, here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
-
 
 
 ##############################################################
 #                        PER AGE                             #
 ##############################################################
-cli_progress_bar("Burden calculations", total = length(dis_vec) * 1000)
-
-for (dis in dis_vec) {
-  replicate_name <- paste0(dis, "_replicate")
-  burden_replicate_age_name <- paste0(dis, "_burden_replicate_age")
-  
-  dis_burden_replicate <- list() 
-  
-  for(i in 1:1000) {
-    cli_progress_update()
-    message("Simulation ", i, " ~ ", dis)
-    
-    surv_dis_replicate <- get(replicate_name) %>% 
-      filter(simulation_id == i) %>% 
-      as_survey_design(ids = ident_ind, weights = pond_indc)
-    
-    dis_burden_replicate[[i]] <- surv_dis_replicate %>% 
-      group_by(age_grp10) %>% 
-      summarise(
-        tot_cases = survey_total(reduc_incidence, na.rm = TRUE),
-        tot_daly = survey_total(daly, na.rm = TRUE),
-        tot_medic_costs = survey_total(medic_costs, na.rm = TRUE),
-        tot_soc_costs = survey_total(soc_costs, na.rm = TRUE)
-      ) %>%
-      mutate(disease = dis, simulation_id = i)
-  }
-  
-  # Combiner toutes les simulations
-  dis_burden_replicate <- bind_rows(dis_burden_replicate) %>% as.data.frame()
-  assign(burden_replicate_age_name, dis_burden_replicate)
-}
+# Total of prevented burden per age for each simulation
+burden_replicate_age <- burden_replicate_prevented(data_list = HIA_replicate_list,
+                                                   dis_vec,
+                                                   group = "age_grp10")
 
 
-# Gather the results in a data.frame
-burden_replicate_age <- data.frame()
-
-for (dis in dis_vec) {
-  burden_replicate_age_name <- paste0(dis, "_burden_replicate_age")
-  
-  dis_burden_replicate_age <- get(burden_replicate_age_name)
-  
-  burden_replicate_age <- bind_rows(burden_replicate_age, dis_burden_replicate_age)
-}
-
-
-# Export results
+# Export : Table of HIA outcomes per simulation
 export(burden_replicate_age, here("output", "RDS", "2019", "Resampling", "HIA_per_age_1000replicate.rds"))
 
 
@@ -393,7 +173,7 @@ export(burden_replicate_age, here("output", "RDS", "2019", "Resampling", "HIA_pe
 
 
 ################################################################################################################################
-#                         7. IC and MEDIAN - TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                        #
+#                         6. IC and MEDIAN - TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                        #
 ################################################################################################################################
 
 ##############################################################
@@ -528,6 +308,13 @@ plot_daly_prevented
 ################################################################################################################################
 #                                                      11. EXPORT DATA                                                         #
 ################################################################################################################################
+# Tables of disability weights distribution
+export(dw_distrib_table, here("data_clean", "Diseases", "dw_sim.rds"))
+
+# Tables of HIA outcomes per simulation
+export(burden_replicate, here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
+export(burden_replicate_age, here("output", "RDS", "2019", "Resampling", "HIA_per_age_1000replicate.rds"))
+
 
 # Tables of HIA outcomes
 export(burden, here("output", "Tables", "2019", "Resampling", "HIA_per_disease.xlsx"))
