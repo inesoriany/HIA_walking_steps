@@ -372,9 +372,9 @@ ic95_rr <- import(here("data_clean", "DRF", "rr_interpolated_mean.csv"))
 ################################################################################################################################
 
 # Table of DRF simulated
-export(rr_central_table, here("data_clean", "DRF", "rr_central_interpolated.rds"))
-export(rr_table_interpolated, here("data_clean", "DRF", "rr_sim_interpolated.rds"))
-export(ic95_rr, here("data_clean", "DRF", "rr_interpolated_mean.csv"))
+export(rr_central_table, here("data_clean", "Diseases", "DRF", "rr_central_interpolated.rds"))
+export(rr_table_interpolated, here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
+export(ic95_rr, here("data_clean", "Diseases", "DRF", "rr_interpolated_mean.csv"))
 
 
 
