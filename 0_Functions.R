@@ -118,69 +118,15 @@ graph_DRF <- function(dis, data, rr_mean, rr_lci, rr_uci) {
 
 ################################################################################################################################
 ################################################################################################################################
-#                                               1. HEALTH IMPACT ASSESSMENT                                                    #
+#                                               I. HEALTH IMPACT ASSESSMENT                                                    #
 ################################################################################################################################
 ################################################################################################################################
-
-##############################################################
-#                    DISEASE PARAMETERS                      #
-##############################################################
-
-# FUNCTION dis_setting : Get the corresponding parameters for each disease
-dis_setting = function (dis) {
-  rr_women_mid <-  get(paste0("rr_", dis, "_women"))
-  rr_women_low <-  get(paste0("rr_", dis, "_women_low"))
-  rr_women_up <-  get(paste0("rr_", dis, "_women_up"))
-  rr_men_mid <- get(paste0("rr_", dis, "_men"))
-  rr_men_low <-  get(paste0("rr_", dis, "_men_low"))
-  rr_men_up <-  get(paste0("rr_", dis, "_men_up"))
-  ref_women <-  get(paste0("ref_", dis, "_w"))
-  ref_men <- get(paste0("ref_", dis, "_m"))
-  return(data.frame("rr_men_mid" = rr_men_mid, "rr_men_low" = rr_men_low, "rr_men_up" = rr_men_up,
-                    "rr_women_mid" = rr_women_mid, "rr_women_low" = rr_women_low, "rr_women_up" = rr_women_up,
-                    "ref_women" = ref_women, "ref_men" = ref_men))
-}
-
 
 ##############################################################
 #                DISEASE REDUCTION RISK                      #
 ##############################################################
-
-## -------------------------------------------------------
-## CALCULATE RISK REDUCTION FOR BREAST CANCER)
-## -------------------------------------------------------
-
-# FUNCTION log_reduction_risk : Calculate the disease risk reduction percentage for each individual with a log linear regression
-  # (% of decrease in disease risk comparing to the baseline : 2000 steps per day)
-
-log_reduction_risk = function(data, dis, rr_women, rr_men, ref_women, ref_men, week_base) {
-  
-  # --- For women ---
-  RR_baseline_w <- exp(log(rr_women) * (week_base / ref_women))
-  RR_obs_w    <- exp(log(rr_women) * ((data$week_time + week_base) / ref_women))
-  RR_rel_w      <- RR_obs_w / RR_baseline_w
-  
-  # --- For men ---
-  RR_baseline_m <- exp(log(rr_men) * (week_base / ref_men))
-  RR_obs_m    <- exp(log(rr_men) * ((data$week_time + week_base)/ ref_men))
-  RR_rel_m      <- RR_obs_m / RR_baseline_m
-  
-  # --- Risk reduction compared to baseline ---
-  data[["reduction_risk"]] <- ifelse(
-    data$sex == "Female",
-    1 - RR_rel_w,
-    1 - RR_rel_m
-  )
-  
-  return(data)
-}
-
-
-
-## -------------------------------------------------------
-## ASSOCIATION RISK REDUCTIONS TO INDIVIDUALS
-## -------------------------------------------------------
-reduction_risk <- function(data_list, rr_table, week_base, dis_vec, bound_vec) {
+# FUNCTION reduction_risk : Associate risk reductions to individuals
+reduction_risk = function(data_list, rr_table, week_base, dis_vec, bound_vec) {
   
   result_list <- list()
   
@@ -216,7 +162,7 @@ reduction_risk <- function(data_list, rr_table, week_base, dis_vec, bound_vec) {
 ##############################################################
 
 # FUNCTION reduc_incidence : Calculate the reduced disease incidence (number of prevented new cases)
-reduc_incidence <- function(data) {
+reduc_incidence = function(data) {
  data <- data %>% 
    mutate(cases = reduction_risk * rate)
   
@@ -250,9 +196,6 @@ daly = function(data) {
 ##############################################################
 #                      ECONOMIC IMPACT                       #
 ##############################################################
-
-## MEDICAL COSTS ----
-
 # FUNCTION medic_costs : Calculate the medical costs associated with the reduced disease incidence for each individual
 medic_costs = function(data, dis) {
   data [[paste0("medic_costs")]] <- get(paste0(dis, "_cost")) * data[[paste0("cases")]] 
@@ -265,10 +208,6 @@ medic_costs = function(data, dis) {
 ##############################################################
 #                        CALCULATE HIA                       #
 ##############################################################
-
-## -------------------------------------------------------
-## CENTRAL VALUE ANALYSIS
-## -------------------------------------------------------
 # FUNCTION calc_HIA : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for each individual
 calc_HIA <- function(data_list, rr_table, dw_table, week_base, dis_vec, bound_vec) {
   
@@ -315,24 +254,12 @@ calc_HIA <- function(data_list, rr_table, dw_table, week_base, dis_vec, bound_ve
 
 
 
-
-## -------------------------------------------------------
-## RESAMPLING ANALYSIS
-## -------------------------------------------------------
-# FUNCTION calc_HIA_replicate
-
-
-
-
 ##############################################################
 #                        HIA OUTCOMES                        #
 ##############################################################
-## -------------------------------------------------------
-## CENTRAL VALUE ANALYSIS: Cases prevented
-## -------------------------------------------------------
 
 # FUNCTION burden_prevented : Total of prevented cases, DALY and saved medical costs, for each bound
-burden_prevented <- function(data_list, dis_vec, bound_vec, group){
+burden_prevented = function(data_list, dis_vec, bound_vec, group){
   
   # 1. Survey designs per bound
   survey_list <- list()
@@ -397,43 +324,184 @@ burden_prevented <- function(data_list, dis_vec, bound_vec, group){
 }
 
 
-## -------------------------------------------------------
-## RESAMPLING ANALYSIS
-## -------------------------------------------------------
 
-# FUNCTION burden_prevented_replicate : Total of prevented cases, DALY and saved medical costs, for each disease
-burden_prevented_NO <- function(survey_data, dis, group){
+
+
+
+
+################################################################################################################################
+################################################################################################################################
+#                                                       II. RESAMPLING                                                         #
+################################################################################################################################
+################################################################################################################################
+
+################################################################################################################################
+#                                                 1. Health impact assessment                                                  #
+################################################################################################################################
+
+##############################################################
+#                DISEASE REDUCTION RISK                      #
+##############################################################
+# FUNCTION reduction_risk_replicate : Associate risk reductions to individuals
+reduction_risk_replicate = function(data_list, rr_distrib_table, dis_vec, baseline_step = 2000) {
   
-  dis_burden <- survey_data %>%
-    filter(disease == dis) %>%
-    group_by(across(all_of(group))) %>%
-    summarise(
-      tot_cases     = survey_total(!!sym("cases_mid"), na.rm = TRUE),
-      tot_cases_low = survey_total(!!sym("cases_low"), na.rm = TRUE),
-      tot_cases_up  = survey_total(!!sym("cases_up"), na.rm = TRUE),
-      
-      tot_daly      = survey_total(!!sym("daly_mid"), na.rm = TRUE),
-      tot_daly_low  = survey_total(!!sym("daly_low"), na.rm = TRUE),
-      tot_daly_up   = survey_total(!!sym("daly_up"), na.rm = TRUE),
-      
-      tot_medic_costs     = survey_total(!!sym("medic_costs_mid"), na.rm = TRUE),
-      tot_medic_costs_low = survey_total(!!sym("medic_costs_low"), na.rm = TRUE),
-      tot_medic_costs_up  = survey_total(!!sym("medic_costs_up"), na.rm = TRUE)
-    ) %>%
-    mutate(disease = dis)
+  ## 1. Baseline RR
+  rr_baseline <- rr_distrib_table %>%
+    filter(step == baseline_step) %>%
+    select(disease, simulation_id, rr2000 = rr_interpolated)
   
-  return(dis_burden)
+  ## 2. Compute reduction risk
+  rr_distrib_table <- rr_distrib_table %>%
+    left_join(rr_baseline, by = c("disease", "simulation_id")) %>%
+    mutate(reduction_risk = (rr2000 - rr_interpolated) / rr2000)
+  
+  ## 3. Join reduction risk to each disease replicate
+  for (dis in dis_vec) {
+    
+    dis_data <- data_list[[dis]]
+    
+    rr_disease <- if (dis == "bc") "cancer" else dis                   # If breast cancer, use RR cancer
+    
+    dis_rr <- rr_distrib_table %>%
+      filter(disease == rr_disease) %>%
+      select(simulation_id, step, reduction_risk)
+    
+    dis_data <- dis_data %>%
+      left_join(dis_rr, by = "step", relationship = "many-to-many")
+    
+    data_list[[dis]] <- dis_data
+  }
+  
+  return(data_list)
+}
+
+
+##############################################################
+#                   DISABILITY WEIGHTS                       #
+##############################################################
+# FUNCTION dw_replicate : Randomly associate DW to indivdiuals
+  # set.seed()
+dw_replicate = function(data_list, dw_distrib_table, dis_vec) {
+  
+  for (dis in dis_vec) {
+    
+    dis_dw <- dw_distrib_table %>%
+      filter(disease == dis) %>%
+      pull(simulated_dw)
+    
+    dis_replicate <- data_list[[dis]] %>%
+      mutate(dw = sample(dis_dw, size = n(), replace = TRUE))
+ 
+    data_list[[dis]] <- dis_replicate
+  }
+  
+  return(data_list)
+}
+
+
+##############################################################
+#                        CALCULATE HIA                       #
+##############################################################
+# FUNCTION calc_HIA_replicate : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for each individual
+
+calc_HIA_replicate = function(data_list, rr_distrib_table, dw_distrib_table, dis_vec, vsl, baseline_step = 2000) {
+  
+  # Progress bar
+  progress <- progress_bar$new(
+    format = "HIA [:bar] :current/:total | :percent | ETA: :eta",
+    total  = length(dis_vec),
+    clear  = FALSE,
+    width  = 60
+  )
+  
+  
+  # 1. Disease reduction risk 
+  data_list <- reduction_risk_replicate(data_list = data_list,
+                                        rr_distrib_table = rr_distrib_table,
+                                        dis_vec = dis_vec,
+                                        baseline_step = baseline_step)
+  
+  # 2. Disability weights
+  data_list <- dw_replicate(data_list = data_list,
+                            dw_distrib_table = dw_distrib_table,
+                            dis_vec = dis_vec)
+  
+  for (dis in dis_vec) {
+    
+    dis_data <- data_list[[dis]]
+    
+    # 3. Cases prevented
+    dis_data <- reduc_incidence(dis_data)
+    
+    # 4. DALY
+    dis_data <- daly(dis_data)
+    
+    # 5. Economic impact
+    dis_data <- medic_costs(dis_data, dis)
+    
+    dis_data <- dis_data %>%
+      mutate(soc_costs = daly * vsl)
+    
+    data_list[[dis]] <- dis_data
+    
+    # Update progress bar
+    progress$tick()
+  }
+  
+  return(data_list)
+}
+    
+
+##############################################################
+#                        HIA OUTCOMES                        #
+##############################################################
+# FUNCTION burden_replicate_prevented : Total of prevented cases, DALY and saved medical costs, for each simulation
+burden_replicate_prevented = function(data_list, dis_vec, group) {
+  
+  # Progress bar
+  progress <- progress_bar$new(format = "Burden possible [:bar] :current/:total | :percent | ETA: :eta",
+                               total = length(dis_vec)* 1000,
+                               clear = FALSE,
+                               width = 60)
+  
+  burden_list <- list()  
+  
+  for (dis in dis_vec) {
+    dis_data <- data_list[[dis]]
+    dis_burden_replicate <- list() 
+    
+    for (i in 1:1000) {
+      
+      # update progress bar
+      progress$tick()
+      
+      # Survey design
+      surv_dis_replicate <- dis_data %>% 
+        filter(simulation_id == i) %>% 
+        as_survey_design(ids = ident_ind, weights = pond_indc)
+      
+      # For 1 simulation, total burden
+      dis_burden_replicate[[i]] <- surv_dis_replicate %>% 
+        group_by(across(all_of(group))) %>%
+        summarise(
+          tot_cases = survey_total(cases, na.rm = TRUE),
+          tot_daly = survey_total(daly, na.rm = TRUE),
+          tot_medic_costs = survey_total(medic_costs, na.rm = TRUE),
+          tot_soc_costs = survey_total(soc_costs, na.rm = TRUE)) %>% 
+        mutate(disease = dis, simulation_id = i)
+    }
+    burden_list[[dis]] <- bind_rows(dis_burden_replicate)         # Results for all diseases
+  }
+  burden_all <- bind_rows(burden_list)                         # Gather results for all diseases in a dataframe
+  
+  return(burden_all)
 }
 
 
 
-
 ################################################################################################################################
+#                                                  2. Uncertainty analysis                                                     #
 ################################################################################################################################
-#                                                       2. RESAMPLING                                                          #
-################################################################################################################################
-################################################################################################################################
-
 
 ##############################################################
 #                        MONTE-CARLO                         #
