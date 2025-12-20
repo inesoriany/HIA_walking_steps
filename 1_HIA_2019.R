@@ -103,9 +103,9 @@ for(bound in bound_vec) {
 #                DISEASE REDUCTION RISK                      #
 ##############################################################
 
-## -------------------------------------------------------
-## REDUCTION RISK FOR ALL DISEASES (EXCEPT BREAST CANCER)
-## -------------------------------------------------------
+## ---------------------------------
+## REDUCTION RISK FOR ALL DISEASES 
+## ---------------------------------
 
 # Baseline step 2000
 rr_baseline <- rr_central_table %>%
@@ -116,7 +116,7 @@ rr_central_table <- rr_central_table %>%
   left_join(rr_baseline, by = "disease")
 
 
-# Reduction risk for all diseases except breast cancer
+# Reduction risk for all diseases
 for (bound in bound_vec) {
   rr_central_table <- rr_central_table %>%
     mutate(!!paste0("reduction_risk_", bound) := 
@@ -132,6 +132,7 @@ rr_central_table <- rr_central_table %>%
 ################################################################################################################################
 #                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
 ################################################################################################################################
+# Calculate for each individual the number of prevented cases, DALY and costs
 HIA_list <- calc_HIA(data_list = walkers_list,
                        rr_table = rr_central_table,
                        dw_table = dw_table,
@@ -150,6 +151,7 @@ HIA_list <- calc_HIA(data_list = walkers_list,
 ##############################################################
 #                        PER DISEASE                         #
 ##############################################################
+# Total of prevented burden of each disease
 burden <- burden_prevented(data_list = HIA_list, 
                            dis_vec = dis_vec,
                            bound_vec,
@@ -160,7 +162,7 @@ burden <- burden_prevented(data_list = HIA_list,
 ##############################################################
 #                      PER SEX AND AGE                       #
 ##############################################################
-# Total of prevented cases per sex and age categories
+# Total of prevented burden per sex and age categories
 burden_sex_age <- burden_prevented(data_list = HIA_list, 
                                    dis_vec = dis_vec,
                                    bound_vec,
@@ -171,7 +173,7 @@ burden_sex_age <- burden_prevented(data_list = HIA_list,
 ##############################################################
 #                          PER SEX                           #
 ##############################################################
-# Total of prevented cases per sex
+# Total of prevented burden per sex
 burden_sex <- burden_prevented(data_list = HIA_list, 
                                    dis_vec = dis_vec,
                                    bound_vec,
@@ -205,8 +207,8 @@ plot_cases_prev <- burden_sex_order %>% filter (disease != "bc") %>%
   theme_minimal() +
   theme(
     axis.title.x = element_text(vjust = -0.5),
-    axis.text.x.top = element_blank(),      # supprime labels X en haut
-    axis.ticks.x.top = element_blank()      # supprime les ticks X en haut
+    axis.text.x.top = element_blank(),      # delete labels X at the top
+    axis.ticks.x.top = element_blank()      # delete ticks X at the top
   )
 
 plot_cases_prev
@@ -263,7 +265,7 @@ combined_plot_dep
 #                                                      8. EXPORT DATA                                                          #
 ################################################################################################################################
 # Tables
-export(rr_central_table, here("data_clean", "DRF", "reduction_risk_central.xlsx"))
+export(rr_central_table, here("data_clean", "Diseases", "DRF", "reduction_risk_central.xlsx"))
 export(burden, here("output", "Tables", "2019", "cases_prev_2019.xlsx"))
 export(burden_sex_age, here("output", "Tables", "2019", "cases_prev_2019_sex_age.xlsx"))
 export(burden_sex, here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
