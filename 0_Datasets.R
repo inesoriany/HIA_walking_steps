@@ -29,6 +29,7 @@ pacman :: p_load(
   here,         # Localization of files 
   dplyr,        # Data manipulation
   forcats,      # Factor conversion
+  tidyr,        # Table - Data organization, extraction
   epikit,       # Age categories creation
   janitor,      # De-duplication
   survey        # Survey management
@@ -260,8 +261,8 @@ emp_long <- emp_subset %>%
 #                                                       6. EXPORT DATA                                                         #
 ################################################################################################################################
 
+# Tables of walkers
 export(emp_subset, here("data_clean", "EMP_walkers.xlsx"))
-
 export(emp_long, here("data_clean", "EMP_dis_walkers.xlsx"))
 
 
@@ -307,20 +308,24 @@ emp_drivers <- emp_drivers %>%
   mutate(day_step_commute_shift = mdisttot_fin1/step_length)
 
 
+################################################################################################################################
+#                                                   5. DISEASE EMP SUBSET                                                      #
+################################################################################################################################
+
+emp_drivers_long <- emp_drivers %>%
+  pivot_longer(
+    cols = matches("(_rate|_incidence)$"),   # all rate and incidence columns
+    names_to = c("disease", ".value"),       # disease name + output column name
+    names_pattern = "(.*)_(rate|incidence)"  # regex: capture disease + type
+  )
+
+
 
 ################################################################################################################################
-#                                                    5. EXPORT EMP SUBSET                                                      #
+#                                                    6. EXPORT EMP SUBSET                                                      #
 ################################################################################################################################
 
+# Tables of drivers
 export(emp_drivers, here("data_clean", "EMP_drivers.xlsx"))
-
-
-
-
-
-
-
-
-
-
+export(emp_drivers_long, here("data_clean", "EMP_dis_drivers.xlsx"))
 
