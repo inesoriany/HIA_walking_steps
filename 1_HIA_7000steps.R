@@ -60,8 +60,8 @@ bound_vec <- c("mid", "low", "up")
 
 # Initialization
 emp_step <- emp_step %>% 
-  # Round the number of steps to the nearest hundred and baseline at 2000
-  mutate(step = 7000)
+  # Recommendation of 7000 steps and baseline at 2000
+  mutate(step = 7000 + baseline_step)
 
 
 # EMP Dataset per disease
