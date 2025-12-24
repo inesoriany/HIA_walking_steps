@@ -84,7 +84,7 @@ emp_step <- emp_step %>%
 RECO_replicate_list <- list() 
 
 for (dis in dis_vec) {
-  RECO_replicate_list[[dis]] <- emp_long %>% 
+  RECO_replicate_list[[dis]] <- emp_step %>% 
     filter(disease == dis)
 }
 
