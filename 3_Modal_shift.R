@@ -288,7 +288,7 @@ calc_replicate_IC(mort_shift[10,], "tot_daly")      # Scenario 50% <1km
 
 
 # Export HIA for mortality
-export(mort_shift, here("output", "Tables", "Log linear", "Modal shift", "Mortality_modal_shift_100replicate.xlsx"))
+export(mort_shift, here("output", "Tables", "Modal shift", "Mortality_modal_shift_100replicate.xlsx"))
 
 
 
