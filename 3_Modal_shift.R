@@ -224,7 +224,7 @@ global_shift <- burden_tot %>%
 
 
 
-# IC per scenario
+# IC95 and median per scenario
 set.seed(123)
 global_shift_IC <- data.frame()
 
@@ -260,6 +260,35 @@ for (dist in dist_vec) {
 export(global_shift_IC, here("output", "Tables", "Modal shift", "HIA_modal_shift_100replicate.xlsx"))
 
 
+
+##############################################################
+#                       PER DISEASE                          #
+##############################################################
+
+for (dis in dis_vec) {
+  dis_shift <- burden_tot %>% 
+    filter(disease == dis) %>% 
+    group_by(distance, percentage) %>% 
+    summarise(tot_cases = sum(tot_cases),
+              tot_cases_se = sum(tot_cases_se),
+              tot_daly = sum(tot_daly),
+              tot_daly_se = sum(tot_daly_se),
+              tot_medic_costs = sum(tot_medic_costs) / 1e6,
+              tot_medic_costs_se = sum(tot_medic_costs_se) / 1e6,
+              tot_soc_costs = sum(tot_soc_costs * 1e-6),
+              tot_soc_costs_se = sum(tot_soc_costs * 1e-6))
+  assign(paste0(dis, "_shift"), dis_shift)
+}
+
+
+# IC95 and median
+calc_replicate_IC(mort_shift[10,], "tot_cases")     # Scenario 50% <1km
+calc_replicate_IC(mort_shift[10,], "tot_daly")      # Scenario 50% <1km
+
+
+
+# Export HIA for mortality
+export(mort_shift, here("output", "Tables", "Log linear", "Modal shift", "Mortality_modal_shift_100replicate.xlsx"))
 
 
 
