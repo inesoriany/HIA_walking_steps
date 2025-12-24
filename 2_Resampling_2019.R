@@ -77,7 +77,7 @@ sex_vec <- c("Female", "Male")
 # Initialization
 emp_long <- emp_long %>% 
   # Round the number of steps to the nearest hundred and baseline at 2000 steps
-  mutate(step = pmin(12000, round(step_commute / 100) * 100 + 2000))
+  mutate(step = pmin(12000, round(step_commute / 100) * 100 + baseline_step))
 
 
 # EMP Dataset per disease
@@ -149,7 +149,8 @@ HIA_replicate_list <- calc_HIA_replicate(data_list = replicate_list,
 # Total of prevented burden of each disease for each simulation 
 burden_replicate <- burden_replicate_prevented(data_list = HIA_replicate_list,
                                                dis_vec,
-                                               group = NULL)
+                                               group = NULL,
+                                               N = 1000)
   
   
 # Export : Table of HIA outcomes per simulation
@@ -162,7 +163,8 @@ export(burden_replicate, here("output", "RDS", "2019", "Resampling", "HIA_1000re
 # Total of prevented burden per age for each simulation
 burden_replicate_age <- burden_replicate_prevented(data_list = HIA_replicate_list,
                                                    dis_vec,
-                                                   group = "age_grp10")
+                                                   group = "age_grp10",
+                                                   N = 1000)
 
 
 # Export : Table of HIA outcomes per simulation
@@ -177,7 +179,7 @@ export(burden_replicate_age, here("output", "RDS", "2019", "Resampling", "HIA_pe
 ################################################################################################################################
 
 ##############################################################
-#                       ALL DISEASES                         #
+#                       PER DISEASES                         #
 ##############################################################
 
 # Import data
