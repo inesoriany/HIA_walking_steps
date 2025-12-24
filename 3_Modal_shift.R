@@ -89,9 +89,9 @@ for(dist in dist_vec){
       for(i in 1:N){
         print(paste0("Run = ", i))
         
-        ## ---------------------------
-        ## 1. Échantillon individuel
-        ## ---------------------------
+        ## ----------------------------------------
+        ## 1. Scenario sample
+        ## ----------------------------------------
         burden_sample <- drivers_dist %>%
           filter(disease == dis) %>%
           slice_sample(prop = perc) %>%
@@ -102,9 +102,9 @@ for(dist in dist_vec){
             disease = dis
           )
         
-        ## ---------------------------
-        ## 2. Tirage RR
-        ## ---------------------------
+        ## ----------------------------------------
+        ## 2. Draw RR
+        ## ----------------------------------------
         rr_disease <- if (dis == "bc") "cancer" else dis
         
         sim_id <- rr_distrib_table %>%
@@ -138,9 +138,9 @@ for(dist in dist_vec){
           ) %>%
           mutate(rr_simulation_id = sim_id)
         
-        ## ---------------------------
-        ## 3. Tirage DW
-        ## ---------------------------
+        ## ----------------------------------------
+        ## 3. Draw DW
+        ## ----------------------------------------
         dw_draw <- dw_distrib_table %>%
           filter(disease == dis) %>%
           pull(simulated_dw) %>%
@@ -149,9 +149,9 @@ for(dist in dist_vec){
         burden_sample <- burden_sample %>%
           mutate(dw = dw_draw)
         
-        ## ---------------------------
-        ## 4. Cases, DALY & coûts
-        ## ---------------------------
+        ## ----------------------------------------
+        ## 4. Cases, DALY & costs (individual)
+        ## ----------------------------------------
         burden_sample <- reduc_incidence(burden_sample)
         burden_sample <- daly(burden_sample)
         burden_sample <- medic_costs(burden_sample, dis)
@@ -159,9 +159,9 @@ for(dist in dist_vec){
         burden_sample <- burden_sample %>%
           mutate(soc_costs = daly * vsl)
         
-        ## ---------------------------
-        ## 5. AGRÉGATION PAR RUN
-        ## ---------------------------
+        ## ----------------------------------------
+        ## 5. Aggregate burden by run
+        ## ----------------------------------------
         surv_run <- burden_sample %>%
           as_survey_design(
             ids = ident_ind,
@@ -183,9 +183,9 @@ for(dist in dist_vec){
           )
       }
       
-      ## ---------------------------
-      ## 6. Combiner les runs
-      ## ---------------------------
+      ## ----------------------------------------
+      ## 6. Combine runs
+      ## ----------------------------------------
       burden_tot <- bind_rows(burden_tot, bind_rows(burden_run))
     }
   }
@@ -194,4 +194,73 @@ for(dist in dist_vec){
 
 # Export HIA outcomes of 100 replications for each scenario of modal shifts
 export(burden_tot, here("output", "RDS", "Modal shift", "HIA_modal_shift_100replicate.rds"))
+
+
+
+
+################################################################################################################################
+#                                  5. TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                               #
+################################################################################################################################
+
+# Import HIA outcomes of 100 replications for each scenario of modal shifts
+burden_tot <- import(here("output", "RDS", "Modal shift",  "HIA_modal_shift_100replicate.rds"))
+
+
+
+##############################################################
+#                          GLOBAL                            #
+##############################################################
+
+global_shift <- burden_tot %>% 
+  group_by(distance, percentage) %>% 
+  summarise(tot_cases = sum(tot_cases),
+            tot_cases_se = sum(tot_cases_se),
+            tot_daly = sum(tot_daly),
+            tot_daly_se = sum(tot_daly_se),
+            tot_medic_costs = sum(tot_medic_costs) * 1e-6,                                # in million €
+            tot_medic_costs_se = sum(tot_medic_costs_se) * 1e-6,
+            tot_soc_costs = sum(tot_soc_costs * 1e-6),
+            tot_soc_costs_se = sum(tot_soc_costs_se * 1e-6))
+
+
+
+# IC per scenario
+set.seed(123)
+global_shift_IC <- data.frame()
+
+for (dist in dist_vec) {
+  for (perc in perc_vec) {
+    scenario <- global_shift %>% 
+      filter(distance == dist & percentage == perc)
+    cases_IC <- as.data.frame(t(calc_replicate_IC(scenario, "tot_cases"))) %>% 
+      rename(cases_low = "2.5%", cases_mid = "50%", cases_sup = "97.5%") %>% 
+      mutate(distance = dist, percentage = perc)
+    
+    daly_IC <- as.data.frame(t(calc_replicate_IC(scenario, "tot_daly"))) %>% 
+      rename(daly_low = "2.5%", daly_mid = "50%", daly_sup = "97.5%") %>% 
+      mutate(distance = dist, percentage = perc)
+    
+    medic_costs_IC <- as.data.frame(t(calc_replicate_IC(scenario, "tot_medic_costs"))) %>% 
+      rename(medic_costs_low = "2.5%", medic_costs_mid = "50%", medic_costs_sup = "97.5%") %>% 
+      mutate(distance = dist, percentage = perc)
+    
+    soc_costs_IC <- as.data.frame(t(calc_replicate_IC(scenario, "tot_soc_costs"))) %>% 
+      rename(soc_costs_low = "2.5%", soc_costs_mid = "50%", soc_costs_sup = "97.5%") %>% 
+      mutate(distance = dist, percentage = perc)
+    
+    scenario_IC <- left_join(cases_IC, daly_IC, by = c("distance", "percentage"))
+    scenario_IC <- left_join(scenario_IC, medic_costs_IC, by = c("distance", "percentage"))
+    scenario_IC <- left_join(scenario_IC, soc_costs_IC, by = c("distance", "percentage"))
+    global_shift_IC <- bind_rows(global_shift_IC, scenario_IC)
+  }
+}
+
+
+# Export HIA for each scenario
+export(global_shift_IC, here("output", "Tables", "Modal shift", "HIA_modal_shift_100replicate.xlsx"))
+
+
+
+
+
 
