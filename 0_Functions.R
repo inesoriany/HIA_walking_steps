@@ -452,11 +452,12 @@ calc_HIA_replicate = function(data_list, rr_distrib_table, dw_distrib_table, dis
 }
     
 
+
 ##############################################################
 #                        HIA OUTCOMES                        #
 ##############################################################
 # FUNCTION burden_replicate_prevented : Total of prevented cases, DALY and saved medical costs, for each simulation
-burden_replicate_prevented = function(data_list, dis_vec, group) {
+burden_replicate_prevented = function(data_list, dis_vec, group, N) {
   
   # Progress bar
   progress <- progress_bar$new(format = "Burden possible [:bar] :current/:total | :percent | ETA: :eta",
@@ -470,8 +471,7 @@ burden_replicate_prevented = function(data_list, dis_vec, group) {
     dis_data <- data_list[[dis]]
     dis_burden_replicate <- list() 
     
-    for (i in 1:1000) {
-      
+    for (i in 1:N) {
       # update progress bar
       progress$tick()
       
@@ -492,7 +492,7 @@ burden_replicate_prevented = function(data_list, dis_vec, group) {
     }
     burden_list[[dis]] <- bind_rows(dis_burden_replicate)         # Results for all diseases
   }
-  burden_all <- bind_rows(burden_list)                         # Gather results for all diseases in a dataframe
+  burden_all <- bind_rows(burden_list)                            # Gather results for all diseases in a dataframe
   
   return(burden_all)
 }
@@ -592,5 +592,6 @@ HIA_burden_IC = function(data, dis_vec, age_vec, sex_vec, outcome_vec, IC_func){
   
   return(HIA_burden)
 }
+
 
 
