@@ -14,8 +14,6 @@
     # Mean length of short car travel <2km 
     # Distribution of people reporting any short trips (0.5 - 1 - 1.5 - 2km) (mutually exclusive)
 
-# Files needed :
-  # EMP_walkers.xlsx
 
 
 ################################################################################################################################
