@@ -32,6 +32,7 @@ pacman :: p_load(
 #                                                     2. IMPORT DATA                                                           #
 ################################################################################################################################
 # Walkers dataset
+emp_walk <- import(here("data_clean", "EMP_walkers.xlsx"))
 emp_long <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 
 
@@ -270,13 +271,6 @@ Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NU
 
 
 
-##############################################################
-#                         PER SEX ?                          #
-##############################################################
-
-
-
-
 ################################################################################################################################
 #                                              8. REDUCTION IN MORTALITY RISK                                                  #
 ################################################################################################################################
@@ -304,32 +298,169 @@ plot_daly_prevented
 ################################################################################################################################
 #                                               10. ECONOMIC UNIT VALUE (€)                                                    #
 ################################################################################################################################
+# Survey design ponderated by day
+jour <- emp_walk %>% 
+  filter(pond_jour != "NA") %>% 
+  as_survey_design(ids = ident_ind,
+                   weights = pond_jour,
+                   strata = c(sex, age_grp10),
+                   nest = TRUE)
+
+# Total walked distance in 2019
+km_total_2019 <- as.numeric(svytotal(~nbkm_walking, jour)) *365.25/7                              # Total km per year
+km_total_2019_IC <- confint(svytotal(~nbkm_walking, jour) *365.25/7 )                             # Confidence interval
+
+# Total steps in 2019
+step_total_2019 <- as.numeric(svytotal(~step_commute, jour)) *365.25/7                            # Total steps per year
+step_total_2019_IC <- confint(svytotal(~step_commute, jour) *365.25/7 )                           # Confidence interval
+
+
+# Setting parameters 
+km_low_2019 <- km_total_2019_IC[1, 1]
+km_sup_2019 <- km_total_2019_IC[1, 2]
+
+step_low_2019 <- step_total_2019_IC[1, 1]
+step_sup_2019 <- step_total_2019_IC[1, 2]
+
+euro <- burden_global[["tot_medic_costs"]] [[1]] 
+euro_low <- burden_global[["tot_medic_costs_low"]] [[1]]
+euro_sup <- burden_global[["tot_medic_costs_sup"]] [[1]] 
+
+soc_euro <- burden_global[["tot_soc_costs"]] [[1]] 
+soc_euro_low <- burden_global[["tot_soc_costs_low"]] [[1]] 
+soc_euro_sup <- burden_global[["tot_soc_costs_sup"]] [[1]] 
+
+
+
+##############################################################
+#                        VALUE OF 1km                        #
+##############################################################
+# --------------------------------------
+# MEDICAL COSTS
+# --------------------------------------
+  # Calculate economic value of 1 km walked (medical costs) (in €)
+  set.seed(123)
+  unit_2019 <- unit_value(km_total_2019, km_low_2019, km_sup_2019, euro, euro_low, euro_sup, N=1000)
+  unit_value_2019 <- as.data.frame(t(quantile(unit_2019, probs = c(0.025, 0.5, 0.975)))) %>% 
+    rename(euro_2.5 = "2.5%",
+           euro_50 = "50%",
+           euro_97.5 = "97.5%") %>% 
+    mutate(km = 1)
+
+
+# --------------------------------------
+# SOCIAL COSTS
+# --------------------------------------
+  # Calculate economic value of 1 km walked (intangible costs) (in €)
+  set.seed(123)
+  unit_soc_2019 <- unit_value(km_total_2019, km_low_2019, km_sup_2019, soc_euro, soc_euro_low, soc_euro_sup, N=1000)
+  unit_soc_value_2019 <- as.data.frame(t(quantile(unit_soc_2019, probs = c(0.025, 0.5, 0.975)))) %>% 
+    rename(soc_euro_2.5 = "2.5%",
+           soc_euro_50 = "50%",
+           soc_euro_97.5 = "97.5%") %>% 
+    mutate(km = 1)
+
+
+
+##############################################################
+#                           SAVE 1€                          #
+##############################################################
+# --------------------------------------
+# MEDICAL COSTS
+# --------------------------------------
+
+# Calculate distance walked to save 1€ of medical costs (km)
+  set.seed(123)
+  euro_km_2019 <- euro_km_unit(km_total_2019, km_low_2019, km_sup_2019, euro, euro_low, euro_sup, N = 1000)
+  euro_km_unit_2019 <- as.data.frame(t(quantile(euro_km_2019, probs = c(0.025, 0.5, 0.975))))
+
+# Calculate number of steps to save 1€ of medical costs (km)
+  set.seed(123)
+  euro_step_2019 <- euro_step_unit(step_total_2019, step_low_2019, step_sup_2019, euro, euro_low, euro_sup, N = 1000)
+  euro_step_unit_2019 <- as.data.frame(t(quantile(euro_step_2019, probs = c(0.025, 0.5, 0.975))))
+  
+# Save 1€ of medical costs
+euro_unit_2019 <- euro_step_unit_2019 %>% 
+  rename(step_2.5  = "2.5%",
+           step_50   = "50%",
+           step_97.5 = "97.5%") %>% 
+  bind_cols(euro_km_unit_2019 %>% 
+              rename(km_2.5  = "2.5%",
+                     km_50   = "50%",
+                     km_97.5 = "97.5%")) %>% 
+  mutate(min_2.5  = km_2.5  * 60 / walk_speed,              # Duration walked to save 1€ of medical costs (min)
+         min_50   = km_50   * 60 / walk_speed,
+         min_97.5 = km_97.5 * 60 / walk_speed,
+         medic_costs = 1)
+    
+  
+  
+
+
+# --------------------------------------
+# SOCIAL COSTS
+# --------------------------------------
+# Calculate distance walked to save 1€ of intangible costs (km)
+  set.seed(123)
+  soc_euro_km_2019 <- euro_km_unit(km_total_2019, km_low_2019, km_sup_2019, soc_euro, soc_euro_low, soc_euro_sup, N = 1000)
+  soc_euro_km_unit_2019 <- as.data.frame(t(quantile(soc_euro_km_2019, probs = c(0.025, 0.5, 0.975))))
+  
+# Calculate number of steps walked to save 1€ of intangible costs (km)
+  set.seed(123)
+  soc_euro_step_2019 <- euro_step_unit(step_total_2019, step_low_2019, step_sup_2019, soc_euro, soc_euro_low, soc_euro_sup, N = 1000)
+  soc_euro_step_unit_2019 <- as.data.frame(t(quantile(soc_euro_step_2019, probs = c(0.025, 0.5, 0.975))))
+
+# Save 1€ of medical costs
+soc_euro_unit_2019 <- soc_euro_step_unit_2019 %>% 
+  rename(step_2.5  = "2.5%",
+           step_50   = "50%",
+           step_97.5 = "97.5%") %>% 
+  bind_cols(soc_euro_km_unit_2019 %>% 
+              rename(km_2.5  = "2.5%",
+                     km_50   = "50%",
+                     km_97.5 = "97.5%")) %>% 
+  mutate(min_2.5  = km_2.5  * 60 / walk_speed,                # Duration walked to save 1€ of intangible costs (min)
+         min_50   = km_50   * 60 / walk_speed,
+         min_97.5 = km_97.5 * 60 / walk_speed,
+         soc_costs = 1)
+ 
 
 
 
 ################################################################################################################################
 #                                                      11. EXPORT DATA                                                         #
 ################################################################################################################################
-# Tables of disability weights distribution
-export(dw_distrib_table, here("data_clean", "Diseases", "dw_sim.rds"))
-
-# Tables of HIA outcomes per simulation
-export(burden_replicate, here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
-export(burden_replicate_age, here("output", "RDS", "2019", "Resampling", "HIA_per_age_1000replicate.rds"))
-
-
-# Tables of HIA outcomes
-export(burden, here("output", "Tables", "2019", "Resampling", "HIA_per_disease.xlsx"))
-export(Rubin_burden, here("output", "Tables", "2019", "Resampling", "HIA_per_disease_Rubin.xlsx"))
-export(burden_per_age, here("output", "Tables", "2019", "Resampling", "HIA_per_age.xlsx"))
-export(Rubin_burden_per_age, here("output", "Tables", "2019", "Resampling", "HIA_per_age_Rubin.xlsx"))
-
-       
 # Plot
-ggsave(here("output", "Plots", "2019", "DALY_prevented.png"), plot = plot_daly_prevented)
+  ggsave(here("output", "Plots", "2019", "DALY_prevented.png"), plot = plot_daly_prevented)
 
 
+  
+# Tables of disability weights distribution
+  export(dw_distrib_table, here("data_clean", "Diseases", "dw_sim.rds"))
 
+  
+# Tables of HIA outcomes per simulation
+  export(burden_replicate, here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
+  export(burden_replicate_age, here("output", "RDS", "2019", "Resampling", "HIA_per_age_1000replicate.rds"))
 
+  
+# Tables of HIA outcomes
+  export(burden, here("output", "Tables", "2019", "Resampling", "HIA_per_disease.xlsx"))
+  export(Rubin_burden, here("output", "Tables", "2019", "Resampling", "HIA_per_disease_Rubin.xlsx"))
+  export(burden_per_age, here("output", "Tables", "2019", "Resampling", "HIA_per_age.xlsx"))
+  export(Rubin_burden_per_age, here("output", "Tables", "2019", "Resampling", "HIA_per_age_Rubin.xlsx"))
+
+  
+# Tables economic unit value
+  # Economic value of 1 km walked
+  export(unit_value_2019, here("output", "Tables", "2019", "Resampling", "1km_value_1000replicate.xlsx"))
+  # Social economic value of 1 km walked
+  export(unit_soc_value_2019, here("output", "Tables", "2019", "Resampling", "1km_soc_value_1000replicate.xlsx"))
+  
+  # Number of steps, distance and duration to save 1€ of medical costs in 2019
+  export(euro_unit_2019, here("output", "Tables", "2019", "Resampling", "1€_step_km_min_1000replicate.xlsx"))
+  # Number of steps, distance and duration to save 1€ of intangible costs in 2019
+  export(soc_euro_unit_2019, here("output", "Tables", "2019", "Resampling", "soc_1€_step_km_min_1000replicate.xlsx"))
+  
 
 
