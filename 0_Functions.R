@@ -403,7 +403,6 @@ dw_replicate = function(data_list, dw_distrib_table, dis_vec) {
 #                        CALCULATE HIA                       #
 ##############################################################
 # FUNCTION calc_HIA_replicate : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for each individual
-
 calc_HIA_replicate = function(data_list, rr_distrib_table, dw_distrib_table, dis_vec, vsl, baseline_step = 2000) {
   
   # Progress bar
