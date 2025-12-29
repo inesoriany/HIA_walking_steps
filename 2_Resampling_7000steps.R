@@ -197,12 +197,12 @@ RECO_Rubin_burden <- bind_rows(RECO_Rubin_burden_per_disease,RECO_Rubin_burden_m
 ################################################################################################################################
 
 # Tables of HIA outcomes per simulation
-export(RECO_burden_replicate, here("output", "RDS", "7000 steps", "Resampling", "HIA_1000replicate_7000steps.rds"))
+  export(RECO_burden_replicate, here("output", "RDS", "7000 steps", "Resampling", "HIA_1000replicate_7000steps.rds"))
 
 
 # Tables of HIA outcomes
-export(RECO_burden, here("output", "Tables", "7000 steps", "Resampling", "HIA_per_disease_7000steps.xlsx"))
-export(RECO_Rubin_burden, here("output", "Tables", "7000 steps", "Resampling", "HIA_per_disease_Rubin_7000steps.xlsx"))
+  export(RECO_burden, here("output", "Tables", "7000 steps", "Resampling", "HIA_per_disease_7000steps.xlsx"))
+  export(RECO_Rubin_burden, here("output", "Tables", "7000 steps", "Resampling", "HIA_per_disease_Rubin_7000steps.xlsx"))
 
 
 
