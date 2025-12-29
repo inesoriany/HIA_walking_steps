@@ -595,3 +595,66 @@ HIA_burden_IC = function(data, dis_vec, age_vec, sex_vec, outcome_vec, IC_func){
 
 
 
+################################################################################################################################
+#                                                3. Economic unit value (€)                                                    #
+################################################################################################################################
+
+# FUNCTION unit_value : Calculate the economic value of 1 km walked
+unit_value = function(km, km_low, km_sup, euro, euro_low, euro_sup, N = 1000) {
+  km_sd1 <- (km - km_low) / qnorm(1-0.05/2)
+  km_sd2 <- (km_sup - km) / qnorm(1-0.05/2)
+  km_sd <- mean(c(km_sd1, km_sd2))
+  distr_km <- rnorm(N, km, km_sd)
+  
+  euro_sd1 <- (euro - euro_low) / qnorm(1-0.05/2)
+  euro_sd2 <- (euro_sup - euro) / qnorm(1-0.05/2)
+  euro_sd <- mean(c(euro_sd1, euro_sd2))
+  distr_euro <- rnorm(N, euro, euro_sd)
+  
+  distr_unit <- distr_euro / distr_km
+  
+  return(distr_unit)
+}
+
+
+# FUNCTION euro_km_value : Calculate distance walked to save 1€
+euro_km_unit = function(km, km_low, km_sup, euro, euro_low, euro_sup, N = 1000) {
+  
+  km_sd1 <- (km - km_low) / qnorm(1-0.05/2)
+  km_sd2 <- (km_sup - km) / qnorm(1-0.05/2)
+  km_sd <- mean(c(km_sd1, km_sd2))
+  distr_km <- rnorm(N, km, km_sd)
+  
+  euro_sd1 <- (euro - euro_low) / qnorm(1-0.05/2)
+  euro_sd2 <- (euro_sup - euro) / qnorm(1-0.05/2)
+  euro_sd <- mean(c(euro_sd1, euro_sd2))
+  distr_euro <- rnorm(N, euro, euro_sd)
+  
+  distr_unit <- distr_km / distr_euro
+  
+  return(distr_unit)
+}
+
+
+# FUNCTION euro_step_value : Calculate number of steps to save 1€
+euro_step_unit = function(step, step_low, step_sup, euro, euro_low, euro_sup, N = 1000) {
+  
+  step_sd1 <- (step - step_low) / qnorm(1-0.05/2)
+  step_sd2 <- (step_sup - step) / qnorm(1-0.05/2)
+  step_sd <- mean(c(step_sd1, step_sd2))
+  distr_step <- rnorm(N, step, step_sd)
+  
+  euro_sd1 <- (euro - euro_low) / qnorm(1-0.05/2)
+  euro_sd2 <- (euro_sup - euro) / qnorm(1-0.05/2)
+  euro_sd <- mean(c(euro_sd1, euro_sd2))
+  distr_euro <- rnorm(N, euro, euro_sd)
+  
+  distr_unit <- distr_step / distr_euro
+  
+  return(distr_unit)
+}
+
+
+
+
+
