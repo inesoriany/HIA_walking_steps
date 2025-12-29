@@ -3,9 +3,9 @@
 ###############################################
 
 # Files needed :
-  # emp_dataset_km_bike_and_car_and_walk_individual.csv
-  # out_merged.csv
-  # INSEE_2019.RDS
+  # emp_dataset_km_bike_and_car_and_walk_individual.csv : Walking levels (EMP)
+  # out_merged.csv : incidence data
+  # INSEE_2019.RDS : population data
 
 
 # Files outputted :
@@ -262,8 +262,8 @@ emp_long <- emp_subset %>%
 ################################################################################################################################
 
 # Tables of walkers
-export(emp_subset, here("data_clean", "EMP_walkers.xlsx"))
-export(emp_long, here("data_clean", "EMP_dis_walkers.xlsx"))
+  export(emp_subset, here("data_clean", "EMP_walkers.xlsx"))
+  export(emp_long, here("data_clean", "EMP_dis_walkers.xlsx"))
 
 
 
@@ -326,6 +326,6 @@ emp_drivers_long <- emp_drivers %>%
 ################################################################################################################################
 
 # Tables of drivers
-export(emp_drivers, here("data_clean", "EMP_drivers.xlsx"))
-export(emp_drivers_long, here("data_clean", "EMP_dis_drivers.xlsx"))
+  export(emp_drivers, here("data_clean", "EMP_drivers.xlsx"))
+  export(emp_drivers_long, here("data_clean", "EMP_dis_drivers.xlsx"))
 
