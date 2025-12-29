@@ -274,7 +274,34 @@ Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NU
 ################################################################################################################################
 #                                              8. REDUCTION IN MORTALITY RISK                                                  #
 ################################################################################################################################
+##############################################################
+#               ‰ REDUCTION IN MORTALITY RISK                #
+##############################################################
+# Mortality reduction risk per RR simulated
+reduc_mortality_risk <- HIA_replicate_list[["mort"]] %>% 
+  as_survey_design(ids = ident_ind, weights = pond_indc) %>% 
+  group_by(simulation_id) %>% 
+  summarise(
+    mean_mort_reduction_risk = survey_mean(reduction_risk, na.rm = TRUE)
+  ) %>% 
+  ungroup()
 
+
+# Export reduction in mortality risk for 1000 replications
+export(reduc_mortality_risk, here("output", "RDS", "Log linear", "2019",  "reduc_mortality_risk_1000_rep.RDS"))
+
+
+
+# Load reduction in mortality risk for 1000 replications
+reduc_mortality_risk <- import(here("output", "RDS", "Log linear", "2019",  "reduc_mortality_risk_1000_rep.RDS"))
+
+# IC95 and mean
+N = 1000
+IC <-  calc_replicate_IC(reduc_mortality_risk, "mean_mort_reduction_risk")
+reduc_mortality_risk_IC <- data.frame(
+  reduc_mortality_risk = paste0(round(IC["50%"], 3), " (", round(IC["2.5%"], 3), " - ", round(IC["97.5%"],3),  ")"),
+  N_replications = N
+)
 
 
 
@@ -393,8 +420,6 @@ euro_unit_2019 <- euro_step_unit_2019 %>%
          min_97.5 = km_97.5 * 60 / walk_speed,
          medic_costs = 1)
     
-  
-  
 
 
 # --------------------------------------
@@ -450,6 +475,10 @@ soc_euro_unit_2019 <- soc_euro_step_unit_2019 %>%
   export(burden_per_age, here("output", "Tables", "2019", "Resampling", "HIA_per_age.xlsx"))
   export(Rubin_burden_per_age, here("output", "Tables", "2019", "Resampling", "HIA_per_age_Rubin.xlsx"))
 
+  
+# Table of reduction of mortality risk
+  export(reduc_mortality_risk_IC, here("output", "Tables", "2019", "Resampling", "reduc_mortality_risk.xlsx"))
+  
   
 # Tables economic unit value
   # Economic value of 1 km walked
