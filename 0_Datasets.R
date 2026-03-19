@@ -30,6 +30,7 @@ pacman :: p_load(
   dplyr,        # Data manipulation
   forcats,      # Factor conversion
   tidyr,        # Table - Data organization, extraction
+  tidyverse,    # Data management, ggplot included
   epikit,       # Age categories creation
   janitor,      # De-duplication
   survey        # Survey management
@@ -44,10 +45,16 @@ pacman :: p_load(
 emp <- import(here("data", "emp_dataset_km_bike_and_car_and_walk_individual.csv")) 
 
 # Diseases and mortality data
-diseases <- import(here("data", "out_merged.csv"))
+diseases <- import(here("data", "GBD_diseases.xlsx"), sheet = "Central")
 
 # INSEE data
 insee <- import(here("data", "INSEE_2019.RDS"))
+
+
+
+# Import functions
+source(here("0_Functions.R"))
+
 
 
 ################################################################################################################################
@@ -60,40 +67,23 @@ source(here("0_Parameters.R"))
 dis_vec = c("mort", "cvd", "bc", "cancer", "diab2", "dem", "dep")
 morbi_vec = c("cvd", "bc", "cancer", "diab2", "dem", "dep")
 
+
+
 ################################################################################################################################
-#                                                4. DISEASES DATA PREPARATION                                                  #
+#                                                4. DISEASES INCIDENCE DATASET                                                 #
 ################################################################################################################################
-# For simplification of coding, rename dep_prevalence in dep_incidence but these are prevalences
-diseases_5 <-  diseases %>% 
-  rename (dep_incidence = dep_prevalence)
-
-# Age categories : 10 years
-diseases_5 <- diseases_5 %>%
-  mutate(
-    age_grp10 = case_when(
-      age_grp.x %in% c("20-24") ~ "20-24",
-      age_grp.x %in% c("25-29","30-34") ~ "25-34",
-      age_grp.x %in% c("35-39","40-44") ~ "35-44",
-      age_grp.x %in% c("45-49","50-54") ~ "45-54",
-      age_grp.x %in% c("55-59","60-64") ~ "55-64",
-      age_grp.x %in% c("65-69","70-74") ~ "65-75",
-      age_grp.x %in% c("75-79","80-84","85-89") ~ "75-89",
-      TRUE ~ NA_character_
-    )
-  )
+diseases <- diseases %>% 
+  rename(age_grp = age_grp.x)
 
 
-diseases_10 <- diseases_5 %>%
-  group_by(sex, age_grp10) %>%
-  summarise(
-    pop_age_sex = sum(pop_age_grp, na.rm = TRUE),
-    across(
-      .cols = paste0(morbi_vec, "_incidence"),
-      .fns  = ~ sum(.x, na.rm = TRUE),
-      .names = "{.col}"
-    ),
-    .groups = "drop"
-  )
+# 10 year age categories
+diseases_10 <- diseases %>%
+  mutate(age_min = as.numeric(sub("-.*", "", age_grp)),
+         age_grp10 = paste0(floor(age_min / 10) * 10, "-", floor(age_min / 10) * 10 + 9)) %>%
+  group_by(age_grp10, sex) %>%
+  summarise(pop_age_grp10 = sum(pop_age_grp, na.rm = TRUE),
+            across(all_of(paste0(morbi_vec, "_incidence")), ~ sum(.x, na.rm = TRUE)),
+            .groups = "drop") 
 
 
 
@@ -143,26 +133,24 @@ emp_subset <- emp_subset %>%
 
 # Create age categories
 emp_subset <- emp_subset %>% 
-  mutate(
-    age_grp10 = case_when(
-      age >= 20 & age <= 24 ~ "20-24",
-      age >= 25 & age <= 34 ~ "25-34",
-      age >= 35 & age <= 44 ~ "35-44",
-      age >= 45 & age <= 54 ~ "45-54",
-      age >= 55 & age <= 64 ~ "55-64",
-      age >= 65 & age <= 75 ~ "65-75",
-      age >= 75 & age <= 89 ~ "75-89",
-      TRUE ~ NA_character_
-    )
-  )
+  mutate(age_grp = age_grp(age),
+         age_grp10 = age_grp_10(age)) %>%
+  filter(age >= 20 & age <90)                        # Only keep ages 20-89 years 
 
 
 
 # Add population counts per sex and age group
 emp_subset <- emp_subset %>% 
   left_join(
+    diseases %>% 
+      select(pop_age_grp, sex, age_grp),     # Matching columns
+    by = c("sex", "age_grp")               # Fill the variables depending on sex and age group
+  )
+
+emp_subset <- emp_subset %>% 
+  left_join(
       diseases_10 %>% 
-        select(pop_age_sex, sex, age_grp10),     # Matching columns
+        select(pop_age_grp10, sex, age_grp10),     # Matching columns
         by = c("sex", "age_grp10")               # Fill the variables depending on sex and age group
     )
 
@@ -170,9 +158,9 @@ emp_subset <- emp_subset %>%
 # Add diseases incidences / prevalences
 emp_subset <- emp_subset %>% 
   left_join(
-    diseases_10 %>% 
-      select(cvd_incidence, bc_incidence, cancer_incidence, diab2_incidence, dem_incidence, dep_incidence, sex, age_grp10),    # Matching columns
-      by = c("sex", "age_grp10")                                                                                               # Fill the variables depending on sex and age group
+    diseases %>% 
+      select(cvd_incidence, bc_incidence, cancer_incidence, diab2_incidence, dem_incidence, dep_incidence, sex, age_grp),    # Matching columns
+      by = c("sex", "age_grp")                                                                                               # Fill the variables depending on sex and age group
   ) 
 
 
@@ -190,7 +178,7 @@ emp_subset <- emp_subset %>%
 
 # Calculate death incidence
 emp_subset <-  emp_subset %>% 
-  mutate(mort_incidence = mort_rate * pop_age_sex)
+  mutate(mort_incidence = mort_rate * pop_age_grp)
 
 
 
@@ -199,8 +187,8 @@ for (dis in morbi_vec){
   emp_subset <- emp_subset %>%
     mutate(
       !!paste0(dis, "_rate") := if_else(
-        !is.na(pop_age_sex),
-        .data[[paste0(dis, "_incidence")]] / pop_age_sex,
+        !is.na(pop_age_grp),
+        .data[[paste0(dis, "_incidence")]] / pop_age_grp,
         NA_real_
       )
     )
@@ -226,19 +214,14 @@ emp_subset <- emp_subset %>%
   )
 
 
-# Only keep ages 20-89 years 
-emp_subset <-  emp_subset %>% 
-  filter(age >= 20 & age <90)
 
-
-
-# Area type
+# Area type : A CHANGER !! Faire avec les degrés de densité
 emp_subset <- emp_subset %>%
   mutate(
     area_type = case_when(
       tuu2017_res %in% 2:4 ~ "semi_urban",
       tuu2017_res %in% 5:8 ~ "urban",
-      TRUE                ~ "rural"
+      TRUE                 ~ "rural"
     ),
     area_type = factor(area_type, levels = c("rural", "semi_urban", "urban"))
   )
