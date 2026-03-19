@@ -37,7 +37,7 @@ emp_walk <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 
 
 # RR by step, simulated dose-response relationships
-rr_central_table <- import(here("data_clean", "DRF", "rr_central_interpolated.rds"))
+rr_central_table <- import(here("data_clean", "Diseases", "DRF", "rr_central_interpolated.rds"))
 
 
 # Disability weights
