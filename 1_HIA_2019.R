@@ -201,7 +201,6 @@ plot_cases_prev <- burden_sex_order %>% filter (disease != "bc") %>%
   geom_errorbar(position = position_dodge(.7), width = .25) +
   scale_fill_manual(values = colors_sex) +
   scale_x_discrete(labels = names_disease) + 
-  scale_y_break(c(55000, 100000)) +
   ylab ("Cases prevented") +
   xlab("Disease") +
   theme_minimal() +
