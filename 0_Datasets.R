@@ -100,6 +100,7 @@ emp_subset <- emp %>%
     sexe,
     age,
     quartile_rev,
+    DENSITECOM_RES,
     tuu2017_res,
     pond_indc,
     pond_jour,
@@ -215,15 +216,15 @@ emp_subset <- emp_subset %>%
 
 
 
-# Area type : A CHANGER !! Faire avec les degrés de densité
+# Area type depend on density
 emp_subset <- emp_subset %>%
   mutate(
     area_type = case_when(
-      tuu2017_res %in% 2:4 ~ "semi_urban",
-      tuu2017_res %in% 5:8 ~ "urban",
-      TRUE                 ~ "rural"
+      DENSITECOM_RES == 1    ~ "urban",
+      DENSITECOM_RES == 2    ~ "periurban",
+      TRUE                   ~ "rural"
     ),
-    area_type = factor(area_type, levels = c("rural", "semi_urban", "urban"))
+    area_type = factor(area_type, levels = c("rural", "periurban", "urban"))
   )
 
 
@@ -270,7 +271,7 @@ emp_drivers <- emp_subset %>%
 # Associate drive speed
 emp_drivers <- emp_drivers %>%
   mutate(drive_speed = case_when(
-    tuu2017_res %in% 2:7 ~ urban_car_speed,
+    area_type == c("urban", "periurban") ~ urban_car_speed,
     tuu2017_res == 8     ~ paris_car_speed,
     TRUE                 ~ rural_car_speed
     )
