@@ -35,7 +35,7 @@ names_disease <- c(
   "cvd" = "CVD",
   "dem" = "Dementia",
   "diab2" = "T2 diabetes",
-  "dep" = "Depressive episodes",
+  "dep" = "MDD",
   "mort" = "All-cause mortality"
 )
 
