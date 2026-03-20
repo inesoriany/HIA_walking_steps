@@ -30,7 +30,7 @@ pacman :: p_load(
 emp_step <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 
 # Risk reductions
-reduc_rr_table <- import(here("data_clean", "DRF", "reduction_risk_central.xlsx"))
+reduc_rr_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_central.xlsx"))
 
 # Disability weights
 dw_table <- import(here("data", "dw_table.xlsx"))
@@ -131,17 +131,6 @@ RECO_burden_sex_order <- RECO_burden_sex %>%
 
 
 
-##############################################################
-#                          GLOBAL                            #
-##############################################################
-# Total of prevented cases
-RECO_burden <- burden_prevented(data_list = RECO_HIA_list, 
-                                    dis_vec = dis_vec,
-                                    bound_vec,
-                                    group = NULL)
-
-
-
 ## -------------------------------------------------------
 ## ADDITIONNAL GAINS
 ## -------------------------------------------------------
@@ -158,9 +147,46 @@ RECO_burden_row <- RECO_burden %>%
               .cols = -c (disease))
 
 
-# Additional prevented cases for each disease according to sex
+# Additional prevented cases for each disease
 add_RECO_burden <- burden_2019_row %>%
   left_join(RECO_burden_row, by = "disease", suffix = c("_2019", "_RECO")) %>%
+  mutate(across(
+    ends_with("_RECO"),
+    ~ . - get(sub("_RECO$", "_2019", cur_column())),
+    .names = "{.col}_diff"
+  ))
+
+
+##############################################################
+#                          GLOBAL                            #
+##############################################################
+# Total of prevented cases
+RECO_burden <- burden_prevented(data_list = RECO_HIA_list, 
+                                    dis_vec = dis_vec,
+                                    bound_vec,
+                                    group = NULL)
+
+
+
+## -------------------------------------------------------
+## ADDITIONNAL GAINS
+## -------------------------------------------------------
+# Import 2019 burden prevented
+burden_sex_2019 <- import(here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
+
+# Data preparation
+burden_sex_2019_row <- burden_sex_2019 %>% 
+  rename_with(.fn = ~ paste0(.x, "_2019"),
+              .cols = -c (disease, sex))
+
+RECO_burden_sex_row <- RECO_burden_sex %>% 
+  rename_with(.fn = ~ paste0(.x, "_RECO"),
+              .cols = -c (disease, sex))
+
+
+# Additional prevented cases for each disease
+add_RECO_burden_sex <- burden_sex_2019_row %>%
+  left_join(RECO_burden_sex_row, by = c("disease", "sex"), suffix = c("_2019", "_RECO")) %>%
   mutate(across(
     ends_with("_RECO"),
     ~ . - get(sub("_RECO$", "_2019", cur_column())),
