@@ -1,0 +1,8 @@
+.RData
+.RDataTmp
+.Rhistory
+.DS_Store
+
+data/
+data_clean/
+output/
