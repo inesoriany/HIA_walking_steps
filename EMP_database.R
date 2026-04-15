@@ -1,18 +1,22 @@
 ###############################################
-############ EXTRACR EMP DATABASE #############
+############ EXTRACT EMP DATABASE #############
 ###############################################
 
-#This code imports EMP data files from csv and puts together a dataset at the individual level, with information on:
-# - indiviudal characteristics
-# - total number of kilometres by bike in local mobility + split by regular vs e-bike
-# - household characteristics, including their bike equipment
+# This code imports EMP data files from csv and puts together datasets at the individual and trip level, with information on:
+# - individual characteristics
+# - total number of kilometers by walking, car
+
+
 
 ################################################################################################################################
 #                                                    1. LOAD PACKAGES                                                          #
 ################################################################################################################################
 pacman :: p_load(
-  tidyverse,
-  haven)
+  rio,          # Data importation
+  here,         # Localization of files 
+  dplyr,        # Data manipulation
+  tidyverse    # Data management
+  )
 
 
 ################################################################################################################################
@@ -20,16 +24,16 @@ pacman :: p_load(
 ################################################################################################################################
 
 # Household data
-household <- import(here("emp_2019_donnees_individuelles_anonymisees_novembre2024", "EMP", "tcm_men_public_V3.csv" ))
+#household <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "tcm_men_public_V3.csv" ))
 
 # Individual data
-ind_kish <- import(here("emp_2019_donnees_individuelles_anonymisees_novembre2024", "EMP", "k_individu_public_V3.csv" ))
+ind <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "k_individu_public_V3.csv" ))
 
 # Individual characteristics
-ind <- import(here("emp_2019_donnees_individuelles_anonymisees_novembre2024", "EMP", "tcm_ind_kish_public_V3.csv" ))
+ind_kish <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "tcm_ind_kish_public_V3.csv" ))
 
 # Trip data
-trip <- import(here("emp_2019_donnees_individuelles_anonymisees_novembre2024", "EMP", "5. k_deploc_public_V4.csv" ))
+trip <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "5. k_deploc_public_V4.csv" ))
 
 
 
@@ -38,87 +42,111 @@ trip <- import(here("emp_2019_donnees_individuelles_anonymisees_novembre2024", "
 #                                                     3. SELECT DATA                                                           #
 ################################################################################################################################
 
-household <- household %>%
-  select(ident_men, 
-         dep_res, 
-         nuts_res,
-         catcom_aa_res, 
-         tuu2017_res,
-         statutcom_uu_res, 
-         type_uu_res)
-# degré de commune de résidence
-
-ind_kish <- ind_kish %>% 
-  select(ident_men, 
-         ident_ind, 
-         pond_indc)
+# Individual ID and ponderations
+ind <- ind %>% 
+  rename_with(tolower) %>% 
+  select(ident_ind, 
+         pond_indc) %>% 
+  mutate(ident_ind = as.character(ident_ind))
   
 
-ind <- ind %>% 
-  select(
-    ident_ind,
-    ident_men,
-    sexe, 
-    age, 
-    ddipl, 
-    typolog, 
-    handicap,
-    cs42, 
-    cs24,
-    typemploi
-  )
+# Individual characteristics
+ind_kish <- ind_kish %>% 
+  rename_with(tolower) %>% 
+  select(ident_ind,
+         sexe, 
+         age) %>% 
+  mutate(ident_ind = as.character(ident_ind))
 
 
 trip <- trip %>% 
+  rename_with(tolower) %>% 
   select(ident_ind, 
-         ident_men, 
          ident_dep,
          pond_jour,
          mdisttot_fin,                               # Trip length
          mtempsmap,                                  # Walking duration
-         starts_with("mmoy"),                        # Means of transportation
          mtp,                                        # Main mean of transportation
-         stautcom_uu_ori) %>%                        # Departure commune status        
-  mutate(mmoy2s = na_if(mmoy2s, "vide"),
-         mmoy2s = as.numeric(mmoy2s))
+         densitecom_ori) %>%                         # Departure commune density  
+  mutate(ident_ind = as.character(ident_ind),
+         ident_dep = as.character(ident_dep))
+
 
 
 
 ##############################################################
 #                          WALKING                           #
 ##############################################################
-walk <- trip %>% 
-  mutate(walking_lower = mtp %in% c(1.1, 1.2, 1.3, 1.4),
-         
-         walking_upper = mtp %in% c(1.1, 1.2, 1.3, 1.4) |
-           mmoy1s %in% c(1.1, 1.2, 1.3, 1.4) |
-           mmoy2s %in% c(1.1, 1.2, 1.3, 1.4),
-         
-         nbkm_walking_lower = if_else(walking_lower, mdisttot_fin, 0),
-         nbkm_walking_upper = if_else(walking_upper, mdisttot_fin, 0)) %>%
-  group_by(ident_men, ident_ind, pond_jour) %>%
-  summarise(nbkm_walking_lower = sum(nbkm_walking_lower, na.rm = TRUE),
-            nbkm_walking_upper = sum(nbkm_walking_upper, na.rm = TRUE),
-            .groups = "drop")
+# --------------------------------------
+# INDIVIDUAL
+# --------------------------------------
+# Walking levels
+walk_ind <- trip %>% 
+  mutate(intermodal_walk_time = mtempsmap) %>% 
+  mutate(main_walk = mtp == 1.1,
+         nbkm_main_walk = if_else(main_walk, mdisttot_fin, 0)) %>%
+  group_by(ident_ind, pond_jour) %>%
+  summarise(intermodal_walk_time = sum(intermodal_walk_time, na.rm = TRUE),
+            nbkm_main_walk = sum(nbkm_main_walk, na.rm = TRUE),
+            .groups = "drop") %>% 
+  select(ident_ind,
+         pond_jour,
+         intermodal_walk_time,
+         nbkm_main_walk) %>% 
+  
+# Add individual characteristics
+  left_join(ind_kish, by = "ident_ind")
+
+
+
+# --------------------------------------
+# TRIPS
+# --------------------------------------
+walk_trip <- ind %>%                                  
+  left_join(trip, by ="ident_ind", relationship = "many-to-many") %>% 
+  rename(intermodal_walk_time = mtempsmap,
+         nbkm_main_walk = mdisttot_fin) %>% 
+  
+# Add individual characteristics
+  left_join(ind_kish, by = "ident_ind")
 
 
 
 ##############################################################
 #                          DRIVING                           #
 ##############################################################
+# --------------------------------------
+# TRIPS
+# --------------------------------------
+car_trip <- trip %>% 
+  mutate(main_car = mtp %in% c(3.1, 3.2, 3.3, 3.4)) %>% 
+  filter(main_car) %>% 
+  mutate(nbkm_car = if_else(main_car, mdisttot_fin, 0)) %>% 
+  group_by(ident_ind, ident_dep, pond_jour) %>% 
+  select(ident_ind,
+         ident_dep,
+         pond_jour,
+         nbkm_car) %>% 
+  
+# Add individual characteristics 
+  left_join(ind, by = "ident_ind") %>% 
+  left_join(ind_kish, by = "ident_ind")
 
-select(
-  ident_men, ident_ind, pond_jour,
-  mdisttot_fin, voiture_passager,
-  n_trip, nb_trip_voit,
-  conduit_moins10km_slt, conduit_moins10km,
-  conduit_moins5km, conduit_moins5km_slt
-) %>%  pivot_wider(
-  id_cols = c(
-    ident_men, ident_ind, pond_jour,
-    nb_trip_voit),
-  names_from = n_trip,
-  values_from = c(mdisttot_fin, voiture_passager))
+
+
+################################################################################################################################
+#                                                  4. EXPORT EMP DATASETS                                                      #
+################################################################################################################################
+# Walking at the individual level
+  export(walk_ind, here("data", "emp_dataset_walk_individual.xlsx"))
+
+# Walking trips
+  export(walk_trip, here("data", "emp_dataset_walk_trip.xlsx"))
+
+# Car trips
+  export(car_trip, here("data", "emp_dataset_car_trip.xlsx"))
+
+
 
 
 
