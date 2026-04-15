@@ -4,7 +4,7 @@
 
 # This code imports EMP data files from csv and puts together datasets at the individual and trip level, with information on:
 # - individual characteristics
-# - total number of kilometers by walking, car
+# - total number of kilometers by walk, car
 
 
 
