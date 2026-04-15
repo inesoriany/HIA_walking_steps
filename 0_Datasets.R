@@ -2,10 +2,10 @@
 ############ CREATING DATASETS ################
 ###############################################
 
-# Files needed :
-  # emp_dataset_km_bike_and_car_and_walk_individual.csv : Walking levels (EMP)
-  # out_merged.csv : incidence data
-  # INSEE_2019.RDS : population data
+# This code puts together datasets at the individual and trip level, combining information on:
+# - walking, driving exposure
+# - disease incidence
+
 
 
 # Files outputted :
@@ -41,13 +41,15 @@ pacman :: p_load(
 #                                                     2. IMPORT DATA                                                           #
 ################################################################################################################################
 
-# EMP 2019 : distances for bike, cars, walking
-emp <- import(here("data", "emp_dataset_km_bike_and_car_and_walk_individual.csv")) 
+# EMP 2019 : walking and driving exposure
+emp_walk_ind <- import(here("data", "emp_dataset_walk_individual.xlsx")) 
+emp_walk_trip <- import(here("data", "emp_dataset_walk_trip.xlsx")) 
+emp_car_trip <- import(here("data", "emp_dataset_car_trip.xlsx")) 
 
-# Diseases and mortality data
+# Diseases incidence data
 diseases <- import(here("data", "GBD_diseases.xlsx"), sheet = "Central")
 
-# INSEE data
+# INSEE mortality data
 insee <- import(here("data", "INSEE_2019.RDS"))
 
 
@@ -93,7 +95,6 @@ diseases_10 <- diseases %>%
 
 # Creation of subset uniting variables of EMP and calculations
 emp_subset <- emp %>% 
-  mutate(ID = row_number()) %>%                   # ID number for every individual
   select(
     ID,
     ident_ind,
