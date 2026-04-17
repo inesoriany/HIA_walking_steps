@@ -90,29 +90,16 @@ diseases_10 <- diseases %>%
 
 
 ################################################################################################################################
-#                                 5. CREATION OF SUBSET OF EMP DATASET WITH ONLY VARIABLES NEEDED                              #
+#                                           5. CREATION OF SUBSET OF EMP DATASET                                               #
 ################################################################################################################################
+# --------------------------------------
+# INDIVIDUAL
+# --------------------------------------
 
-# Creation of subset uniting variables of EMP and calculations
-emp_subset <- emp %>% 
-  select(
-    ID,
-    ident_ind,
-    sexe,
-    age,
-    quartile_rev,
-    DENSITECOM_RES,
-    tuu2017_res,
-    pond_indc,
-    pond_jour,
-    nbkm_walking_lower,
-    mdisttot_fin1
-  )
-
-
-# Re-write nbkm_walking, easier to be used in functions
-emp_subset <- emp_subset %>%
-  rename (nbkm_walking = nbkm_walking_lower) %>% 
+# Total walking distance
+walkers <- emp_walk_ind %>% 
+  mutate(nbkm_intermodal_walk = intermodal_walk_time * walk_speed,
+         nbkm_tot_walking = nbkm_main_walk + nbkm_intermodal_walk) %>% 
 
 # Re-write sexe as female and male and convert as factors
   mutate (sexe = as.character(sexe)) %>%                                 # Conversion in character for function to work well
@@ -121,16 +108,13 @@ emp_subset <- emp_subset %>%
 
 
 # Daily steps
-emp_subset <- emp_subset %>% 
-  mutate(step_commute = nbkm_walking/step_length)
+walkers <- walkers %>% 
+  mutate(step_commute = nbkm_tot_walking/step_length)
 
 # Day time spent walking (min)
-emp_subset <- emp_subset %>% 
-  mutate(day_time = nbkm_walking*60/walk_speed)
+walkers <- walkers %>% 
+  mutate(day_time = nbkm_tot_walking*60/walk_speed)
 
-# Week time spent walking (min)
-emp_subset <- emp_subset %>% 
-  mutate(week_time = 7*nbkm_walking*60/walk_speed)
 
 
 # Create age categories
