@@ -95,6 +95,7 @@ walk_ind <- trip %>%
          nbkm_main_walk) %>% 
   
 # Add individual characteristics
+  left_join(ind, by = "ident_ind") %>%
   left_join(ind_kish, by = "ident_ind")
 
 

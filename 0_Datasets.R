@@ -99,7 +99,8 @@ diseases_10 <- diseases %>%
 # Total walking distance
 walkers <- emp_walk_ind %>% 
   mutate(nbkm_intermodal_walk = intermodal_walk_time * walk_speed,
-         nbkm_tot_walking = nbkm_main_walk + nbkm_intermodal_walk) %>% 
+         nbkm_tot_walking = nbkm_main_walk + nbkm_intermodal_walk,
+         nbkm_tot_walking_jour = nbkm_tot_walking * pond_jour / (pond_indc * 7)) %>% 
 
 # Re-write sexe as female and male and convert as factors
   mutate (sexe = as.character(sexe)) %>%                                 # Conversion in character for function to work well
