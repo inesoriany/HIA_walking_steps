@@ -77,12 +77,12 @@ walk_dataset <- function(data, diseases, diseases_10, insee, morbi_vec,
   # Add life-expectancy for each sex
   data <- data %>%
     mutate(life_exp = if_else(sex == "Female", 85.99324, 79.59503)) %>%
-  
-  # Add the years of life remaining, potentially affected by diseases or premature death
-    mutate(years_remaining = pmax(life_exp - age, 0)
+    # Add the years of life remaining, potentially affected by diseases or premature death
+    mutate(years_remaining = pmax(life_exp - age, 0))
   
   return(data)
 }
+
 
 ################################################################################################################################
 ################################################################################################################################
@@ -765,6 +765,110 @@ euro_step_unit = function(step, step_low, step_sup, euro, euro_low, euro_sup, N 
 #                                                  4. SENSITIVITY ANALYSIS                                                     #
 ################################################################################################################################
 ################################################################################################################################
+
+
+################################################################################################################################
+################################################################################################################################
+#                                                  5. DATA PROCESSING                                                         #
+################################################################################################################################
+################################################################################################################################
+
+# FUNCTION process_walkers : Process the walkers dataset with customizable variables for steps and time calculations
+process_walkers <- function(walkers, diseases, diseases_10, insee, morbi_vec, 
+                            walk_dist_var = "nbkm_tot_walking", 
+                            walk_dist_jour_var = "nbkm_tot_walking_jour", 
+                            step_length, walk_speed) {
+  
+  # Re-write sexe as female and male and convert as factors
+  walkers <- walkers %>% 
+    mutate(sexe = as.character(sexe)) %>%                                 
+    mutate(sexe = fct_recode(sexe, "Male" = "1", "Female" = "2")) %>%     
+    rename(sex = sexe)
+  
+  # Daily steps
+  walkers <- walkers %>% 
+    mutate(step_commute = .data[[walk_dist_var]] / step_length)  %>% 
+    mutate(step_commute_jour = .data[[walk_dist_jour_var]] / step_length)
+  
+  # Day time spent walking (min)
+  walkers <- walkers %>% 
+    mutate(day_time = .data[[walk_dist_var]] * 60 / walk_speed)  %>% 
+    mutate(day_time_jour = .data[[walk_dist_jour_var]] * 60 / walk_speed)
+  
+  # Create age categories
+  walkers <- walkers %>% 
+    mutate(age_grp = age_grp(age),
+           age_grp10 = age_grp_10(age)) %>%
+    filter(age >= 20 & age < 90)                       
+  
+  # Add population counts per sex and age group
+  walkers <- walkers %>% 
+    left_join(
+      diseases %>% 
+        select(pop_age_grp, sex, age_grp),     
+      by = c("sex", "age_grp")               
+    )
+  
+  walkers <- walkers %>% 
+    left_join(
+      diseases_10 %>% 
+        select(pop_age_grp10, sex, age_grp10),     
+      by = c("sex", "age_grp10")               
+    )
+  
+  # Add diseases incidences / prevalences
+  walkers <- walkers %>% 
+    left_join(
+      diseases %>% 
+        select(cvd_incidence, bc_incidence, cancer_incidence, diab2_incidence, dem_incidence, dep_incidence, sex, age_grp),    
+      by = c("sex", "age_grp")                                                                                               
+    ) 
+  
+  # Add mortality rates
+  insee <- insee %>% 
+    rename(sex = sexe)
+  
+  walkers <- walkers %>% 
+    left_join(
+      insee %>% select(MR, sex, age),       
+      by = c("sex", "age")                  
+    ) %>% 
+    rename(mort_rate = MR)
+  
+  # Calculate death incidence
+  walkers <- walkers %>% 
+    mutate(mort_incidence = mort_rate * pop_age_grp)
+  
+  # Calculate disease incidence rates
+  for (dis in morbi_vec) {
+    walkers <- walkers %>%
+      mutate(
+        !!paste0(dis, "_rate") := if_else(
+          !is.na(pop_age_grp),
+          .data[[paste0(dis, "_incidence")]] / pop_age_grp,
+          NA_real_
+        )
+      )
+  }
+  
+  # Add life-expectancy for each sex
+  walkers <- walkers %>%
+    mutate(
+      life_exp = if_else(
+        sex == "Female",
+        85.99324,
+        79.59503
+      )
+    )
+  
+  # Add the years of life remaining, potentially affected by diseases or premature death
+  walkers <- walkers %>%
+    mutate(
+      years_remaining = pmax(life_exp - age, 0)
+    )
+  
+  return(walkers)
+}
 
 
 
