@@ -2,11 +2,3 @@
 .RDataTmp
 .Rhistory
 .DS_Store
-<<<<<<< HEAD
-=======
-
-data/
-data_clean/
-output/
-.Rproj.user
->>>>>>> 0ee3815 (done)

@@ -102,8 +102,8 @@ walkers <- emp_walk_ind %>%
          nbkm_tot_walking = nbkm_main_walk + nbkm_intermodal_walk,
          nbkm_tot_walking_jour = nbkm_tot_walking * pond_jour / (pond_indc * 7))
 
-# Process the walkers data using the function
-walkers <- process_walkers(walkers, diseases, diseases_10, insee, morbi_vec, 
+# Create walkers dataset combing diseases incidence and walking exposure for each individual
+walkers <- walk_dataset(walkers, diseases, diseases_10, insee, morbi_vec, 
                            walk_dist_var = "nbkm_tot_walking", 
                            walk_dist_jour_var = "nbkm_tot_walking_jour", 
                            step_length = step_length, 
@@ -115,24 +115,45 @@ walkers <- process_walkers(walkers, diseases, diseases_10, insee, morbi_vec,
 # TRIPS
 # --------------------------------------
 
+# Total walking distance per trip
+walking_trip <- emp_walk_trip  %>% 
+  mutate(nbkm_intermodal_walk = intermodal_walk_time * walk_speed / 60,
+         nbkm_tot_walking = nbkm_main_walk + nbkm_intermodal_walk,
+         nbkm_tot_walking_jour = nbkm_tot_walking * pond_jour / (pond_indc * 7))
+
+# Create walkers dataset combing diseases incidence and walking exposure for each individual
+walking_trip <- walk_dataset(walking_trip, diseases, diseases_10, insee, morbi_vec, 
+                           walk_dist_var = "nbkm_tot_walking", 
+                           walk_dist_jour_var = "nbkm_tot_walking_jour", 
+                           step_length = step_length, 
+                           walk_speed = walk_speed)
+
 # Area type depend on density
-emp_subset <- emp_subset %>%
+walking_trip <- walking_trip %>%
   mutate(
     area_type = case_when(
-      DENSITECOM_RES == 1    ~ "urban",
-      DENSITECOM_RES == 2    ~ "periurban",
-      TRUE                   ~ "rural"
-    ),
+      densitecom_ori == 1    ~ "urban",
+      densitecom_ori == 2    ~ "periurban",
+      TRUE                   ~ "rural"),
     area_type = factor(area_type, levels = c("rural", "periurban", "urban"))
   )
 
 
 
 ################################################################################################################################
-#                                                   5. DISEASE EMP SUBSET                                                      #
+#                                                   5. DISEASE WALKERS EMP SUBSET                                                      #
 ################################################################################################################################
 
-emp_long <- emp_subset %>%
+# Individual
+walkers_long <- walkers %>%
+  pivot_longer(
+    cols = matches("(_rate|_incidence)$"),   # all rate and incidence columns
+    names_to = c("disease", ".value"),       # disease name + output column name
+    names_pattern = "(.*)_(rate|incidence)"  # regex: capture disease + type
+  )
+
+# Trips
+walking_trip_long <- walking_trip %>%
   pivot_longer(
     cols = matches("(_rate|_incidence)$"),   # all rate and incidence columns
     names_to = c("disease", ".value"),       # disease name + output column name
@@ -145,8 +166,12 @@ emp_long <- emp_subset %>%
 ################################################################################################################################
 
 # Tables of walkers
-  export(emp_subset, here("data_clean", "EMP_walkers.xlsx"))
-  export(emp_long, here("data_clean", "EMP_dis_walkers.xlsx"))
+  export(walkers, here("data_clean", "EMP_walkers.xlsx"))
+  export(walkers_long, here("data_clean", "EMP_dis_walkers.xlsx"))
+
+# Tables of walking trips
+  export(walking_trip, here("data_clean", "EMP_walking_trips.xlsx"))
+  export(walking_trip_long, here("data_clean", "EMP_dis_walking_trips.xlsx"))
 
 
 
