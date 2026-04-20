@@ -98,109 +98,22 @@ diseases_10 <- diseases %>%
 
 # Total walking distance
 walkers <- emp_walk_ind %>% 
-  mutate(nbkm_intermodal_walk = intermodal_walk_time * walk_speed,
+  mutate(nbkm_intermodal_walk = intermodal_walk_time * walk_speed / 60,
          nbkm_tot_walking = nbkm_main_walk + nbkm_intermodal_walk,
-         nbkm_tot_walking_jour = nbkm_tot_walking * pond_jour / (pond_indc * 7)) %>% 
+         nbkm_tot_walking_jour = nbkm_tot_walking * pond_jour / (pond_indc * 7))
 
-# Re-write sexe as female and male and convert as factors
-  mutate (sexe = as.character(sexe)) %>%                                 # Conversion in character for function to work well
-  mutate (sexe = fct_recode(sexe, "Male" = "1", "Female" = "2")) %>%     # Replacing
-  rename (sex = sexe)
-
-
-# Daily steps
-walkers <- walkers %>% 
-  mutate(step_commute = nbkm_tot_walking/step_length)
-
-# Day time spent walking (min)
-walkers <- walkers %>% 
-  mutate(day_time = nbkm_tot_walking*60/walk_speed)
+# Process the walkers data using the function
+walkers <- process_walkers(walkers, diseases, diseases_10, insee, morbi_vec, 
+                           walk_dist_var = "nbkm_tot_walking", 
+                           walk_dist_jour_var = "nbkm_tot_walking_jour", 
+                           step_length = step_length, 
+                           walk_speed = walk_speed)
 
 
 
-# Create age categories
-emp_subset <- emp_subset %>% 
-  mutate(age_grp = age_grp(age),
-         age_grp10 = age_grp_10(age)) %>%
-  filter(age >= 20 & age <90)                        # Only keep ages 20-89 years 
-
-
-
-# Add population counts per sex and age group
-emp_subset <- emp_subset %>% 
-  left_join(
-    diseases %>% 
-      select(pop_age_grp, sex, age_grp),     # Matching columns
-    by = c("sex", "age_grp")               # Fill the variables depending on sex and age group
-  )
-
-emp_subset <- emp_subset %>% 
-  left_join(
-      diseases_10 %>% 
-        select(pop_age_grp10, sex, age_grp10),     # Matching columns
-        by = c("sex", "age_grp10")               # Fill the variables depending on sex and age group
-    )
-
-
-# Add diseases incidences / prevalences
-emp_subset <- emp_subset %>% 
-  left_join(
-    diseases %>% 
-      select(cvd_incidence, bc_incidence, cancer_incidence, diab2_incidence, dem_incidence, dep_incidence, sex, age_grp),    # Matching columns
-      by = c("sex", "age_grp")                                                                                               # Fill the variables depending on sex and age group
-  ) 
-
-
-# Add mortality rates
-insee <- insee %>% 
-  rename(sex = sexe)
-
-emp_subset <- emp_subset %>% 
-  left_join(
-    insee %>% select(MR, sex, age),       # Matching columns
-    by = c("sex", "age")                  # Fill the variables depending on sexe and age
-  ) %>% 
-  rename(mort_rate = MR)
-
-
-# Calculate death incidence
-emp_subset <-  emp_subset %>% 
-  mutate(mort_incidence = mort_rate * pop_age_grp)
-
-
-
-# Calculate disease incidence rates
-for (dis in morbi_vec){
-  emp_subset <- emp_subset %>%
-    mutate(
-      !!paste0(dis, "_rate") := if_else(
-        !is.na(pop_age_grp),
-        .data[[paste0(dis, "_incidence")]] / pop_age_grp,
-        NA_real_
-      )
-    )
-}
-
-
-
-# Add life-expectancy for each sex
-emp_subset <- emp_subset %>%
-  mutate(
-    life_exp = if_else(
-      sex == "Female",
-      85.99324,
-      79.59503
-    )
-  )
-
-
-# Add the years of life remaining, potentially affected by diseases or premature death
-emp_subset <- emp_subset %>%
-  mutate(
-    years_remaining = pmax(life_exp - age, 0)
-  )
-
-
+# --------------------------------------
+# TRIPS
+# --------------------------------------
 
 # Area type depend on density
 emp_subset <- emp_subset %>%
