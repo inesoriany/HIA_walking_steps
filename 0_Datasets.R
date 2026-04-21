@@ -135,8 +135,7 @@ walking_trip <- walking_trip %>%
       densitecom_ori == 1    ~ "urban",
       densitecom_ori == 2    ~ "periurban",
       TRUE                   ~ "rural"),
-    area_type = factor(area_type, levels = c("rural", "periurban", "urban"))
-  )
+    area_type = factor(area_type, levels = c("rural", "periurban", "urban")))
 
 
 
@@ -186,41 +185,42 @@ walking_trip_long <- walking_trip %>%
 #                                  4. CREATION OF SUBSET OF EMP SUBSET WITH ONLY VARIABLES NEEDED                              #
 ################################################################################################################################
 
-# Selecting only variables of interests for drivers / removing non-relevant variables 
-emp_drivers <- emp_subset %>% 
-  select(-nbkm_walking,
-         -day_time)
+# Total walking distance had those car trips been walked per trip
+car_trip <- emp_car_trip  %>% 
+  mutate(nbkm_car_jour = nbkm_car * pond_jour / (pond_indc * 7))
+
+# Create drives dataset combing diseases incidence and walking exposure for each individual
+car_trip <- walk_dataset(car_trip, diseases, diseases_10, insee, morbi_vec, 
+                           walk_dist_var = "nbkm_car", 
+                           walk_dist_jour_var = "nbkm_car_jour", 
+                           step_length = step_length, 
+                           walk_speed = walk_speed)
+
+
+# Area type depend on density
+car_trip <- car_trip %>%
+  mutate(
+    area_type = case_when(
+      densitecom_ori == 1    ~ "urban",
+      densitecom_ori == 2    ~ "periurban",
+      TRUE                   ~ "rural"),
+    area_type = factor(area_type, levels = c("rural", "periurban", "urban")))
 
 
 # Associate drive speed
-emp_drivers <- emp_drivers %>%
+car_trip <- car_trip %>%
   mutate(drive_speed = case_when(
     area_type == c("urban", "periurban") ~ urban_car_speed,
-    tuu2017_res == 8     ~ paris_car_speed,
-    TRUE                 ~ rural_car_speed
-    )
-  )
+    tuu2017_ori == 8     ~ paris_car_speed,
+    TRUE                 ~ rural_car_speed))
 
-
-# Day time spent walking if those car distances were walked (min)
-emp_drivers <- emp_drivers %>% 
-  mutate(day_time_shift = mdisttot_fin1*60 / walk_speed)
-
-# Day time spent walking if those car distances were walked (min)
-emp_drivers <- emp_drivers %>% 
-  mutate(week_time_shift = 7*mdisttot_fin1*60 / walk_speed)
-
-
-# Daily steps if those car distances were walked
-emp_drivers <- emp_drivers %>% 
-  mutate(day_step_commute_shift = mdisttot_fin1/step_length)
 
 
 ################################################################################################################################
 #                                                   5. DISEASE EMP SUBSET                                                      #
 ################################################################################################################################
 
-emp_drivers_long <- emp_drivers %>%
+car_trip_long <- car_trip %>%
   pivot_longer(
     cols = matches("(_rate|_incidence)$"),   # all rate and incidence columns
     names_to = c("disease", ".value"),       # disease name + output column name
@@ -234,6 +234,5 @@ emp_drivers_long <- emp_drivers %>%
 ################################################################################################################################
 
 # Tables of drivers
-  export(emp_drivers, here("data_clean", "EMP_drivers.xlsx"))
-  export(emp_drivers_long, here("data_clean", "EMP_dis_drivers.xlsx"))
-
+  export(car_trip, here("data_clean", "EMP_car_trips.xlsx"))
+  export(car_trip_long, here("data_clean", "EMP_dis_car_trips.xlsx"))
