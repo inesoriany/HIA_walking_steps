@@ -129,6 +129,7 @@ car_trip <- trip %>%
          ident_dep,
          pond_jour,
          nbkm_car,
+         densitecom_ori,
          tuu2017_ori) %>% 
   
 # Add individual characteristics 
