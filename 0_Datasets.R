@@ -7,10 +7,14 @@
 # - disease incidence
 
 
-
 # Files outputted :
-  # EMP_walkers.xlsx
-  # EMP_drivers.xlsx
+  # EMP_walkers.xlsx : dataset at the individual level with information on walking exposure and diseases incidence for each individual
+  # EMP_dis_walkers.xlsx : Long format with one row per disease
+  # EMP_walking_trips.xlsx : dataset at the trip level with information on walking exposure and diseases incidence for each trip
+  # EMP_dis_walking_trips.xlsx : Long format with one row per disease
+  # EMP_car_trips.xlsx : dataset at the trip level with information on driving exposure and diseases incidence for each trip
+  # EMP_dis_car_trips.xlsx : Long format with one row per disease
+
 
 
 ################################################################################################################################
