@@ -67,7 +67,8 @@ trip <- trip %>%
          mdisttot_fin,                               # Trip length
          mtempsmap,                                  # Walking duration
          mtp,                                        # Main mean of transportation
-         densitecom_ori) %>%                         # Departure commune density  
+         densitecom_ori,                             # Departure commune density  
+         tuu2017_ori) %>%
   mutate(ident_ind = as.character(ident_ind),
          ident_dep = as.character(ident_dep))
 
@@ -127,7 +128,8 @@ car_trip <- trip %>%
   select(ident_ind,
          ident_dep,
          pond_jour,
-         nbkm_car) %>% 
+         nbkm_car,
+         tuu2017_ori) %>% 
   
 # Add individual characteristics 
   left_join(ind, by = "ident_ind") %>% 
@@ -146,9 +148,3 @@ car_trip <- trip %>%
 
 # Car trips
   export(car_trip, here("data", "emp_dataset_car_trip.xlsx"))
-
-
-
-
-
-
