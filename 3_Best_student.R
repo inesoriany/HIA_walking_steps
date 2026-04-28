@@ -25,7 +25,7 @@ pacman :: p_load(
 emp_walkers <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 
 # Walking trips dataset
-emp_walk_trip <- import(here("data_clean", "EMP_dis_walk_trips.xlsx"))
+emp_walk_trip <- import(here("data_clean", "EMP_dis_walking_trips.xlsx"))
 
 
 # RR by step, simulated dose-response relationships
@@ -55,11 +55,73 @@ dis_vec = c("mort", "bc", "cvd", "cancer", "diab2", "dem", "dep")
 bound_vec <- c("mid", "low", "up")
 
 
+
 ################################################################################################################################
-#                                                   4. AGE DISTRIBUTION                                                        #
+#                                                   4.                                                         #
+################################################################################################################################
+# Only exclusively walking trips
+  # Individual
+  emp_main_walkers <- emp_walkers %>% 
+    filter(intermodal_walk_time == 0)
+
+  # Trips
+  emp_main_walk_trip <- emp_walk_trip %>% 
+    filter(intermodal_walk_time == 0)
+
+# Sum steps by individual, area type, and disease
+# (avoiding double counting of trips using ident_dep)
+steps_by_individual_area_disease <- emp_main_walk_trip %>% 
+  group_by(ident_ind, area_type, disease) %>% 
+  summarise(
+    total_steps = sum(step_commute, na.rm = TRUE),
+    n_trips = n_distinct(ident_dep),
+    pond_indc = first(pond_indc),
+    .groups = "drop"
+  )
+
+# Merge aggregated data back to original trips dataset
+emp_main_walk_trip <- emp_main_walk_trip %>% 
+  left_join(
+    steps_by_individual_area_disease %>% 
+      select(ident_ind, area_type, disease, total_steps, n_trips),
+    by = c("ident_ind", "area_type", "disease")
+  )
+
+
+# Check if individuals meet the targets
+below_targets <- steps_by_individual_area_disease %>% 
+  mutate(
+    target = case_when(
+      area_type == "urban" ~ urban_target,
+      area_type == "periurban" ~ periurban_target,
+      area_type == "rural" ~ rural_target,
+      TRUE ~ NA_real_
+    ),
+    meets_target = total_steps >= target
+  ) %>% 
+  filter(!meets_target)
+
+cat("\n=== PERSONNES EN DESSOUS DES CIBLES ===\n")
+cat("Total (pondéré) :", sum(below_targets$pond_indc, na.rm = TRUE), "personnes\n")
+cat("Total (non pondéré) :", nrow(below_targets), "personnes\n\n")
+
+by_area <- below_targets %>% 
+  group_by(area_type) %>% 
+  summarise(
+    n_below_weighted = sum(pond_indc, na.rm = TRUE),
+    n_below_unweighted = n(),
+    mean_steps = mean(total_steps, na.rm = TRUE),
+    .groups = "drop"
+  )
+print(by_area)
+
+
+
+################################################################################################################################
+#                                                   5. AGE DISTRIBUTION                                                        #
 ################################################################################################################################
 # Survey design ponderated by day
-jour <- emp_walkers %>% 
+main_jour <- emp_main_walkers %>% 
   filter(pond_jour != "NA") %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_jour,
@@ -67,7 +129,13 @@ jour <- emp_walkers %>%
                    nest = TRUE)
 
 
-# Walking pyramid : Age distribution of walking volume for France
-distrib_walk_EMP2019 <- jour %>% 
+
+# Walking pyramid : Age distribution of walking volume for France (in steps)
+distrib_main_walk_EMP2019 <- main_jour %>% 
   group_by(age_grp10) %>% 
   summarise(mean_ind = survey_mean(step_commute, na.rm = TRUE))
+
+
+# Distribution coefficient
+distrib_main_walk_EMP2019 <- distrib_main_walk_EMP2019 %>% 
+  mutate(rho = mean_ind / mean_ind[age_grp10 == "20-29"])
