@@ -92,8 +92,11 @@ CO2_emit <- 124                    # 124g CO2 per km
 
 
 
-
-
-
-
-
+##############################################################
+#                   Good students targets                    #
+##############################################################
+# Part modale kilométrique après transformation x Distance journalière moyenne
+  # (Rapport ADEME 2015 - "Contribution de la marche et du vélo à la décarbonation et à l'amélioration de la qualité de l'air en France")
+urban_target <- 9/100 * 15 / step_length        # 1.35 km per person per day, in steps
+periurban_target <- 4/100 * 22 / step_length    # 0.88 km per person per day, in steps
+rural_target <- 2/100 * 32 / step_length        # 0.64 km per person per day, in steps
