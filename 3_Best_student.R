@@ -1,5 +1,5 @@
 #################################################
-#############     GOOD STUDENTS     #############
+#############     BEST STUDENTS     #############
 #################################################
 
 
@@ -21,8 +21,6 @@ pacman :: p_load(
 ################################################################################################################################
 #                                                    2. IMPORT DATA                                                            #
 ################################################################################################################################
-# Walkers dataset
-emp_walkers <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 
 # Walking trips dataset
 emp_walk_trip <- import(here("data_clean", "EMP_dis_walking_trips.xlsx"))
@@ -59,14 +57,19 @@ bound_vec <- c("mid", "low", "up")
 ################################################################################################################################
 #                                                4. MAIN WALKING TRIPS DATASET                                                 #
 ################################################################################################################################
-# Only exclusively walking trips
-  # Individual
-  emp_main_walkers <- emp_walkers %>% 
-    filter(intermodal_walk_time == 0)
-
-  # Trips
+# Only exclusively walking trips (no intermodal walk)
   emp_main_walk_trip <- emp_walk_trip %>% 
     filter(intermodal_walk_time == 0)
+
+# Add population by age group and area type
+emp_main_walk_trip <- emp_main_walk_trip %>%
+  left_join(emp_main_walk_trip %>%
+      select(ident_ind, age_grp10, area_type, pond_indc) %>%
+      distinct() %>%
+      group_by(age_grp10, area_type) %>%
+      summarise(pop_age_area = sum(pond_indc, na.rm = TRUE),
+      .groups = "drop"), by = c("age_grp10", "area_type"))
+
 
 # Sum steps by individual, area type, and disease
 steps_by_individual_area_disease <- emp_main_walk_trip %>% 
@@ -91,7 +94,7 @@ emp_main_walk_trip <- emp_main_walk_trip %>%
 #                                                   5. AGE DISTRIBUTION                                                        #
 ################################################################################################################################
 # Survey design ponderated by day
-main_jour <- emp_main_walkers %>% 
+main_jour <- emp_main_walk_trip %>% 
   filter(pond_jour != "NA") %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_jour,
@@ -124,7 +127,7 @@ emp_main_walk_trip <- emp_main_walk_trip %>%
     area_type == "periurban" ~ periurban_target,
     area_type == "rural" ~ rural_target,
     TRUE ~ NA_real_
-  ) * )
+  ) / sum(rho*pop_age_area))
 
 
 # Filter individuals below targets ? and do HIA (to know the added value)
