@@ -83,7 +83,7 @@ trip <- trip %>%
 # --------------------------------------
 # Walking levels
 walk_ind <- trip %>% 
-  mutate(intermodal_walk_time = mtempsmap) %>% 
+  mutate(intermodal_walk_time = if_else(is.na(mtempsmap), 0, mtempsmap)) %>% 
   mutate(main_walk = mtp == 1.1,
          nbkm_main_walk = if_else(main_walk, mdisttot_fin, 0)) %>%
   group_by(ident_ind, pond_jour) %>%
@@ -106,8 +106,8 @@ walk_ind <- trip %>%
 # --------------------------------------
 walk_trip <- ind %>%                                  
   left_join(trip, by ="ident_ind", relationship = "many-to-many") %>% 
-  rename(intermodal_walk_time = mtempsmap,
-         nbkm_main_walk = mdisttot_fin) %>% 
+  mutate(intermodal_walk_time = if_else(is.na(mtempsmap), 0, mtempsmap)) %>% 
+  rename(nbkm_main_walk = mdisttot_fin) %>% 
   
 # Add individual characteristics
   left_join(ind_kish, by = "ident_ind")
