@@ -650,35 +650,35 @@ calc_IC_Rubin = function(data, outcome){
 #                 UNCERTAINTIES ANALYSIS                     #
 ##############################################################
 
-# FUNCTION HIA_burden_age_IC : Get a table with HIA outcomes and IC 
+# FUNCTION HIA_burden_IC : Get a table with HIA outcomes and IC 
   # set.seed() if use calc_replicate_IC
-HIA_burden_IC = function(data, dis_vec, age_vec, sex_vec, outcome_vec, IC_func){
+HIA_burden_IC = function(data, dis_vec, sex_vec, outcome_vec, IC_func){
   
   HIA_burden <- data.frame()
   
-  # If age_vec is NULL → no loop for age
-  if (is.null(age_vec)) age_vec <- NA
+  # Extract unique age_grp10 values from data
+  age_vec <- unique(data$age_grp10)
   
   # If sex_vec is NULL → no loop for sex
   if (is.null(sex_vec)) sex_vec <- NA
   
   for (dis in dis_vec){
     for (age in age_vec){
-      for (sx in sex_vec){
+      for (sex in sex_vec){
         
         data_sub <- data %>%
           filter(
             disease == dis,
-            if (!is.na(age)) age_grp10 == age else TRUE,
-            if (!is.na(sx)) sex == sx else TRUE
+            age_grp10 == age,
+            if (!is.na(sex)) sex == sex else TRUE
           )
         
         if (nrow(data_sub) == 0) next
         
         row <- data.frame(
           disease = dis,
-          age_grp10 = if (!is.na(age)) age else NA,
-          sex = if (!is.na(sx)) sx else NA
+          age_grp10 = age,
+          sex = if (!is.na(sex)) sex else NA
         )
         
         for (out in outcome_vec){

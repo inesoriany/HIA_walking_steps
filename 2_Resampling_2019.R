@@ -62,9 +62,6 @@ dis_vec = c("mort", "cvd", "bc", "cancer", "diab2", "dem", "dep")
 # HIA outcomes
 outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 
-# Age categories
-age_vec <- c("20-24", "25-34", "35-44", "45-54", "55-64", "65-75", "75-89")
-
 # Sex categories
 sex_vec <- c("Female", "Male")
 
@@ -155,7 +152,7 @@ burden_replicate <- burden_replicate_prevented(data_list = HIA_replicate_list,
                                                dis_vec,
                                                group = NULL,
                                                N = 1000)
-  
+
   
 # Export : Table of HIA outcomes per simulation
 export(burden_replicate, here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
@@ -196,7 +193,7 @@ burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000
 # IC95 and median 
   # Per disease
   set.seed(123)
-  burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, NULL, outcome_vec, calc_replicate_IC) %>% 
+  burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, outcome_vec, calc_replicate_IC) %>% 
     select(-c(age_grp10, sex))
 
   # Total for morbidity
@@ -225,7 +222,7 @@ burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000
 # RUBIN'S RULE
 # --------------------------------------
   # Per disease
-  Rubin_burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, NULL, outcome_vec, calc_IC_Rubin) %>% 
+  Rubin_burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, outcome_vec, calc_IC_Rubin) %>% 
     select(-c(age_grp10, sex))
 
   # Total for morbidity
@@ -261,15 +258,14 @@ burden_replicate_age <- import(here("output", "RDS", "2019", "Resampling", "HIA_
 # --------------------------------------
 # IC95 and median (Monte Carlo)
 set.seed(123)
-burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NULL, outcome_vec, calc_replicate_IC) %>% 
+burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, NULL, outcome_vec, calc_replicate_IC)  %>% 
   select(-c(sex))
-  
 
 
 # --------------------------------------
 # RUBIN'S RULE
 # --------------------------------------
-Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, age_vec, NULL, outcome_vec, calc_IC_Rubin) %>% 
+Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, NULL, outcome_vec, calc_IC_Rubin) %>% 
   select(-c(sex))
 
 
@@ -336,8 +332,8 @@ jour <- emp_walk %>%
                    nest = TRUE)
 
 # Total walked distance in 2019
-km_total_2019 <- as.numeric(svytotal(~nbkm_walking, jour)) *365.25/7                              # Total km per year
-km_total_2019_IC <- confint(svytotal(~nbkm_walking, jour) *365.25/7 )                             # Confidence interval
+km_total_2019 <- as.numeric(svytotal(~nbkm_tot_walking, jour)) *365.25/7                              # Total km per year
+km_total_2019_IC <- confint(svytotal(~nbkm_tot_walking, jour) *365.25/7 )                             # Confidence interval
 
 # Total steps in 2019
 step_total_2019 <- as.numeric(svytotal(~step_commute, jour)) *365.25/7                            # Total steps per year
@@ -493,5 +489,6 @@ soc_euro_unit_2019 <- soc_euro_step_unit_2019 %>%
   # Number of steps, distance and duration to save 1€ of intangible costs in 2019
   export(soc_euro_unit_2019, here("output", "Tables", "2019", "Resampling", "soc_1€_step_km_min_1000replicate.xlsx"))
   
+
 
 

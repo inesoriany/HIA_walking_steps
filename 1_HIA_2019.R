@@ -272,6 +272,3 @@ export(burden_sex, here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
 # Plot 
 ggsave(here("output", "Plots", "2019", "cases_prevented.png"), plot = plot_cases_prev)
 ggsave(here("output", "Plots", "2019", "dep_cases_prevented.png"), plot = combined_plot_dep)
-
-
-
