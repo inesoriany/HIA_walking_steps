@@ -230,7 +230,7 @@ age_grp_10 = function(age){
 #                DISEASE REDUCTION RISK                      #
 ##############################################################
 # FUNCTION reduction_risk : Associate risk reductions to individuals
-reduction_risk = function(data_list, rr_table, week_base, dis_vec, bound_vec) {
+reduction_risk = function(data_list, rr_table, dis_vec, bound_vec) {
   
   result_list <- list()
   
@@ -313,10 +313,10 @@ medic_costs = function(data, dis) {
 #                        CALCULATE HIA                       #
 ##############################################################
 # FUNCTION calc_HIA : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for each individual
-calc_HIA <- function(data_list, rr_table, dw_table, week_base, dis_vec, bound_vec) {
+calc_HIA <- function(data_list, rr_table, dw_table, dis_vec, bound_vec) {
   
   # 1. Reduction risk
-  risk_list <- reduction_risk(data_list, rr_table, week_base, dis_vec, bound_vec)
+  risk_list <- reduction_risk(data_list, rr_table, dis_vec, bound_vec)
   
 
   burden_list <- list()

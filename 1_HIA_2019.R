@@ -136,7 +136,6 @@ rr_central_table <- rr_central_table %>%
 HIA_list <- calc_HIA(data_list = walkers_list,
                        rr_table = rr_central_table,
                        dw_table = dw_table,
-                       week_base = week_base,
                        dis_vec = dis_vec,
                        bound_vec = bound_vec)
 
