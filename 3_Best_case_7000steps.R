@@ -89,7 +89,6 @@ for(bound in bound_vec) {
 RECO_HIA_list <- calc_HIA(data_list = RECO_walkers_list,
                           rr_table = reduc_rr_table,
                           dw_table = dw_table,
-                          week_base = week_base,
                           dis_vec = dis_vec,
                           bound_vec = bound_vec)
 
