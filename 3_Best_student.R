@@ -67,8 +67,8 @@ emp_main_walk_trip <- emp_main_walk_trip %>%
       select(ident_ind, age_grp10, area_type, pond_indc) %>%
       distinct() %>%
       group_by(age_grp10, area_type) %>%
-      summarise(pop_age_area = sum(pond_indc, na.rm = TRUE),
-      .groups = "drop"), by = c("age_grp10", "area_type"))
+      summarise(pop_age_area = sum(pond_indc, na.rm = TRUE), .groups = "drop"), 
+      by = c("age_grp10", "area_type"))
 
 
 # Sum steps by individual, area type, and disease
@@ -121,15 +121,58 @@ emp_main_walk_trip <- emp_main_walk_trip %>%
 
 
 # Calculate target to reach for each individual depending on their area type and age group
+#(steps per person by age group and area type)
 emp_main_walk_trip <- emp_main_walk_trip %>% 
-  mutate(target_step = rho * case_when(
-    area_type == "urban" ~ urban_target,
-    area_type == "periurban" ~ periurban_target,
-    area_type == "rural" ~ rural_target,
-    TRUE ~ NA_real_
-  ) / sum(rho*pop_age_area))
+  group_by(area_type) %>%
+  mutate(
+    target_area = case_when(
+      area_type == "urban" ~ urban_target,
+      area_type == "periurban" ~ periurban_target,
+      area_type == "rural" ~ rural_target),
+    
+    # structural weights
+    weight = rho * pop_age_area,
+    
+    # average distribution coefficient for the area type
+    rho_bar = sum(weight, na.rm = TRUE) / sum(pop_age_area, na.rm = TRUE),
+    
+    # target steps per person for each individual, adjusted by the distribution coefficient and population structure
+    target_pp = target_area * (rho / rho_bar)) %>%
+
+  ungroup()
 
 
+################################################################################################################################
+#                                                   5. DATA PREPARATION                                                        #
+################################################################################################################################
+
+# Filter individuals below targets
+walk_below_targets <- emp_main_walk_trip  %>% 
+  filter(total_steps < target_pp)
+
+
+# separate diseases
+
+
+
+################################################################################################################################
+#                                                6. HEALTH IMPACT ASSESSMENT                                                   #
+################################################################################################################################
+
+
+
+################################################################################################################################
+#                                                     7. VISUALIZATION                                                         #
+################################################################################################################################
+
+
+
+################################################################################################################################
+#                                                      8. DESCRIPTION                                                          #
+################################################################################################################################
+
+
+# Description : how many people below the tragets and age/sex distribution below targets gy area type
 # Filter individuals below targets ? and do HIA (to know the added value)
   ################## See how to integrate that later ----
   # Check if individuals meet the targets
