@@ -151,8 +151,30 @@ walk_below_targets <- emp_main_walk_trip  %>%
   filter(total_steps < target_pp)
 
 
+# Initialization
+walk_below_targets <- walk_below_targets %>% 
+  # Round the number of steps to the nearest hundred and enforce a minimum of 2000
+  mutate(step = pmin(12000, pmax(2000, 2000 + round((target_pp - total_steps) / 100) * 100)))
+
+
+
+# EMP Dataset per disease and bound
+walkers_list <- list()
+
+for(bound in bound_vec) {
+  bound_list <- list()
+  
+  for(dis in dis_vec) {
+    dis_walkers <- emp_walk %>% filter(disease == dis)
+    
+    bound_list[[dis]] <- dis_walkers
+  }
+  
+  walkers_list[[bound]] <- bound_list
+}
 # separate diseases
 
+# Baseline : step 2000
 
 
 ################################################################################################################################
@@ -202,4 +224,8 @@ walk_below_targets <- emp_main_walk_trip  %>%
     )
   print(by_area)
 
-# data preparation for HIA
+
+# same for above targets
+# Filter individuals above targets
+walk_above_targets <- emp_main_walk_trip  %>% 
+  filter(total_steps > target_pp)
