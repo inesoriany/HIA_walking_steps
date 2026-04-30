@@ -58,7 +58,7 @@ source(here("0_Functions.R"))
 source(here("0_Parameters.R"))
 
 # Diseases considered
-dis_vec = c("mort", "bc", "cvd", "cancer", "diab2", "dem", "dep")
+dis_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")    # No breast cancer
 
 # Bound
 bound_vec <- c("mid", "low", "up")
@@ -139,7 +139,8 @@ HIA_list <- calc_HIA(data_list = walkers_list,
                        dis_vec = dis_vec,
                        bound_vec = bound_vec)
 
-
+HIA_df <- bind_rows(HIA_list, .id = "bound")
+export(HIA_df, here("data_clean", "HIA_list_2019.xlsx"))
 
 
 

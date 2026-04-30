@@ -55,7 +55,7 @@ source(here("0_Functions.R"))
 source(here("0_Parameters.R"))
 
 # Diseases considered
-dis_vec <- c("mort", "cvd", "bc", "cancer", "diab2", "dem", "dep")
+dis_vec <- c("mort", "cvd", "cancer", "diab2", "dem", "dep")
 
 
 # HIA outcomes

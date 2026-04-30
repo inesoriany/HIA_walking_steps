@@ -450,7 +450,21 @@ walk_above_targets <- emp_main_walk_trip  %>%
 ################################################################################################################################
 #                                                      9. EXPORT DATA                                                          #
 ################################################################################################################################
+# Tables
+export(burden_target, here("output", "Tables", "Best student", "cases_prev_target.xlsx"))
+export(burden_target_area, here("output", "Tables", "Best student", "cases_prev_target_area.xlsx"))
+export(burden_target_area_age, here("output", "Tables", "Best student", "cases_prev_target_area_age.xlsx"))
+export(burden_target_area_sex, here("output", "Tables", "Best student", "cases_prev_target_area_sex.xlsx"))
+export(burden_target_area_sex_age, here("output", "Tables", "Best student", "cases_prev_target_area_sex_age.xlsx"))
 
+
+# Plot 
+ggsave(here("output", "Plots", "Best student", "tot_cases_prevented.png"), plot = plot_cases_prev_by_area)
+ggsave(here("output", "Plots", "Best student", "cases_prevented_area.png"), plot = plot_cases_prev_by_area_disease)
+ggsave(here("output", "Plots", "Best student", "tot_cases_prevented_age.png"), plot = plot_cases_prev_by_age_area)
+ggsave(here("output", "Plots", "Best student", "cases_prevented_age.png"), plot = plot_cases_prev_by_age_area_disease)
+ggsave(here("output", "Plots", "Best student", "tot_cases_prevented_sex.png"), plot = plot_cases_prev_by_sex_area)
+ggsave(here("output", "Plots", "Best student", "cases_prevented_sex.png"), plot = plot_cases_prev_by_sex_area_disease)
 
 
 
