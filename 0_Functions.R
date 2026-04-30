@@ -652,43 +652,53 @@ calc_IC_Rubin = function(data, outcome){
 
 # FUNCTION HIA_burden_IC : Get a table with HIA outcomes and IC 
   # set.seed() if use calc_replicate_IC
-HIA_burden_IC = function(data, dis_vec, sex_vec, outcome_vec, IC_func){
+  HIA_burden_IC = function(data, dis_vec, outcome_vec, IC_func){
   
   HIA_burden <- data.frame()
   
-  # Extract unique age_grp10 values from data
-  age_vec <- unique(data$age_grp10)
+  presence_age <- "age_grp10" %in% names(data)
+  presence_sex <- "sex" %in% names(data)
   
-  # If sex_vec is NULL → no loop for sex
-  if (is.null(sex_vec)) sex_vec <- NA
+
+  age_vec <- if (presence_age) unique(data$age_grp10) else NA
+  sex_vec <- if (presence_sex && !is.null(sex_vec)) sex_vec else NA
   
   for (dis in dis_vec){
     for (age in age_vec){
-      for (sex in sex_vec){
+      for (sexe in sex_vec){
         
-        data_sub <- data %>%
-          filter(
-            disease == dis,
-            age_grp10 == age,
-            if (!is.na(sex)) sex == sex else TRUE
-          )
+        data_sub <- data
+        
+        # Filtre maladie
+        data_sub <- filter(data_sub, disease == dis)
+        
+        # Filtre âge (si colonne existe)
+        if (presence_age && !is.na(age)) {
+          data_sub <- filter(data_sub, age_grp10 == age)
+        }
+        
+        # Filtre sexe (si colonne existe)
+        if (presence_sex && !is.na(sexe)) {
+          data_sub <- filter(data_sub, sex == sexe)
+        }
         
         if (nrow(data_sub) == 0) next
         
-        row <- data.frame(
-          disease = dis,
-          age_grp10 = age,
-          sex = if (!is.na(sex)) sex else NA
-        )
+        # Construire ligne dynamiquement
+        row <- data.frame(disease = dis)
+        
+        if (presence_age) row$age_grp10 <- age
+        if (presence_sex) row$sex <- if (!is.na(sexe)) sexe else NA
         
         for (out in outcome_vec){
           IC <- IC_func(data_sub, out)
-          row[[out]] <- round(IC[2], 3)                         # Median
-          row[[paste0(out, "_low")]] <- round(IC[1], 3)         # Low bound
-          row[[paste0(out, "_sup")]] <- round(IC[3], 3)         # Up bound
+          
+          row[[out]] <- round(IC[2], 3)
+          row[[paste0(out, "_low")]] <- round(IC[1], 3)
+          row[[paste0(out, "_sup")]] <- round(IC[3], 3)
         }
         
-        HIA_burden <- bind_rows(HIA_burden, row)
+        HIA_burden <- dplyr::bind_rows(HIA_burden, row)
       }
     }
   }
