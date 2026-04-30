@@ -58,7 +58,7 @@ colors_sex <- c(
 
 ## DEPRESSION ----
   # Duration of a depression episode
-  duration_dep <- 2      # months
+  duration_dep <- 6      # months
 
 
 
