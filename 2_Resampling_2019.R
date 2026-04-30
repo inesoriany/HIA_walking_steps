@@ -62,9 +62,6 @@ dis_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
 # HIA outcomes
 outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 
-# Sex categories
-sex_vec <- c("Female", "Male")
-
 
 
 
