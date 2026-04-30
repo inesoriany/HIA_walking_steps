@@ -61,12 +61,6 @@ dis_vec <- c("mort", "cvd", "cancer", "diab2", "dem", "dep")
 # HIA outcomes
 outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 
-# Age categories
-age_vec <- c("20-24", "25-34", "35-44", "45-54", "55-64", "65-75", "75-89")
-
-# Sex categories
-sex_vec <- c("Female", "Male")
-
 
 
 ################################################################################################################################
@@ -140,8 +134,7 @@ RECO_burden_replicate <- import(here("output", "RDS", "7000 steps", "Resampling"
 # IC95 and median 
 # Per disease
 set.seed(123)
-RECO_burden_per_disease <- HIA_burden_IC(RECO_burden_replicate, dis_vec, NULL, NULL, outcome_vec, calc_replicate_IC) %>% 
-  select(-c(age_grp10, sex))
+RECO_burden_per_disease <- HIA_burden_IC(RECO_burden_replicate, dis_vec, outcome_vec, calc_replicate_IC) 
 
 # Total for morbidity
 RECO_burden_morbidity <- RECO_burden_per_disease %>%
@@ -169,8 +162,7 @@ RECO_burden <- bind_rows(RECO_burden_per_disease, RECO_burden_morbidity, RECO_bu
 # RUBIN'S RULE
 # --------------------------------------
 # Per disease
-RECO_Rubin_burden_per_disease <- HIA_burden_IC(RECO_burden_replicate, dis_vec, NULL, NULL, outcome_vec, calc_IC_Rubin) %>% 
-  select(-c(age_grp10, sex))
+RECO_Rubin_burden_per_disease <- HIA_burden_IC(RECO_burden_replicate, dis_vec, outcome_vec, calc_IC_Rubin)
 
 # Total for morbidity
 RECO_Rubin_burden_morbidity <- RECO_Rubin_burden_per_disease %>%
@@ -193,7 +185,14 @@ RECO_Rubin_burden <- bind_rows(RECO_Rubin_burden_per_disease,RECO_Rubin_burden_m
 
 
 ################################################################################################################################
-#                                                      11. EXPORT DATA                                                         #
+#                                                      11. DESCRIPTION                                                         #
+################################################################################################################################
+# Comparison of DALYs between 2019 and best case scenario
+
+
+
+################################################################################################################################
+#                                                      12. EXPORT DATA                                                         #
 ################################################################################################################################
 
 # Tables of HIA outcomes per simulation
@@ -203,9 +202,3 @@ RECO_Rubin_burden <- bind_rows(RECO_Rubin_burden_per_disease,RECO_Rubin_burden_m
 # Tables of HIA outcomes
   export(RECO_burden, here("output", "Tables", "7000 steps", "Resampling", "HIA_per_disease_7000steps.xlsx"))
   export(RECO_Rubin_burden, here("output", "Tables", "7000 steps", "Resampling", "HIA_per_disease_Rubin_7000steps.xlsx"))
-
-
-
-
-
-
