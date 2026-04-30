@@ -282,7 +282,7 @@ reduc_incidence = function(data) {
 # Goal : To know the number of sick or death years prevented for each individual by walking
 
 # FUNCTION daly : Calculate DALY (Disability-Adjusted Life Years) for each disease
-daly = function(data) { 
+daly = function(data, dis) { 
   data <- data %>% 
     mutate(daly = years_remaining * dw * cases)
   
@@ -339,7 +339,7 @@ calc_HIA <- function(data_list, rr_table, dw_table, dis_vec, bound_vec) {
        dis_data <- reduc_incidence(dis_data)
       
       # 3. DALY prevented
-      dis_data <- daly(dis_data)
+      dis_data <- daly(dis_data, dis)
       
       # 4. Medical costs prevented
       dis_data <- medic_costs(dis_data, dis)
@@ -537,7 +537,7 @@ calc_HIA_replicate = function(data_list, rr_distrib_table, dw_distrib_table, dis
     dis_data <- reduc_incidence(dis_data)
     
     # 4. DALY
-    dis_data <- daly(dis_data)
+    dis_data <- daly(dis_data, dis)
     
     # 5. Economic impact
     dis_data <- medic_costs(dis_data, dis)
