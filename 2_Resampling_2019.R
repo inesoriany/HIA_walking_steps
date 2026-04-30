@@ -193,8 +193,8 @@ burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000
 # IC95 and median 
   # Per disease
   set.seed(123)
-  burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, outcome_vec, calc_replicate_IC) %>% 
-    select(-c(age_grp10, sex))
+  burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, outcome_vec, calc_replicate_IC) 
+
 
   # Total for morbidity
   burden_morbidity <- burden_per_disease %>%
@@ -222,8 +222,7 @@ burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000
 # RUBIN'S RULE
 # --------------------------------------
   # Per disease
-  Rubin_burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, NULL, outcome_vec, calc_IC_Rubin) %>% 
-    select(-c(age_grp10, sex))
+  Rubin_burden_per_disease <- HIA_burden_IC(burden_replicate, dis_vec, outcome_vec, calc_IC_Rubin) 
 
   # Total for morbidity
   Rubin_burden_morbidity <- Rubin_burden_per_disease %>%
@@ -258,15 +257,13 @@ burden_replicate_age <- import(here("output", "RDS", "2019", "Resampling", "HIA_
 # --------------------------------------
 # IC95 and median (Monte Carlo)
 set.seed(123)
-burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, NULL, outcome_vec, calc_replicate_IC)  %>% 
-  select(-c(sex))
+burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, outcome_vec, calc_replicate_IC)
 
 
 # --------------------------------------
 # RUBIN'S RULE
 # --------------------------------------
-Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, NULL, outcome_vec, calc_IC_Rubin) %>% 
-  select(-c(sex))
+Rubin_burden_per_age <- HIA_burden_IC(burden_replicate_age, dis_vec, outcome_vec, calc_IC_Rubin)
 
 
 
