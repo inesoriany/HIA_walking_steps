@@ -1,5 +1,5 @@
 #################################################
-#############     BEST practiceS     #############
+#############     BEST practice     #############
 #################################################
 
 
@@ -57,38 +57,30 @@ bound_vec <- c("mid", "low", "up")
 ################################################################################################################################
 #                                                4. MAIN WALKING TRIPS DATASET                                                 #
 ################################################################################################################################
-# Only exclusively walking trips (no intermodal walk)
-  emp_main_walk_trip <- emp_walk_trip %>% 
-    filter(intermodal_walk_time == 0)
 
-# Add population by age group and area type
-emp_main_walk_trip <- emp_main_walk_trip %>%
-  left_join(emp_main_walk_trip %>%
-      select(ident_ind, age_grp10, area_type, pond_indc) %>%
-      distinct() %>%
-      group_by(age_grp10, area_type) %>%
-      summarise(pop_age_area = sum(pond_indc, na.rm = TRUE), .groups = "drop"), 
-      by = c("age_grp10", "area_type"))
-
-
-# Sum steps by individual, area type, and disease
-steps_by_individual_area_disease <- emp_main_walk_trip %>% 
+# Sum steps by individual, area type, and disease 
+emp_main_walk_trip <- emp_walk_trip %>% 
+  filter(intermodal_walk_time == 0)  %>%                       # Only exclusively walking trips (no intermodal walk)
   group_by(ident_ind, area_type, disease) %>% 
   summarise(
+    sex = first(sex),
+    age_grp10 = first(age_grp10),
+    pond_indc = first(pond_indc),
+    pond_jour = first(pond_jour),
+    years_remaining = first(years_remaining),
+    rate = first(rate),
     total_steps = sum(step_commute, na.rm = TRUE),
     n_trips = n_distinct(ident_dep),
-    pond_indc = first(pond_indc),
-    .groups = "drop"
-  )
+    pop_age_area = sum(pond_indc, na.rm = TRUE),                # Add population by age group and area type
+    .groups = "drop")
 
-# Merge aggregated data back to original trips dataset
-emp_main_walk_trip <- emp_main_walk_trip %>% 
-  left_join(
-    steps_by_individual_area_disease %>% 
-      select(ident_ind, area_type, disease, total_steps, n_trips),
-    by = c("ident_ind", "area_type", "disease")
-  )
 
+
+###########################################################################################################################################################################
+###########################################################################################################################################################################
+#                                                                       HIA - BEST PRACTICE                                                                               #
+###########################################################################################################################################################################
+###########################################################################################################################################################################
 
 ################################################################################################################################
 #                                                   5. AGE DISTRIBUTION                                                        #
@@ -106,7 +98,7 @@ main_jour <- emp_main_walk_trip %>%
 # Walking pyramid : Age distribution of walking volume for each territory (in steps)
 distrib_main_walk_EMP2019 <- main_jour %>% 
   group_by(age_grp10, area_type) %>% 
-  summarise(mean_ind = survey_mean(step_commute, na.rm = TRUE))
+  summarise(mean_ind = survey_mean(total_steps, na.rm = TRUE))
 
 
 # Distribution coefficient by area type
@@ -115,14 +107,14 @@ distrib_main_walk_EMP2019 <- distrib_main_walk_EMP2019 %>%
   mutate(rho = mean_ind / mean_ind[age_grp10 == "20-29"]) %>% 
   ungroup()
 
-emp_main_walk_trip <- emp_main_walk_trip %>% 
+emp_target_main_walk <- emp_main_walk_trip %>% 
   left_join(distrib_main_walk_EMP2019 %>% 
-  select(age_grp10, rho), by = "age_grp10")
+  select(age_grp10, area_type, rho), by = c("age_grp10", "area_type"))
 
 
 # Calculate target to reach for each individual depending on their area type and age group
 #(steps per person by age group and area type)
-emp_main_walk_trip <- emp_main_walk_trip %>% 
+emp_target_main_walk <- emp_target_main_walk %>% 
   group_by(area_type) %>%
   mutate(
     target_area = case_when(
@@ -137,31 +129,20 @@ emp_main_walk_trip <- emp_main_walk_trip %>%
     rho_bar = sum(weight, na.rm = TRUE) / sum(pop_age_area, na.rm = TRUE),
     
     # target steps per person for each individual, adjusted by the distribution coefficient and population structure
-    target_pp = target_area * (rho / rho_bar)) %>%
+    step = target_area * (rho / rho_bar)) %>%
 
   ungroup()
 
 
 
-###########################################################################################################################################################################
-###########################################################################################################################################################################
-#                                                                       HIA - BEST PRACTICE                                                                               #
-###########################################################################################################################################################################
-###########################################################################################################################################################################
-
 ################################################################################################################################
-#                                                   5. DATA PREPARATION                                                        #
+#                                                   6. DATA PREPARATION                                                        #
 ################################################################################################################################
-
-# Filter individuals below targets
-walk_below_targets <- emp_main_walk_trip  %>% 
-  filter(total_steps < target_pp)
-
 
 # Initialization
-walk_below_targets <- walk_below_targets %>% 
-  # Round the number of steps to the nearest hundred and baseline at 2000
-  mutate(step = pmin(12000, round((target_pp - total_steps)/ 10) * 10 + 2000))
+emp_target_main_walk <- emp_target_main_walk %>% 
+  # Round the number of steps to the nearest ten and baseline at 2000
+  mutate(step = pmin(12000, round(step/ 10) * 10 + 2000))
 
 
 
@@ -172,7 +153,7 @@ for(bound in bound_vec) {
   bound_list <- list()
   
   for(dis in dis_vec) {
-    dis_walkers <- walk_below_targets %>% 
+    dis_walkers <- emp_target_main_walk %>% 
     filter(disease == dis)
     
     bound_list[[dis]] <- dis_walkers
@@ -238,7 +219,8 @@ burden_target_area_total <- burden_target_area %>%
 # Bind total to the previous table
 burden_target_area_global <- bind_rows(burden_target_area_order, burden_target_area_total) %>% 
   arrange(area_type, desc(tot_cases_mid)) %>% 
-  mutate(disease = factor(disease, levels = unique(disease)))
+  mutate(disease = factor(disease, levels = unique(disease)))  %>% 
+  select(-c(TOTAL_mixed))
 
 
 
@@ -287,6 +269,25 @@ burden_target_area_sex <- burden_prevented(data_list = HIA_target_list,
 ################################################################################################################################
 #                                                   5. DATA PREPARATION                                                        #
 ################################################################################################################################
+
+# Sum steps by individual, area type, and disease
+steps_by_individual_area_disease <- emp_main_walk_trip %>% 
+  group_by(ident_ind, area_type, disease) %>% 
+  summarise(
+    total_steps = sum(step_commute, na.rm = TRUE),
+    n_trips = n_distinct(ident_dep),
+    pond_indc = first(pond_indc),
+    years_remaining = first(years_remaining),
+    .groups = "drop")
+
+
+# Merge aggregated data back to original trips dataset
+walk_2019 <- emp_main_walk_trip %>% 
+  left_join(
+    steps_by_individual_area_disease %>% 
+      select(ident_ind, area_type, disease, total_steps, n_trips),
+    by = c("ident_ind", "area_type", "disease"))
+
 
 # Initialization
 walk_2019 <- emp_main_walk_trip  %>% 
@@ -391,7 +392,7 @@ DALY_fraction <- burden_target_area_global %>%
     daly_mid_fraction = tot_daly_mid_target / tot_daly_mid_2019,
     daly_low_fraction = tot_daly_low_target / tot_daly_low_2019,
     daly_up_fraction = tot_daly_up_target / tot_daly_up_2019)  %>% 
-  select(-c(TOTAL_mixed_2019))
+  select(-c(TOTAL_mixed_target, TOTAL_mixed_2019))
 
 
 
@@ -399,7 +400,7 @@ DALY_fraction <- burden_target_area_global %>%
 #                                                     9. VISUALIZATION                                                         #
 ################################################################################################################################
 
-
+# Différence avec les niveaux de 2019 à faire apparaître sur les graphiques
 
 ##############################################################
 #                       PER AREA TYPE                        #
@@ -553,6 +554,10 @@ plot_cases_prev_by_sex_area_disease
 
 # Description : how many people below the tragets and age/sex distribution below targets gy area type
 # Filter individuals below targets ? and do HIA (to know the added value)
+# Filter individuals below targets
+walk_below_targets <- emp_main_walk_trip  %>% 
+  filter(total_steps < target_pp)
+
   ################## See how to integrate that later ----
   # Check if individuals meet the targets
   below_targets <- emp_main_walk_trip %>% 
@@ -596,13 +601,16 @@ walk_above_targets <- emp_main_walk_trip  %>%
 # Tables
   # Best practice scenario
   export(burden_target, here("output", "Tables", "Best practice", "cases_prev_target.xlsx"))
-  export(DALY_fraction, here("output", "Tables", "Best practice", "cases_prev_target_area.xlsx"))
+  export(burden_target_area, here("output", "Tables", "Best practice", "cases_prev_target_area.xlsx"))
   export(burden_target_area_age, here("output", "Tables", "Best practice", "cases_prev_target_area_age.xlsx"))
   export(burden_target_area_sex, here("output", "Tables", "Best practice", "cases_prev_target_area_sex.xlsx"))
   export(burden_target_area_sex_age, here("output", "Tables", "Best practice", "cases_prev_target_area_sex_age.xlsx"))
 
   # 2019
   export(burden_2019_area_global, here("output", "Tables", "2019", "cases_prev_2019_area.xlsx"))
+
+  # 2019 vs Best practice
+    export(DALY_fraction, here("output", "Tables", "Best practice", "DALY_prev_fraction.xlsx"))
 
 
 # Plot 
