@@ -16,9 +16,10 @@ pacman :: p_load(
   rio,          # Data importation
   here,         # Localization of files 
   dplyr,        # Data management
+  tidyr,        # Pivot tables
   srvyr,        # Survey
   survey,
-  ggplot2       # Data visualization
+  ggplot2      # Data visualization
 )
 
 
@@ -30,7 +31,7 @@ pacman :: p_load(
 emp_step <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 
 # Risk reductions
-reduc_rr_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_central.xlsx"))
+rr_central_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_central.xlsx"))
 
 # Disability weights
 dw_table <- import(here("data", "dw_table.xlsx"))
@@ -87,7 +88,7 @@ for(bound in bound_vec) {
 ################################################################################################################################
 
 RECO_HIA_list <- calc_HIA(data_list = RECO_walkers_list,
-                          rr_table = reduc_rr_table,
+                          rr_table = rr_central_table,
                           dw_table = dw_table,
                           dis_vec = dis_vec,
                           bound_vec = bound_vec)
@@ -133,6 +134,47 @@ RECO_burden_sex_order <- RECO_burden_sex %>%
 ## -------------------------------------------------------
 ## ADDITIONNAL GAINS
 ## -------------------------------------------------------
+
+# Import 2019 burden prevented
+burden_sex_2019 <- import(here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
+
+# Data preparation
+burden_sex_2019_row <- burden_sex_2019 %>% 
+  rename_with(.fn = ~ paste0(.x, "_2019"),
+              .cols = -c (disease, sex))
+
+RECO_burden_sex_row <- RECO_burden_sex %>% 
+  rename_with(.fn = ~ paste0(.x, "_RECO"),
+              .cols = -c (disease, sex))
+
+
+# Additional prevented cases for each disease
+add_RECO_burden_sex <- burden_sex_2019_row %>%
+  left_join(RECO_burden_sex_row, by = c("disease", "sex"), suffix = c("_2019", "_RECO")) %>%
+  mutate(across(
+    ends_with("_RECO"),
+    ~ . - get(sub("_RECO$", "_2019", cur_column())),
+    .names = "{.col}_diff"
+  ))
+
+
+
+
+
+##############################################################
+
+##############################################################
+# Total of prevented cases
+RECO_burden <- burden_prevented(data_list = RECO_HIA_list, 
+                                    dis_vec = dis_vec,
+                                    bound_vec,
+                                    group = NULL)
+
+
+
+## -------------------------------------------------------
+## ADDITIONNAL GAINS
+## -------------------------------------------------------
 # Import 2019 burden prevented
 burden_2019 <- import(here("output", "Tables", "2019", "cases_prev_2019.xlsx"))
 
@@ -156,41 +198,16 @@ add_RECO_burden <- burden_2019_row %>%
   ))
 
 
-##############################################################
-#                          GLOBAL                            #
-##############################################################
-# Total of prevented cases
-RECO_burden <- burden_prevented(data_list = RECO_HIA_list, 
-                                    dis_vec = dis_vec,
-                                    bound_vec,
-                                    group = NULL)
 
-
-
-## -------------------------------------------------------
-## ADDITIONNAL GAINS
-## -------------------------------------------------------
-# Import 2019 burden prevented
-burden_sex_2019 <- import(here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
-
-# Data preparation
-burden_sex_2019_row <- burden_sex_2019 %>% 
-  rename_with(.fn = ~ paste0(.x, "_2019"),
-              .cols = -c (disease, sex))
-
-RECO_burden_sex_row <- RECO_burden_sex %>% 
-  rename_with(.fn = ~ paste0(.x, "_RECO"),
-              .cols = -c (disease, sex))
-
-
-# Additional prevented cases for each disease
-add_RECO_burden_sex <- burden_sex_2019_row %>%
-  left_join(RECO_burden_sex_row, by = c("disease", "sex"), suffix = c("_2019", "_RECO")) %>%
-  mutate(across(
-    ends_with("_RECO"),
-    ~ . - get(sub("_RECO$", "_2019", cur_column())),
-    .names = "{.col}_diff"
-  ))
+# additionnal gains and DALYs preventive fraction
+DALY_prev_fraction <- RECO_burden_row %>% 
+  inner_join(burden_2019_row,
+    by = c("disease")) %>% 
+  mutate(
+    daly_mid_fraction = 1 - tot_daly_mid_RECO / tot_daly_mid_2019,
+    daly_low_fraction = 1 - tot_daly_low_RECO / tot_daly_low_2019,
+    daly_up_fraction  = 1 - tot_daly_up_RECO  / tot_daly_up_2019)  %>% 
+  select(disease, starts_with("daly"))
 
 
 
@@ -269,6 +286,8 @@ plot_RECO_cases_prev
 # Tables
 export(RECO_burden_sex, here("output", "Tables", "7000 steps", "cases_prev_7000steps.xlsx"))
 export(add_RECO_burden_sex, here("output", "Tables", "7000 steps", "add_cases_prev_7000steps.xlsx"))
+export(DALY_prev_fraction, here("output", "Tables", "7000 steps", "DALY_prev_fraction_7000steps.xlsx"))
+
 
 # Plot 
 ggsave(here("output", "Plots", "7000 steps", "cases_prev_7000steps.png"), plot = plot_RECO_cases_prev)
