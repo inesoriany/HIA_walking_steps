@@ -240,14 +240,11 @@ reduction_risk = function(data_list, rr_table, dis_vec, bound_vec) {
     for(dis in dis_vec) {
       dis_data <- data_list[[bound]][[dis]]
       
-      rr_disease <- ifelse(dis == "bc", "cancer", dis)
-      
       dis_rr <- rr_table %>%
-        filter(disease == rr_disease) %>%
         select(step, reduction_risk = !!sym(paste0("reduction_risk_", bound)))
         
       dis_data <- dis_data %>%
-        left_join(dis_rr, by = "step")
+        left_join(dis_rr, by = "step", relationship = "many-to-many")
       
       bound_list[[dis]] <- dis_data
     }
