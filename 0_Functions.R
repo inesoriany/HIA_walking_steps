@@ -692,7 +692,7 @@ calc_IC_Rubin = function(data, outcome){
           
           row[[out]] <- round(IC[2], 3)
           row[[paste0(out, "_low")]] <- round(IC[1], 3)
-          row[[paste0(out, "_sup")]] <- round(IC[3], 3)
+          row[[paste0(out, "_up")]] <- round(IC[3], 3)
         }
         
         HIA_burden <- dplyr::bind_rows(HIA_burden, row)
