@@ -129,7 +129,7 @@ emp_target_main_walk <- emp_target_main_walk %>%
     rho_bar = sum(weight, na.rm = TRUE) / sum(pop_age_area, na.rm = TRUE),
     
     # target steps per person for each individual, adjusted by the distribution coefficient and population structure
-    step = target_area * (rho / rho_bar)) %>%
+    target_step = target_area * (rho / rho_bar)) %>%
 
   ungroup()
 
@@ -142,7 +142,7 @@ emp_target_main_walk <- emp_target_main_walk %>%
 # Initialization
 emp_target_main_walk <- emp_target_main_walk %>% 
   # Round the number of steps to the nearest ten and baseline at 2000
-  mutate(step = pmin(12000, round(step/ 10) * 10 + 2000))
+  mutate(step = pmin(12000, round(target_step / 10) * 10 + 2000))
 
 
 
@@ -270,25 +270,6 @@ burden_target_area_sex <- burden_prevented(data_list = HIA_target_list,
 #                                                   5. DATA PREPARATION                                                        #
 ################################################################################################################################
 
-# Sum steps by individual, area type, and disease
-steps_by_individual_area_disease <- emp_main_walk_trip %>% 
-  group_by(ident_ind, area_type, disease) %>% 
-  summarise(
-    total_steps = sum(step_commute, na.rm = TRUE),
-    n_trips = n_distinct(ident_dep),
-    pond_indc = first(pond_indc),
-    years_remaining = first(years_remaining),
-    .groups = "drop")
-
-
-# Merge aggregated data back to original trips dataset
-walk_2019 <- emp_main_walk_trip %>% 
-  left_join(
-    steps_by_individual_area_disease %>% 
-      select(ident_ind, area_type, disease, total_steps, n_trips),
-    by = c("ident_ind", "area_type", "disease"))
-
-
 # Initialization
 walk_2019 <- emp_main_walk_trip  %>% 
   # Round the number of steps to the nearest hundred and baseline at 2000
@@ -354,7 +335,8 @@ burden_2019_area <- burden_prevented(data_list = HIA_2019_list,
 burden_2019_area_order <- burden_2019_area %>% 
     left_join(burden_2019 %>% select(disease, TOTAL_mixed = tot_cases_mid), by = "disease") %>% 
     arrange(desc(tot_cases_mid)) %>%                      
-    mutate(disease = factor(disease, levels = unique(disease)))
+    mutate(disease = factor(disease, levels = unique(disease)))  %>% 
+    select(-c(TOTAL_mixed))
 
 
 # Total of health burden per area type
@@ -382,17 +364,17 @@ burden_2019_area_global <- bind_rows(burden_2019_area_order, burden_2019_area_to
 ################################################################################################################################
 #                                                        8. RESULTS                                                            #
 ################################################################################################################################
-# DALYs preventive fraction
-DALY_fraction <- burden_target_area_global %>% 
-  inner_join(
-    burden_2019_area_global,
+
+# additionnal gains and DALYs preventive fraction
+DALY_prev_fraction <- burden_target_area_global %>% 
+  inner_join(burden_2019_area_global,
     by = c("disease", "area_type"),
     suffix = c("_target", "_2019")) %>% 
   mutate(
-    daly_mid_fraction = tot_daly_mid_target / tot_daly_mid_2019,
-    daly_low_fraction = tot_daly_low_target / tot_daly_low_2019,
-    daly_up_fraction = tot_daly_up_target / tot_daly_up_2019)  %>% 
-  select(-c(TOTAL_mixed_target, TOTAL_mixed_2019))
+    daly_mid_fraction = 1 - tot_daly_mid_target / tot_daly_mid_2019,
+    daly_low_fraction = 1 - tot_daly_low_target / tot_daly_low_2019,
+    daly_up_fraction  = 1 - tot_daly_up_target  / tot_daly_up_2019) %>% 
+  select(disease, area_type, starts_with("daly"))
 
 
 
@@ -406,7 +388,7 @@ DALY_fraction <- burden_target_area_global %>%
 #                       PER AREA TYPE                        #
 ##############################################################
 # Plot : Total cases prevented per area type
-plot_cases_prev_by_area <- burden_target_area_order %>% filter (disease != "bc")  %>% 
+plot_cases_prev_by_area <- burden_target_area_order %>% 
   ggplot(aes(x = area_type, y = tot_cases_mid, fill = area_type)) +
   geom_col(width = 0.7) +
   scale_fill_manual(values = c("urban" = "#1f78b4", "periurban" = "#33a02c", "rural" = "#e31a1c")) +
@@ -425,7 +407,7 @@ plot_cases_prev_by_area
 
 
 # Plot : Cases prevented by disease and area type
-plot_cases_prev_by_area_disease <- burden_target_area_order  %>% filter (disease != "bc")  %>% 
+plot_cases_prev_by_area_disease <- burden_target_area_order  %>% 
   ggplot(aes(x = disease, y = tot_cases_mid, fill = area_type)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.7) +
   scale_fill_manual(values = c("urban" = "#1f78b4", "periurban" = "#33a02c", "rural" = "#e31a1c")) +
@@ -449,7 +431,7 @@ plot_cases_prev_by_area_disease
 #                    PER AGE AND AREA TYPE                   #
 ##############################################################
 # Plot : Cases prevented by age groups, separated by area type
-plot_cases_prev_by_age_area <- burden_target_area_age %>% filter (disease != "bc")  %>% 
+plot_cases_prev_by_age_area <- burden_target_area_age %>% 
   filter(disease != "bc") %>% 
   ggplot(aes(x = age_grp10, y = tot_cases_mid, fill = age_grp10)) +
   geom_col() +
@@ -474,7 +456,6 @@ plot_cases_prev_by_age_area
 
 # Plot : Cases prevented by age group and disease, separated by area type
 plot_cases_prev_by_age_area_disease <- burden_target_area_age %>% 
-  filter(disease != "bc") %>% 
   ggplot(aes(x = age_grp10, y = tot_cases_mid, fill = disease)) +
   geom_col(position = position_dodge(width = 0.9), width = 0.8) +
   facet_wrap(~ area_type, scales = "free_x") +
@@ -501,7 +482,6 @@ plot_cases_prev_by_age_area_disease
 ##############################################################
 # Plot : Cases prevented by sex, separated by area type
 plot_cases_prev_by_sex_area <- burden_target_area_sex %>% filter (disease != "bc")  %>% 
-  filter(disease != "bc") %>% 
   ggplot(aes(x = sex, y = tot_cases_mid, fill = sex)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.7) +
   facet_wrap(~ area_type) +
@@ -525,7 +505,6 @@ plot_cases_prev_by_sex_area
 
 # Plot : Cases prevented by sex and disease, separated by area type
 plot_cases_prev_by_sex_area_disease <- burden_target_area_sex %>% 
-  filter(disease != "bc") %>% 
   ggplot(aes(x = sex, y = tot_cases_mid, fill = disease)) +
   geom_col(position = position_dodge(width = 0.9), width = 0.8) +
   facet_wrap(~ area_type) +
@@ -556,7 +535,7 @@ plot_cases_prev_by_sex_area_disease
 # Filter individuals below targets ? and do HIA (to know the added value)
 # Filter individuals below targets
 walk_below_targets <- emp_main_walk_trip  %>% 
-  filter(total_steps < target_pp)
+  filter(total_steps < step_target)
 
   ################## See how to integrate that later ----
   # Check if individuals meet the targets
@@ -610,7 +589,7 @@ walk_above_targets <- emp_main_walk_trip  %>%
   export(burden_2019_area_global, here("output", "Tables", "2019", "cases_prev_2019_area.xlsx"))
 
   # 2019 vs Best practice
-    export(DALY_fraction, here("output", "Tables", "Best practice", "DALY_prev_fraction.xlsx"))
+  export(DALY_prev_fraction, here("output", "Tables", "Best practice", "DALY_prev_fraction.xlsx"))
 
 
 # Plot 
@@ -620,6 +599,3 @@ ggsave(here("output", "Plots", "Best practice", "tot_cases_prevented_age.png"), 
 ggsave(here("output", "Plots", "Best practice", "cases_prevented_age.png"), plot = plot_cases_prev_by_age_area_disease)
 ggsave(here("output", "Plots", "Best practice", "tot_cases_prevented_sex.png"), plot = plot_cases_prev_by_sex_area)
 ggsave(here("output", "Plots", "Best practice", "cases_prevented_sex.png"), plot = plot_cases_prev_by_sex_area_disease)
-
-
-
