@@ -23,9 +23,6 @@ pacman :: p_load(
 #                                                     2. IMPORT DATA                                                           #
 ################################################################################################################################
 
-# Household data
-#household <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "tcm_men_public_V3.csv" ))
-
 # Individual data
 ind <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "k_individu_public_V3.csv" ))
 
