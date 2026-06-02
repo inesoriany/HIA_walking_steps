@@ -1,6 +1,6 @@
 # HIA walking
-* Article * 
-DOI : *[link]
+_Article_ 
+DOI : 
 
 ## Files:
 ### data
