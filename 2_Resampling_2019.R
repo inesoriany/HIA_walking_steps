@@ -56,7 +56,7 @@ source(here("0_Functions.R"))
 source(here("0_Parameters.R"))
 
 # Diseases considered
-dis_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
+dis_vec <- c("mort", "cancer", "cvd", "diab2", "dem", "dep")
 
 
 # HIA outcomes
@@ -71,8 +71,8 @@ outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 
 # Initialization
 emp_long <- emp_long %>% 
-  # Round the number of steps to the nearest hundred and baseline at 2000 steps
-  mutate(step = pmin(12000, round(step_commute / 100) * 100 + baseline_step))
+  # Round the number of steps to the nearest ten and baseline at 2000 steps
+  mutate(step = pmin(12000, round(step_commute / 10) * 10 + baseline_step))
 
 
 # EMP Dataset per disease
@@ -126,6 +126,7 @@ dw_distrib_table <- dw_distrib_table  %>%
 #                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
 ################################################################################################################################
 # Calculate for each individual the number of prevented cases, DALY and costs with the 1000 simulated parameters
+  # Increase memory limit - mem.maxVSize()
 HIA_replicate_list <- calc_HIA_replicate(data_list = replicate_list,
                                         rr_distrib_table = rr_distrib_table,
                                         dw_distrib_table = dw_distrib_table,
@@ -153,6 +154,20 @@ burden_replicate <- burden_replicate_prevented(data_list = HIA_replicate_list,
   
 # Export : Table of HIA outcomes per simulation
 export(burden_replicate, here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
+
+
+##############################################################
+#                        PER SEX                             #
+##############################################################
+# Total of prevented burden per sex for each simulation
+burden_replicate_sex <- burden_replicate_prevented(data_list = HIA_replicate_list,
+                                                   dis_vec,
+                                                   group = "sex",
+                                                   N = 1000)
+
+
+# Export : Table of HIA outcomes per simulation
+export(burden_replicate_sex, here("output", "RDS", "2019", "Resampling", "HIA_per_sex_1000replicate.rds"))
 
 
 ##############################################################
@@ -242,6 +257,29 @@ burden_replicate <- import(here("output", "RDS", "2019", "Resampling", "HIA_1000
 
 
 ##############################################################
+#                         PER SEX                            #
+##############################################################
+
+# Import data
+burden_replicate_sex <- import(here("output", "RDS", "2019", "Resampling", "HIA_per_sex_1000replicate.rds"))
+
+
+# --------------------------------------
+# MONTE-CARLO
+# --------------------------------------
+# IC95 and median (Monte Carlo)
+set.seed(123)
+burden_per_sex <- HIA_burden_IC(burden_replicate_sex, dis_vec, outcome_vec, calc_replicate_IC)
+
+
+# --------------------------------------
+# RUBIN'S RULE
+# --------------------------------------
+Rubin_burden_per_sex <- HIA_burden_IC(burden_replicate_sex, dis_vec, outcome_vec, calc_IC_Rubin)
+
+
+
+##############################################################
 #                         PER AGE                            #
 ##############################################################
 
@@ -301,8 +339,29 @@ reduc_mortality_risk_IC <- data.frame(
 #                                                     9. VISUALIZATION                                                         #
 ################################################################################################################################
 
+# Plot : Cases prevented by walking in 2019 according to sex
+plot_cases_prev <- burden_per_sex %>% 
+  mutate(disease = factor(disease, levels = c("mort", "cancer", "cvd", "diab2", "dem", "dep"))) %>%
+  ggplot(aes(x = disease, y = tot_cases, ymin = tot_cases_low, ymax = tot_cases_up, fill = sex)) +
+  geom_bar(width = 0.7, position = position_dodge2(.7), stat = "identity")  +
+  geom_errorbar(position = position_dodge(.7), width = .25) +
+  scale_fill_manual(values = colors_sex) +
+  scale_x_discrete(labels = names_disease) + 
+  ylab ("Cases prevented") +
+  xlab("Disease") +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(vjust = -0.5),
+    axis.text.x.top = element_blank(),      # delete labels X at the top
+    axis.ticks.x.top = element_blank()      # delete ticks X at the top
+  )
+
+plot_cases_prev
+
+
+
 # Plot : Median DALY prevented by walking in 2019 according to age group
-plot_daly_prevented <- burden_per_age %>% filter(disease != "bc") %>% 
+plot_daly_prevented <- burden_per_age %>% 
   ggplot(aes(x = age_grp10, y = tot_daly, fill = disease)) +
   geom_bar(width = 0.7, position = "stack", stat = "identity")  +
   scale_fill_manual(values = colors_disease, labels = names_disease) +
@@ -448,6 +507,7 @@ soc_euro_unit_2019 <- soc_euro_step_unit_2019 %>%
 #                                                      11. EXPORT DATA                                                         #
 ################################################################################################################################
 # Plot
+  ggsave(here("output", "Plots", "2019", "cases_prevented.png"), plot = plot_cases_prev)
   ggsave(here("output", "Plots", "2019", "DALY_prevented.png"), plot = plot_daly_prevented)
 
 
@@ -458,12 +518,15 @@ soc_euro_unit_2019 <- soc_euro_step_unit_2019 %>%
   
 # Tables of HIA outcomes per simulation
   export(burden_replicate, here("output", "RDS", "2019", "Resampling", "HIA_1000replicate.rds"))
+  export(burden_replicate_sex, here("output", "RDS", "2019", "Resampling", "HIA_per_sex_1000replicate.rds"))
   export(burden_replicate_age, here("output", "RDS", "2019", "Resampling", "HIA_per_age_1000replicate.rds"))
 
   
 # Tables of HIA outcomes
   export(burden, here("output", "Tables", "2019", "Resampling", "HIA_per_disease.xlsx"))
   export(Rubin_burden, here("output", "Tables", "2019", "Resampling", "HIA_per_disease_Rubin.xlsx"))
+  export(burden_per_sex, here("output", "Tables", "2019", "Resampling", "HIA_per_sex.xlsx"))
+  export(burden_per_sex, here("output", "Tables", "2019", "Resampling", "HIA_per_sex_Rubin.xlsx"))
   export(burden_per_age, here("output", "Tables", "2019", "Resampling", "HIA_per_age.xlsx"))
   export(Rubin_burden_per_age, here("output", "Tables", "2019", "Resampling", "HIA_per_age_Rubin.xlsx"))
 
