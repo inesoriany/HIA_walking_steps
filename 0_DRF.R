@@ -77,8 +77,7 @@ for (dis in dis_vec) {
     rename(
       !!paste0(dis, "_mid") := !!sym(paste0(dis, ".x")),
       !!paste0(dis, "_low") := !!sym(paste0(dis, ".y")),
-      !!paste0(dis, "_up")  := !!sym(paste0(dis))
-    )
+      !!paste0(dis, "_up")  := !!sym(paste0(dis)))
 }
   
 

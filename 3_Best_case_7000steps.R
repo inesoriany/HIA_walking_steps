@@ -1,11 +1,14 @@
 #################################################
-############ HEALTH IMPACT ASSESSMENT ###########
+##########      BEST CASE SCENARIO      #########
+##########          Monte Carlo         #########
 #################################################
 
 
+
+
 ###########################################################################################################################################################################
 ###########################################################################################################################################################################
-#                                                                       HIA - 7 000 STEPS                                                                                 #
+#                                                                       HIA - 7000 steps                                                                                  #
 ###########################################################################################################################################################################
 ###########################################################################################################################################################################
 
@@ -16,11 +19,13 @@ pacman :: p_load(
   rio,          # Data importation
   here,         # Localization of files 
   dplyr,        # Data management
-  tidyr,        # Pivot tables
+  stringr,      # Text extraction
   srvyr,        # Survey
   survey,
-  ggplot2      # Data visualization
+  ggplot2,      # Data visualization
+  progress      # Progression bar
 )
+
 
 
 ################################################################################################################################
@@ -28,13 +33,18 @@ pacman :: p_load(
 ################################################################################################################################
 
 # Walkers dataset
-emp_step <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
+emp_long <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 
-# Risk reductions
-rr_central_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_central.xlsx"))
 
-# Disability weights
-dw_table <- import(here("data", "dw_table.xlsx"))
+# Incidence distribution table
+incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
+
+# Risk reduction distribution table
+reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
+
+# Disability weights distribution table
+dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx"))
+
 
 # Import functions
 source(here("0_Functions.R"))
@@ -49,36 +59,30 @@ source(here("0_Functions.R"))
 source(here("0_Parameters.R"))
 
 # Diseases considered
-dis_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
+dis_vec <- c("mort", "cvd", "cancer", "diab2", "dem", "dep")
 
-# Bound
-bound_vec <- c("mid", "low", "up")
+# HIA outcomes
+outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
+
 
 
 ################################################################################################################################
-#                                                    4. DATA PREPARATION                                                       #
+#                                                    3. DATA PREPARATION                                                       #
 ################################################################################################################################
 
 # Initialization
-emp_step <- emp_step %>% 
+BEST_emp_long <- emp_long %>% 
   # Recommendation of 7000 steps and baseline at 2000
   mutate(step = 7000 + baseline_step)
 
 
-# EMP Dataset per disease
-RECO_walkers_list <- list()
 
-for(bound in bound_vec) {
-  bound_list <- list()
-  
-  for(dis in dis_vec) {
-    dis_walkers <- emp_step %>%
-      filter(disease == dis)
-    
-    bound_list[[dis]] <- dis_walkers
-  }
-  
-  RECO_walkers_list[[bound]] <- bound_list
+# EMP Dataset per disease
+BEST_replicate_list <- list() 
+
+for (dis in dis_vec) {
+  BEST_replicate_list[[dis]] <- BEST_emp_long %>% 
+    filter(disease == dis)
 }
 
 
@@ -87,217 +91,252 @@ for(bound in bound_vec) {
 #                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
 ################################################################################################################################
 
-RECO_HIA_list <- calc_HIA(data_list = RECO_walkers_list,
-                          rr_table = rr_central_table,
-                          dw_table = dw_table,
-                          dis_vec = dis_vec,
-                          bound_vec = bound_vec)
+##############################################################
+#                      ALL DISEASES                          #
+##############################################################
+# Total of prevented burden of each disease for each simulation 
+set.seed(123)
+BEST_burden_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+                                 dis_vec, 
+                                 vsl, 
+                                 group = NULL,
+                                 N = 1000)
+
+  
+# Export : Table of HIA outcomes per simulation
+export(BEST_burden_total, here("output", "RDS", "7000 steps", "Monte Carlo", "HIA_1000replicate.rds"))
+
+
+##############################################################
+#                        PER SEX                             #
+##############################################################
+# Total of prevented burden of each disease per sex for each simulation
+set.seed(123)
+BEST_burden_sex_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+                                 dis_vec, 
+                                 vsl, 
+                                 group ="sex", 
+                                 N = 1000)
+
+
+# Export : Table of HIA outcomes per simulation
+export(BEST_burden_sex_total, here("output", "RDS", "7000 steps", "Monte Carlo", "HIA_per_sex_1000replicate.rds"))
+
+
+
+##############################################################
+#                        PER AGE                             #
+##############################################################
+# Total of prevented burden of each disease per age for each simulation
+set.seed(123)
+BEST_burden_age_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+                                     dis_vec, 
+                                     vsl, 
+                                     group = "age_grp10", 
+                                     N = 1000)
+
+# Export : Table of HIA outcomes per simulation
+export(BEST_burden_age_total, here("output", "RDS", "7000 steps", "Monte Carlo", "HIA_per_age_1000replicate.rds"))
 
 
 
 
 ################################################################################################################################
-#                                   5. HIA OUTCOMES : Total of prevented cases, DALY, costs                                    #
+#                         5. IC and MEDIAN - TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                        #
 ################################################################################################################################
 
 ##############################################################
-#                        PER DISEASE                         #
-##############################################################
-RECO_burden <- burden_prevented(data_list = RECO_HIA_list, 
-                                dis_vec = dis_vec,
-                                bound_vec,
-                                group = NULL)
-
-
-##############################################################
-#                          PER SEX                           #
-##############################################################
-RECO_burden_sex <- burden_prevented(data_list = RECO_HIA_list, 
-                                    dis_vec = dis_vec,
-                                    bound_vec,
-                                    group = "sex")
-
-
-
-
-
-## -------------------------------------------------------
-## DECREASING ORDER
-## -------------------------------------------------------
-RECO_burden_sex_order <- RECO_burden_sex %>% 
-  left_join(RECO_burden %>% select(disease, TOTAL_mixed = tot_cases_mid), by = "disease") %>% 
-  arrange(desc(tot_cases_mid)) %>%                      
-  mutate(disease = factor(disease, levels = unique(disease))) 
-
-
-
-## -------------------------------------------------------
-## ADDITIONNAL GAINS
-## -------------------------------------------------------
-
-# Import 2019 burden prevented
-burden_sex_2019 <- import(here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
-
-# Data preparation
-burden_sex_2019_row <- burden_sex_2019 %>% 
-  rename_with(.fn = ~ paste0(.x, "_2019"),
-              .cols = -c (disease, sex))
-
-RECO_burden_sex_row <- RECO_burden_sex %>% 
-  rename_with(.fn = ~ paste0(.x, "_RECO"),
-              .cols = -c (disease, sex))
-
-
-# Additional prevented cases for each disease
-add_RECO_burden_sex <- burden_sex_2019_row %>%
-  left_join(RECO_burden_sex_row, by = c("disease", "sex"), suffix = c("_2019", "_RECO")) %>%
-  mutate(across(
-    ends_with("_RECO"),
-    ~ . - get(sub("_RECO$", "_2019", cur_column())),
-    .names = "{.col}_diff"
-  ))
-
-
-
-
-
+#                       PER DISEASES                         #
 ##############################################################
 
+# Import data
+BEST_burden_total <- import(here("output", "RDS", "7000 steps", "Monte Carlo", "HIA_1000replicate.rds"))
+
+
+# --------------------------------------
+# MONTE-CARLO
+# --------------------------------------
+# IC95 and median 
+  # Per disease
+  set.seed(123)
+  BEST_burden_per_disease <- HIA_burden_IC(BEST_burden_total, dis_vec, outcome_vec, calc_replicate_IC) 
+
+
+  # Total for morbidity
+  BEST_burden_morbidity <- BEST_burden_per_disease %>%
+    filter(disease != "mort") %>% 
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "Morbidity") %>%
+    select(disease, everything()) 
+  
+  
+  # Total for all diseases
+  BEST_burden_global <- BEST_burden_per_disease %>%
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "All") %>%
+    select(disease, everything()) 
+  
+  # Gather results
+  BEST_burden <- bind_rows(BEST_burden_per_disease, BEST_burden_morbidity, BEST_burden_global)
+  
+
+  
+  
+# --------------------------------------
+# RUBIN'S RULE
+# --------------------------------------
+  # Per disease
+  BEST_Rubin_burden_per_disease <- HIA_burden_IC(BEST_burden_total, dis_vec, outcome_vec, calc_IC_Rubin) 
+
+  # Total for morbidity
+  BEST_Rubin_burden_morbidity <- BEST_Rubin_burden_per_disease %>%
+    filter(disease != "mort") %>% 
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "Morbidity") %>%
+    select(disease, everything()) 
+  
+  # Total for all diseases
+  BEST_Rubin_burden_global <- BEST_Rubin_burden_per_disease %>%
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "All") %>%
+    select(disease, everything()) 
+  
+  # Gather results
+ BEST_Rubin_burden <- bind_rows(BEST_Rubin_burden_per_disease, BEST_Rubin_burden_morbidity, BEST_Rubin_burden_global)
+
+
+
+
 ##############################################################
-# Total of prevented cases
-RECO_burden <- burden_prevented(data_list = RECO_HIA_list, 
-                                    dis_vec = dis_vec,
-                                    bound_vec,
-                                    group = NULL)
+#                         PER SEX                            #
+##############################################################
+
+# Import data
+BEST_burden_sex_total <- import(here("output", "RDS", "7000 steps", "Monte Carlo", "HIA_per_sex_1000replicate.rds"))
+
+
+# --------------------------------------
+# MONTE-CARLO
+# --------------------------------------
+# IC95 and median (Monte Carlo)
+set.seed(123)
+BEST_burden_per_sex <- HIA_burden_IC(BEST_burden_sex_total, dis_vec, outcome_vec, calc_replicate_IC)
+
+
+# --------------------------------------
+# RUBIN'S RULE
+# --------------------------------------
+BEST_Rubin_burden_per_sex <- HIA_burden_IC(BEST_burden_sex_total, dis_vec, outcome_vec, calc_IC_Rubin)
 
 
 
-## -------------------------------------------------------
-## ADDITIONNAL GAINS
-## -------------------------------------------------------
-# Import 2019 burden prevented
-burden_2019 <- import(here("output", "Tables", "2019", "cases_prev_2019.xlsx"))
+##############################################################
+#                         PER AGE                            #
+##############################################################
 
-# Data preparation
-burden_2019_row <- burden_2019 %>% 
-  rename_with(.fn = ~ paste0(.x, "_2019"),
-              .cols = -c (disease))
-
-RECO_burden_row <- RECO_burden %>% 
-  rename_with(.fn = ~ paste0(.x, "_RECO"),
-              .cols = -c (disease))
+# Import data
+BEST_burden_age_total <- import(here("output", "RDS", "7000 steps", "Monte Carlo", "HIA_per_age_1000replicate.rds"))
 
 
-# Additional prevented cases for each disease
-add_RECO_burden <- burden_2019_row %>%
-  left_join(RECO_burden_row, by = "disease", suffix = c("_2019", "_RECO")) %>%
-  mutate(across(
-    ends_with("_RECO"),
-    ~ . - get(sub("_RECO$", "_2019", cur_column())),
-    .names = "{.col}_diff"
-  ))
+# --------------------------------------
+# MONTE-CARLO
+# --------------------------------------
+# IC95 and median (Monte Carlo)
+set.seed(123)
+BEST_burden_per_age <- HIA_burden_IC(BEST_burden_age_total, dis_vec, outcome_vec, calc_replicate_IC)
 
 
+# --------------------------------------
+# RUBIN'S RULE
+# --------------------------------------
+BEST_Rubin_burden_per_age <- HIA_burden_IC(BEST_burden_age_total, dis_vec, outcome_vec, calc_IC_Rubin)
 
-# additionnal gains and DALYs preventive fraction
-DALY_prev_fraction <- RECO_burden_row %>% 
-  inner_join(burden_2019_row,
-    by = c("disease")) %>% 
-  mutate(
-    daly_mid_fraction = 1 - tot_daly_mid_RECO / tot_daly_mid_2019,
-    daly_low_fraction = 1 - tot_daly_low_RECO / tot_daly_low_2019,
-    daly_up_fraction  = 1 - tot_daly_up_RECO  / tot_daly_up_2019)  %>% 
-  select(disease, starts_with("daly"))
-
-
-
-## -------------------------------------------------------
-## MORBIDITY
-## -------------------------------------------------------
-RECO_burden %>% 
-  filter(disease != "mort") %>% 
-  summarise(tot_cases_mid = sum(tot_cases_mid, na.rm = TRUE),
-            tot_cases_low = sum(tot_cases_low, na.rm = TRUE),
-            tot_cases_up = sum(tot_cases_up, na.rm = TRUE))
-
-
-
-## -------------------------------------------------------
-## ALL DISEASES
-## -------------------------------------------------------
-RECO_burden %>% 
-  summarise(tot_cases_mid = sum(tot_cases_mid, na.rm = TRUE),
-            tot_cases_low = sum(tot_cases_low, na.rm = TRUE),
-            tot_cases_up = sum(tot_cases_up, na.rm = TRUE))
 
 
 
 ################################################################################################################################
-#                                                     6. VISUALIZATION                                                         #
+#                                                     9. VISUALIZATION                                                         #
 ################################################################################################################################
+
 # Import 2019 data
-burden_sex_2019 <- import(here("output", "Tables", "2019", "cases_prev_2019_sex.xlsx"))
+burden_sex_2019 <- import(here("output", "Tables", "2019", "Monte Carlo", "HIA_per_sex.xlsx"))
+
 
 # Plot : Cases prevented had the 2019 population walked 7000 steps according to sex, compared to 2019 levels
-plot_RECO_cases_prev <- 
+plot_BEST_cases_prev <- 
   ggplot() +
-  geom_bar(data = burden_sex_2019 %>%  filter(disease != "bc"),
-           mapping = aes(x = disease, y = tot_cases_mid, fill = sex, alpha = "2019 baseline"),
-           width = 0.7,
-           position = position_dodge2(0.7),
-           stat = "identity") +
-  
-  geom_errorbar(data = burden_sex_2019 %>%  filter(disease != "bc"),
-                mapping = aes(x = disease, ymin = tot_cases_low, ymax = tot_cases_up, group = sex, alpha = "2019 baseline"),
-                position = position_dodge(0.7),
-                width = 0.25) +
-  
+  geom_bar(data = burden_sex_2019 %>%  
+      mutate(disease = factor(disease, levels = c("mort", "cvd", "cancer", "diab2", "dem", "dep"))),
+    mapping = aes(x = disease, y = tot_cases, fill = sex, alpha = "2019 baseline"),
+    width = 0.7,
+    position = position_dodge2(0.7),
+    stat = "identity") +
+  geom_errorbar(data = burden_sex_2019,
+    mapping = aes(x = disease, ymin = tot_cases_low, ymax = tot_cases_up, group = sex, alpha = "2019 baseline"),
+    position = position_dodge(0.7),
+    width = 0.25) +
   scale_fill_manual(values = colors_sex) +
-  
-  
-  geom_bar(data = RECO_burden_sex_order %>%  filter(disease != "bc"), 
-           mapping = aes(x = disease, y = tot_cases_mid, fill = sex, alpha = "7000 steps recommendation"),
-           width = 0.7,
-           position = position_dodge2(0.7),
-           stat = "identity") +
-  scale_alpha_manual(name   = "Scenario",
-                     values = c("2019 baseline" = 1, "7000 steps recommendation" = 0.4)) +
-  
-  geom_errorbar(data = RECO_burden_sex_order %>%  filter(disease != "bc"),
-                mapping = aes(x = disease, ymin = tot_cases_low, ymax = tot_cases_up, group = sex, alpha = "7000 steps recommendation"),
-                position = position_dodge(0.7),
-                width = 0.25) +
-  
+
+  geom_bar(data = BEST_burden_per_sex, 
+    mapping = aes(x = disease, y = tot_cases, fill = sex, alpha = "7000 steps recommendation"),
+    width = 0.7,
+    position = position_dodge2(0.7),
+    stat = "identity") +
+  geom_errorbar(
+    data = BEST_burden_per_sex,
+    mapping = aes(x = disease, ymin = tot_cases_low, ymax = tot_cases_up, group = sex, alpha = "7000 steps recommendation"),
+    position = position_dodge(0.7),
+    width = 0.25) +
+  scale_alpha_manual(
+    name = "Scenario",
+    values = c("2019 baseline" = 1, "7000 steps recommendation" = 0.4)) +
   scale_x_discrete(labels = names_disease) + 
   ylab("Cases prevented") +
   xlab("Disease") +
-  theme_minimal() 
+  theme_minimal()
 
-plot_RECO_cases_prev 
-
-
+plot_BEST_cases_prev 
 
 
 
 
 ################################################################################################################################
-#                                                      8. EXPORT DATA                                                          #
+#                                                      11. EXPORT DATA                                                         #
 ################################################################################################################################
-# Tables
-export(RECO_burden_sex, here("output", "Tables", "7000 steps", "cases_prev_7000steps.xlsx"))
-export(add_RECO_burden_sex, here("output", "Tables", "7000 steps", "add_cases_prev_7000steps.xlsx"))
-export(DALY_prev_fraction, here("output", "Tables", "7000 steps", "DALY_prev_fraction_7000steps.xlsx"))
+# Plot
+  ggsave(here("output", "Plots", "7000 steps", "Monte Carlo", "cases_prevented.png"), plot = plot_BEST_cases_prev)
 
+  
+# Tables of HIA outcomes per simulation
+  export(burden_total, here("output", "RDS", "7000 steps", "Monte Carlo", "HIA_1000replicate.rds"))
+  export(burden_sex_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_per_sex_1000replicate.rds"))
+  export(burden_age_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_per_age_1000replicate.rds"))
 
-# Plot 
-ggsave(here("output", "Plots", "7000 steps", "cases_prev_7000steps.png"), plot = plot_RECO_cases_prev)
+  
+# Tables of HIA outcomes
+  export(burden, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_disease.xlsx"))
+  export(Rubin_burden, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_disease_Rubin.xlsx"))
+  export(burden_per_sex, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_sex.xlsx"))
+  export(burden_per_sex, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_sex_Rubin.xlsx"))
+  export(burden_per_age, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_age.xlsx"))
+  export(Rubin_burden_per_age, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_age_Rubin.xlsx"))
 
-
-
-
-
-
-
-
-
-
+  
+# Table of reduction of mortality risk
+  export(reduc_mortality_risk_IC, here("output", "Tables", "2019", "Monte Carlo", "reduc_mortality_risk.xlsx"))
+  
+  
+# Tables economic unit value
+  # Economic value of 1 km walked
+  export(unit_value_2019, here("output", "Tables", "2019", "Monte Carlo", "1km_value_1000replicate.xlsx"))
+  # Social economic value of 1 km walked
+  export(unit_soc_value_2019, here("output", "Tables", "2019", "Monte Carlo", "1km_soc_value_1000replicate.xlsx"))
+  
+  # Number of steps, distance and duration to save 1€ of medical costs in 2019
+  export(euro_unit_2019, here("output", "Tables", "2019", "Monte Carlo", "1€_step_km_min_1000replicate.xlsx"))
+  # Number of steps, distance and duration to save 1€ of intangible costs in 2019
+  export(soc_euro_unit_2019, here("output", "Tables", "2019", "Monte Carlo", "soc_1€_step_km_min_1000replicate.xlsx"))

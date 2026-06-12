@@ -8,8 +8,34 @@
 ################################################################################################################################
 ################################################################################################################################
 
-# FUNCTION process_walk_dataset : Creating a dataset combining the emp dataset with diseases incidence and mortality data, and calculating walking exposure.
-walk_dataset <- function(data, diseases, diseases_10, insee, morbi_vec, 
+##############################################################
+#                        INCIDENCE                           #
+##############################################################
+# FUNCTION age10_categ : Create 10-year age categories from 5-year age categories
+age10_categ <- function(age_grp) {
+  age_min <- as.numeric(sub("-.*", "", age_grp))
+  paste0(floor(age_min / 10) * 10, "-", floor(age_min / 10) * 10 + 9)
+}
+
+
+##############################################################
+#                      WALK DATASET                          #
+##############################################################
+
+# FUNCTION age_grp10 : 10 year category
+age_grp_10 = function(age){
+  age_grp = gsub(",", "-",
+                 gsub("\\[|\\]|\\(|\\)", "",
+                      cut( age, breaks = seq(0,150, by = 10), include.lowest = T, right = F)))
+  post = sub(".*-","",age_grp)
+  age_grp = paste0(sub("-.*", "", age_grp),
+                   "-", as.numeric(post)-1)
+  return(age_grp)
+}
+
+
+# FUNCTION walk_dataset : Creating a dataset combining the emp dataset with diseases incidence and mortality data, and calculating walking exposure.
+walk_dataset <- function(data, diseases_10, insee, morbi_vec, 
                             walk_dist_var = "nbkm_tot_walking", 
                             walk_dist_jour_var = "nbkm_tot_walking_jour", 
                             step_length, walk_speed) {
@@ -29,24 +55,18 @@ walk_dataset <- function(data, diseases, diseases_10, insee, morbi_vec,
     mutate(day_time_jour = .data[[walk_dist_jour_var]] * 60 / walk_speed)  %>% 
   
   # Create age categories
-    mutate(age_grp = age_grp(age),
-           age_grp10 = age_grp_10(age)) %>%
+    mutate(age_grp10 = age_grp_10(age)) %>%
     filter(age >= 20 & age < 90)  %>%                       
   
   # Add population counts per sex and age group
-    left_join(diseases %>% 
-        select(pop_age_grp, sex, age_grp),     
-      by = c("sex", "age_grp"))  %>% 
-  
-
     left_join(diseases_10 %>% 
         select(pop_age_grp10, sex, age_grp10),     
       by = c("sex", "age_grp10"))  %>% 
   
   # Add diseases incidences / prevalences
-    left_join(diseases %>% 
-        select(cvd_incidence, bc_incidence, cancer_incidence, diab2_incidence, dem_incidence, dep_incidence, sex, age_grp),    
-      by = c("sex", "age_grp")                                                                                               ) 
+    left_join(diseases_10 %>% 
+        select(cvd_incidence_mid, cancer_incidence_mid, diab2_incidence_mid, dem_incidence_mid, dep_incidence_mid, sex, age_grp10),    
+      by = c("sex", "age_grp10")                                                                                               ) 
   
   # Add mortality rates
   insee <- insee %>% 
@@ -60,15 +80,15 @@ walk_dataset <- function(data, diseases, diseases_10, insee, morbi_vec,
     rename(mort_rate = MR) %>%
   
   # Calculate death incidence
-    mutate(mort_incidence = mort_rate * pop_age_grp)
+    mutate(mort_incidence_mid = mort_rate * pop_age_grp10)
   
   # Calculate disease incidence rates
   for (dis in morbi_vec) {
     data <- data %>%
       mutate(
         !!paste0(dis, "_rate") := if_else(
-          !is.na(pop_age_grp),
-          .data[[paste0(dis, "_incidence")]] / pop_age_grp,
+          !is.na(pop_age_grp10),
+          .data[[paste0(dis, "_incidence_mid")]] / pop_age_grp10,
           NA_real_
         )
       )
@@ -82,6 +102,7 @@ walk_dataset <- function(data, diseases, diseases_10, insee, morbi_vec,
   
   return(data)
 }
+
 
 
 ################################################################################################################################
@@ -130,13 +151,13 @@ interpolate_rr <- function(df, disease, metric) {
 
 # FUNCTION generate_RR : Generate random RR (dw) values in a normal distribution based on existing RR and their IC (Monte-Carlo)
 #set.seed()
-generate_RR_distrib = function (RR, low, sup, N) {          # N : number of random values
+generate_RR_distrib = function (RR, low, up, N) {          # N : number of random values
   lRR <- log(RR)                                            # Conversion in log scale
   l_low <- log(low)
-  l_sup <- log(sup)
+  l_up <- log(up)
   
   sd1 <- (lRR - l_low) / qnorm(1-0.05/2)
-  sd2 <- (l_sup - lRR) / qnorm(1-0.05/2) 
+  sd2 <- (l_up - lRR) / qnorm(1-0.05/2) 
   sd <- mean( c(sd1, sd2))                                  # Estimation of standard deviation assuming symmetrical confidence intervals
   
   distr_RR <- exp(rnorm(N, lRR, sd))                        # Generation of log-normal distribution (random samples)
@@ -198,36 +219,12 @@ graph_DRF <- function(dis, data, rr_mean, rr_lci, rr_uci) {
 
 ################################################################################################################################
 ################################################################################################################################
-#                                               I. HEALTH IMPACT ASSESSMENT                                                    #
+#                                         I. HEALTH IMPACT ASSESSMENT (Central value)                                          #
 ################################################################################################################################
 ################################################################################################################################
-
-# FUNCTION age_grp : 5 year category
-age_grp = function(age){
-  age_grp = gsub(",", "-",
-                 gsub("\\[|\\]|\\(|\\)", "",
-                      cut( age, breaks = seq(0,150, by = 5), include.lowest = T, right = F)))
-  post = sub(".*-","",age_grp)
-  age_grp = paste0(sub("-.*", "", age_grp),
-                   "-", as.numeric(post)-1)
-  return(age_grp)
-}
-
-
-# FUNCTION age_grp10 : 10 year category
-age_grp_10 = function(age){
-  age_grp = gsub(",", "-",
-                 gsub("\\[|\\]|\\(|\\)", "",
-                      cut( age, breaks = seq(0,150, by = 10), include.lowest = T, right = F)))
-  post = sub(".*-","",age_grp)
-  age_grp = paste0(sub("-.*", "", age_grp),
-                   "-", as.numeric(post)-1)
-  return(age_grp)
-}
-
 
 ##############################################################
-#                DISEASE REDUCTION RISK                      #
+#                DISEASE REDUCTION RISK                     #
 ##############################################################
 # FUNCTION reduction_risk : Associate risk reductions to individuals
 reduction_risk = function(data_list, rr_table, dis_vec, bound_vec) {
@@ -269,7 +266,6 @@ reduc_incidence = function(data) {
   
   return(data)
 }
-
 
 
 
@@ -356,34 +352,26 @@ calc_HIA <- function(data_list, rr_table, dw_table, dis_vec, bound_vec) {
 
 
 ##############################################################
-#                        HIA OUTCOMES                        #
+#                        HIA OUTCOMES (A SUPPRIMER)                        #
 ##############################################################
 
 # FUNCTION burden_prevented : Total of prevented cases, DALY and saved medical costs, for each bound
-burden_prevented = function(data_list, dis_vec, bound_vec, group){
+burden_prevented = function(data_list, dis_vec, bound_vec, vsl, group){
   
-  # 1. Survey designs per bound
-  survey_list <- list()
-  for(bound in bound_vec){
-    survey_list[[bound]] <- data_list[[bound]] %>%
-      as_survey_design(
-        ids = ident_ind,
-        weights = pond_indc,
-        nest = TRUE
-      )
-  }
-  
-  # 2. Calculate prevented cases, daly, medical costs per disease and per bound
+  # 1. Calculate prevented cases, daly, medical costs per disease and per bound
+  # Use a survey design per (bound, disease) to match resampling logic
   all_results <- list()
-  
+
   for(bound in bound_vec){
-    bound_svy <- survey_list[[bound]]
-    
     dis_res_list <- list()
-    
+
     for(dis in dis_vec){
-      dis_res <- bound_svy %>%
+      # create survey design on the subset for this disease and bound
+      surv_dis <- data_list[[bound]] %>%
         filter(disease == dis) %>%
+        as_survey_design(ids = ident_ind, weights = pond_indc)
+
+      dis_res <- surv_dis %>%
         group_by(across(all_of(group))) %>%
         summarise(
           tot_cases      = survey_total(cases, na.rm = TRUE),
@@ -393,10 +381,10 @@ burden_prevented = function(data_list, dis_vec, bound_vec, group){
         ungroup() %>%
         mutate(bound = bound,
                disease = dis)
-      
+
       dis_res_list[[dis]] <- dis_res
     }
-    
+
     all_results[[bound]] <- bind_rows(dis_res_list)
   }
   
@@ -418,9 +406,7 @@ burden_prevented = function(data_list, dis_vec, bound_vec, group){
       tot_soc_costs_mid = tot_daly_mid * vsl,
       tot_soc_costs_low = tot_daly_low * vsl,
       tot_soc_costs_up  = tot_daly_up * vsl
-    )
-  
-  
+    )  
   return(results)
 }
 
@@ -432,7 +418,7 @@ burden_prevented = function(data_list, dis_vec, bound_vec, group){
 
 ################################################################################################################################
 ################################################################################################################################
-#                                                       II. RESAMPLING                                                         #
+#                                                      II. MONTE CARLO                                                         #
 ################################################################################################################################
 ################################################################################################################################
 
@@ -441,40 +427,70 @@ burden_prevented = function(data_list, dis_vec, bound_vec, group){
 ################################################################################################################################
 
 ##############################################################
-#                DISEASE REDUCTION RISK                      #
+#                    DISEASE INCIDENCE                       #
 ##############################################################
-# FUNCTION reduction_risk_replicate : Associate risk reductions to individuals
-reduction_risk_replicate = function(data_list, rr_distrib_table, dis_vec, baseline_step = 2000) {
+
+# FUNCTION incidence_replicate : Randomly associate incidence to individuals
+  # set.seed()
+incidence_replicate = function(data_list, incidence_distrib_table, dis_vec) {
   
-  ## 1. Baseline RR
-  rr_baseline <- rr_distrib_table %>%
-    filter(step == baseline_step) %>%
-    select(disease, simulation_id, rr2000 = rr_interpolated)
-  
-  ## 2. Compute reduction risk
-  rr_distrib_table <- rr_distrib_table %>%
-    left_join(rr_baseline, by = c("disease", "simulation_id")) %>%
-    mutate(reduction_risk = (rr2000 - rr_interpolated) / rr2000)
-  
-  ## 3. Join reduction risk to each disease replicate
   for (dis in dis_vec) {
-    
     dis_data <- data_list[[dis]]
     
-    rr_disease <- if (dis == "bc") "cancer" else dis                   # If breast cancer, use RR cancer
-    
-    dis_rr <- rr_distrib_table %>%
-      filter(disease == rr_disease) %>%
-      select(simulation_id, step, reduction_risk)
-    
-    dis_data <- dis_data %>%
-      left_join(dis_rr, by = "step", relationship = "many-to-many")
-    
-    data_list[[dis]] <- dis_data
+    if (dis == "mort") {
+      dis_data[[dis]] <- dis_data 
+
+    } else {
+
+      # Randomly associate incidence rate for each individual based on age_grp10 and sex
+      rates_age_sex <- incidence_distrib_table %>%
+        filter(disease == dis) %>%
+        group_by(age_grp10, sex) %>%
+        summarise(rates = list(rate), .groups = "drop")
+
+      dis_data <- dis_data %>%
+        left_join(rates_age_sex, by = c("age_grp10", "sex")) %>%
+        mutate(rate = map_dbl(rates, ~ if(length(.x) > 0)sample(.x, 1)
+          else
+          NA_real_)) %>%
+        select(-rates)
+      
+      data_list[[dis]] <- dis_data
+    }
   }
-  
   return(data_list)
 }
+
+
+
+##############################################################
+#                DISEASE REDUCTION RISK                      #
+##############################################################
+# FUNCTION reduction_risk_replicate : Randomly associate risk reductions to individuals
+  # set.seed()
+reduction_risk_replicate <- function(data_list, reduction_risk_distrib_table, dis_vec) {
+
+  for (dis in dis_vec) {
+    dis_data <- data_list[[dis]]
+
+      # Randomly associate incidence rate for each individual based on step
+      reduction_risk_step <- reduction_risk_distrib_table %>%
+        filter(disease == dis) %>%
+        group_by(step) %>%
+        summarise( reduction_risk_values = list(reduction_risk), .groups = "drop")
+
+      dis_data <- dis_data %>%
+        left_join(reduction_risk_step, by = c("step")) %>%
+        mutate(reduction_risk = map_dbl(reduction_risk_values, ~ if(length(.x) > 0)sample(.x, 1)
+          else
+          NA_real_)) %>%
+        select(-reduction_risk_values)
+      
+      data_list[[dis]] <- dis_data
+  }
+  return(data_list)
+}
+
 
 
 ##############################################################
@@ -500,28 +516,28 @@ dw_replicate = function(data_list, dw_distrib_table, dis_vec) {
 }
 
 
+
 ##############################################################
 #                        CALCULATE HIA                       #
 ##############################################################
-# FUNCTION calc_HIA_replicate : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for each individual
-calc_HIA_replicate = function(data_list, rr_distrib_table, dw_distrib_table, dis_vec, vsl, baseline_step = 2000) {
+# FUNCTION calc_HIA_replicate : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for 1 run
+  # set.seed()
+calc_HIA_replicate = function(data_list, incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table, dis_vec, vsl) {
   
-  # Progress bar
-  progress <- progress_bar$new(
-    format = "HIA [:bar] :current/:total | :percent | ETA: :eta",
-    total  = length(dis_vec),
-    clear  = FALSE,
-    width  = 60
-  )
+
+  # 1. Disease incidence
+  if (!is.null(incidence_distrib_table)) {
+    data_list <- incidence_replicate(data_list = data_list,
+                                   incidence_distrib_table = incidence_distrib_table,
+                                   dis_vec = dis_vec)
+  }
   
-  
-  # 1. Disease reduction risk 
+  # 2. Disease reduction risk 
   data_list <- reduction_risk_replicate(data_list = data_list,
-                                        rr_distrib_table = rr_distrib_table,
-                                        dis_vec = dis_vec,
-                                        baseline_step = baseline_step)
+                                        reduction_risk_distrib_table = reduction_risk_distrib_table,
+                                        dis_vec = dis_vec)
   
-  # 2. Disability weights
+ # 3. Disability weights
   data_list <- dw_replicate(data_list = data_list,
                             dw_distrib_table = dw_distrib_table,
                             dis_vec = dis_vec)
@@ -529,73 +545,91 @@ calc_HIA_replicate = function(data_list, rr_distrib_table, dw_distrib_table, dis
   for (dis in dis_vec) {
     
     dis_data <- data_list[[dis]]
-    
-    # 3. Cases prevented
+
+    # 4. Cases prevented
     dis_data <- reduc_incidence(dis_data)
     
-    # 4. DALY
+    # 5. DALY
     dis_data <- daly(dis_data, dis)
     
-    # 5. Economic impact
+    # 6. Economic impact
     dis_data <- medic_costs(dis_data, dis)
     
     dis_data <- dis_data %>%
       mutate(soc_costs = daly * vsl)
     
     data_list[[dis]] <- dis_data
-    
-    # Update progress bar
-    progress$tick()
   }
   
   return(data_list)
 }
-    
 
 
 ##############################################################
 #                        HIA OUTCOMES                        #
 ##############################################################
-# FUNCTION burden_replicate_prevented : Total of prevented cases, DALY and saved medical costs, for each simulation
-burden_replicate_prevented = function(data_list, dis_vec, group, N) {
+# FUNCTION burden_prevented_replicate : Prevented cases, DALY and saved medical costs, for 1 simulation
+burden_prevented_replicate = function(data_list, dis_vec, group) {
   
-  # Progress bar
-  progress <- progress_bar$new(format = "Burden possible [:bar] :current/:total | :percent | ETA: :eta",
-                               total = length(dis_vec)* 1000,
-                               clear = FALSE,
-                               width = 60)
-  
-  burden_list <- list()  
-  
+burden_run <- data.frame()
+
   for (dis in dis_vec) {
     dis_data <- data_list[[dis]]
     dis_burden_replicate <- list() 
     
-    for (i in 1:N) {
-      # update progress bar
-      progress$tick()
-      
       # Survey design
       surv_dis_replicate <- dis_data %>% 
-        filter(simulation_id == i) %>% 
         as_survey_design(ids = ident_ind, weights = pond_indc)
       
-      # For 1 simulation, total burden
-      dis_burden_replicate[[i]] <- surv_dis_replicate %>% 
+      # Burden for 1 disease
+      dis_burden_replicate <- surv_dis_replicate %>% 
         group_by(across(all_of(group))) %>%
         summarise(
           tot_cases = survey_total(cases, na.rm = TRUE),
           tot_daly = survey_total(daly, na.rm = TRUE),
           tot_medic_costs = survey_total(medic_costs, na.rm = TRUE),
           tot_soc_costs = survey_total(soc_costs, na.rm = TRUE)) %>% 
-        mutate(disease = dis, simulation_id = i)
-    }
-    burden_list[[dis]] <- bind_rows(dis_burden_replicate)         # Results for all diseases
+        mutate(disease = dis)
+    
+    burden_run <- bind_rows(burden_run, dis_burden_replicate)         # Results for all diseases for 1 run
   }
-  burden_all <- bind_rows(burden_list)                            # Gather results for all diseases in a dataframe
   
-  return(burden_all)
+  return(burden_run)
 }
+
+
+# FUNCTION HIA_burden_total : HIA calculations and Total of prevented cases, DALY and saved medical costs for N simulations
+  # set.seed()
+HIA_burden_total = function(data_list, incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table, dis_vec, vsl, group, N, show_progress = TRUE) {
+  
+  burden_total <- data.frame()
+  burden_total_list <- list()
+  
+  # Progress bar setup
+  progress_bar <- NULL
+  if (show_progress && interactive() && N > 0) {
+    progress_bar <- progress::progress_bar$new(
+      format = "  Simulation :current/:total [:bar] :percent ETA: :eta",
+      total = N,
+      clear = FALSE,
+      width = 60
+    )
+  }
+  
+  for (i in 1:N) {
+    data_list_replicate <- calc_HIA_replicate(data_list, incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table, dis_vec, vsl)
+    burden_total_list[[i]] <- burden_prevented_replicate(data_list_replicate, dis_vec, group)  %>% 
+      mutate(simulation_id = i)
+    
+    # Update progress bar
+    if (!is.null(progress_bar)) progress_bar$tick()
+  }
+  burden_total <- bind_rows(burden_total_list)
+
+  return(burden_total)
+}
+
+
 
 
 
@@ -658,7 +692,7 @@ calc_IC_Rubin = function(data, outcome){
   
 
   age_vec <- if (presence_age) unique(data$age_grp10) else NA
-  sex_vec <- if (presence_sex && !is.null(sex_vec)) sex_vec else NA
+  sex_vec <- if (presence_sex) unique(data$sex) else NA
   
   for (dis in dis_vec){
     for (age in age_vec){
@@ -710,14 +744,14 @@ calc_IC_Rubin = function(data, outcome){
 ################################################################################################################################
 
 # FUNCTION unit_value : Calculate the economic value of 1 km walked
-unit_value = function(km, km_low, km_sup, euro, euro_low, euro_sup, N = 1000) {
+unit_value = function(km, km_low, km_up, euro, euro_low, euro_up, N = 1000) {
   km_sd1 <- (km - km_low) / qnorm(1-0.05/2)
-  km_sd2 <- (km_sup - km) / qnorm(1-0.05/2)
+  km_sd2 <- (km_up - km) / qnorm(1-0.05/2)
   km_sd <- mean(c(km_sd1, km_sd2))
   distr_km <- rnorm(N, km, km_sd)
   
   euro_sd1 <- (euro - euro_low) / qnorm(1-0.05/2)
-  euro_sd2 <- (euro_sup - euro) / qnorm(1-0.05/2)
+  euro_sd2 <- (euro_up - euro) / qnorm(1-0.05/2)
   euro_sd <- mean(c(euro_sd1, euro_sd2))
   distr_euro <- rnorm(N, euro, euro_sd)
   
@@ -728,15 +762,15 @@ unit_value = function(km, km_low, km_sup, euro, euro_low, euro_sup, N = 1000) {
 
 
 # FUNCTION euro_km_value : Calculate distance walked to save 1€
-euro_km_unit = function(km, km_low, km_sup, euro, euro_low, euro_sup, N = 1000) {
+euro_km_unit = function(km, km_low, km_up, euro, euro_low, euro_up, N = 1000) {
   
   km_sd1 <- (km - km_low) / qnorm(1-0.05/2)
-  km_sd2 <- (km_sup - km) / qnorm(1-0.05/2)
+  km_sd2 <- (km_up - km) / qnorm(1-0.05/2)
   km_sd <- mean(c(km_sd1, km_sd2))
   distr_km <- rnorm(N, km, km_sd)
   
   euro_sd1 <- (euro - euro_low) / qnorm(1-0.05/2)
-  euro_sd2 <- (euro_sup - euro) / qnorm(1-0.05/2)
+  euro_sd2 <- (euro_up - euro) / qnorm(1-0.05/2)
   euro_sd <- mean(c(euro_sd1, euro_sd2))
   distr_euro <- rnorm(N, euro, euro_sd)
   
@@ -747,15 +781,15 @@ euro_km_unit = function(km, km_low, km_sup, euro, euro_low, euro_sup, N = 1000) 
 
 
 # FUNCTION euro_step_value : Calculate number of steps to save 1€
-euro_step_unit = function(step, step_low, step_sup, euro, euro_low, euro_sup, N = 1000) {
+euro_step_unit = function(step, step_low, step_up, euro, euro_low, euro_up, N = 1000) {
   
   step_sd1 <- (step - step_low) / qnorm(1-0.05/2)
-  step_sd2 <- (step_sup - step) / qnorm(1-0.05/2)
+  step_sd2 <- (step_up - step) / qnorm(1-0.05/2)
   step_sd <- mean(c(step_sd1, step_sd2))
   distr_step <- rnorm(N, step, step_sd)
   
   euro_sd1 <- (euro - euro_low) / qnorm(1-0.05/2)
-  euro_sd2 <- (euro_sup - euro) / qnorm(1-0.05/2)
+  euro_sd2 <- (euro_up - euro) / qnorm(1-0.05/2)
   euro_sd <- mean(c(euro_sd1, euro_sd2))
   distr_euro <- rnorm(N, euro, euro_sd)
   
@@ -772,122 +806,3 @@ euro_step_unit = function(step, step_low, step_sup, euro, euro_low, euro_sup, N 
 #                                                  4. SENSITIVITY ANALYSIS                                                     #
 ################################################################################################################################
 ################################################################################################################################
-
-
-################################################################################################################################
-################################################################################################################################
-#                                                  5. DATA PROCESSING                                                         #
-################################################################################################################################
-################################################################################################################################
-
-# FUNCTION process_walkers : Process the walkers dataset with customizable variables for steps and time calculations
-process_walkers <- function(walkers, diseases, diseases_10, insee, morbi_vec, 
-                            walk_dist_var = "nbkm_tot_walking", 
-                            walk_dist_jour_var = "nbkm_tot_walking_jour", 
-                            step_length, walk_speed) {
-  
-  # Re-write sexe as female and male and convert as factors
-  walkers <- walkers %>% 
-    mutate(sexe = as.character(sexe)) %>%                                 
-    mutate(sexe = fct_recode(sexe, "Male" = "1", "Female" = "2")) %>%     
-    rename(sex = sexe)
-  
-  # Daily steps
-  walkers <- walkers %>% 
-    mutate(step_commute = .data[[walk_dist_var]] / step_length)  %>% 
-    mutate(step_commute_jour = .data[[walk_dist_jour_var]] / step_length)
-  
-  # Day time spent walking (min)
-  walkers <- walkers %>% 
-    mutate(day_time = .data[[walk_dist_var]] * 60 / walk_speed)  %>% 
-    mutate(day_time_jour = .data[[walk_dist_jour_var]] * 60 / walk_speed)
-  
-  # Create age categories
-  walkers <- walkers %>% 
-    mutate(age_grp = age_grp(age),
-           age_grp10 = age_grp_10(age)) %>%
-    filter(age >= 20 & age < 90)                       
-  
-  # Add population counts per sex and age group
-  walkers <- walkers %>% 
-    left_join(
-      diseases %>% 
-        select(pop_age_grp, sex, age_grp),     
-      by = c("sex", "age_grp")               
-    )
-  
-  walkers <- walkers %>% 
-    left_join(
-      diseases_10 %>% 
-        select(pop_age_grp10, sex, age_grp10),     
-      by = c("sex", "age_grp10")               
-    )
-  
-  # Add diseases incidences / prevalences
-  walkers <- walkers %>% 
-    left_join(
-      diseases %>% 
-        select(cvd_incidence, bc_incidence, cancer_incidence, diab2_incidence, dem_incidence, dep_incidence, sex, age_grp),    
-      by = c("sex", "age_grp")                                                                                               
-    ) 
-  
-  # Add mortality rates
-  insee <- insee %>% 
-    rename(sex = sexe)
-  
-  walkers <- walkers %>% 
-    left_join(
-      insee %>% select(MR, sex, age),       
-      by = c("sex", "age")                  
-    ) %>% 
-    rename(mort_rate = MR)
-  
-  # Calculate death incidence
-  walkers <- walkers %>% 
-    mutate(mort_incidence = mort_rate * pop_age_grp)
-  
-  # Calculate disease incidence rates
-  for (dis in morbi_vec) {
-    walkers <- walkers %>%
-      mutate(
-        !!paste0(dis, "_rate") := if_else(
-          !is.na(pop_age_grp),
-          .data[[paste0(dis, "_incidence")]] / pop_age_grp,
-          NA_real_
-        )
-      )
-  }
-  
-  # Add life-expectancy for each sex
-  walkers <- walkers %>%
-    mutate(
-      life_exp = if_else(
-        sex == "Female",
-        85.99324,
-        79.59503
-      )
-    )
-  
-  # Add the years of life remaining, potentially affected by diseases or premature death
-  walkers <- walkers %>%
-    mutate(
-      years_remaining = pmax(life_exp - age, 0)
-    )
-  
-  return(walkers)
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
