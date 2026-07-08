@@ -35,7 +35,7 @@ age_grp_10 = function(age){
 
 
 # FUNCTION walk_dataset : Creating a dataset combining the emp dataset with diseases incidence and mortality data, and calculating walking exposure.
-walk_dataset <- function(data, diseases_10, insee, morbi_vec, 
+walk_dataset <- function(data, diseases_10, insee, dis_vec, 
                             walk_dist_var = "nbkm_tot_walking", 
                             walk_dist_jour_var = "nbkm_tot_walking_jour", 
                             step_length, walk_speed) {
@@ -83,7 +83,7 @@ walk_dataset <- function(data, diseases_10, insee, morbi_vec,
     mutate(mort_incidence_mid = mort_rate * pop_age_grp10)
   
   # Calculate disease incidence rates
-  for (dis in morbi_vec) {
+  for (dis in dis_vec) {
     data <- data %>%
       mutate(
         !!paste0(dis, "_rate") := if_else(
@@ -276,14 +276,13 @@ reduc_incidence = function(data) {
 
 # FUNCTION daly : Calculate DALY (Disability-Adjusted Life Years) for each disease
 daly = function(data, dis) { 
-  data <- data %>% 
-    mutate(daly = years_remaining * dw * cases)
-  
   if (dis == "dep") {
-    data <- data %>% 
-      mutate(daly = years_remaining * dw * cases * duration_dep/12) 
+    data <- data %>%
+      mutate(daly = pmin(years_remaining, duration_dep) * dw * cases)
+  } else {
+    data <- data %>%
+      mutate(daly = years_remaining * dw * cases)
   }
-
   return(data) 
 }
 
@@ -486,8 +485,16 @@ reduction_risk_replicate <- function(data_list, reduction_risk_distrib_table, di
           NA_real_)) %>%
         select(-reduction_risk_values)
       
+  
+      if (dis == "mort") {
+        dis_data <- dis_data %>%
+          mutate(reduction_risk = if_else(reduction_risk > (1-0.45), (1-0.45), reduction_risk))    # Cap mortality reduction to 45%
+      }
+
+
       data_list[[dis]] <- dis_data
-  }
+    }
+
   return(data_list)
 }
 
@@ -689,47 +696,57 @@ calc_IC_Rubin = function(data, outcome){
   
   presence_age <- "age_grp10" %in% names(data)
   presence_sex <- "sex" %in% names(data)
+  presence_area <- "area_type" %in% names(data)
   
 
   age_vec <- if (presence_age) unique(data$age_grp10) else NA
   sex_vec <- if (presence_sex) unique(data$sex) else NA
+  area_vec <- if (presence_area) unique(data$area_type) else NA
   
   for (dis in dis_vec){
     for (age in age_vec){
       for (sexe in sex_vec){
+        for(area in area_vec) {
         
-        data_sub <- data
-        
-        # Filtre maladie
-        data_sub <- filter(data_sub, disease == dis)
-        
-        # Filtre âge (si colonne existe)
-        if (presence_age && !is.na(age)) {
-          data_sub <- filter(data_sub, age_grp10 == age)
-        }
-        
-        # Filtre sexe (si colonne existe)
-        if (presence_sex && !is.na(sexe)) {
-          data_sub <- filter(data_sub, sex == sexe)
-        }
-        
-        if (nrow(data_sub) == 0) next
-        
-        # Construire ligne dynamiquement
-        row <- data.frame(disease = dis)
-        
-        if (presence_age) row$age_grp10 <- age
-        if (presence_sex) row$sex <- if (!is.na(sexe)) sexe else NA
-        
-        for (out in outcome_vec){
-          IC <- IC_func(data_sub, out)
+          data_sub <- data
           
-          row[[out]] <- round(IC[2], 3)
-          row[[paste0(out, "_low")]] <- round(IC[1], 3)
-          row[[paste0(out, "_up")]] <- round(IC[3], 3)
+          # Filter disease
+          data_sub <- filter(data_sub, disease == dis)
+          
+          # Filter age (if column exists)
+          if (presence_age && !is.na(age)) {
+            data_sub <- filter(data_sub, age_grp10 == age)
+          }
+          
+          # Filter sex (if column exists)
+          if (presence_sex && !is.na(sexe)) {
+            data_sub <- filter(data_sub, sex == sexe)
+          }
+          
+          # Filtre area_type (if column exists)
+          if (presence_area && !is.na(area)) {
+            data_sub <- filter(data_sub, area_type == area)
+          }
+
+          if (nrow(data_sub) == 0) next
+          
+          # Construire ligne dynamiquement
+          row <- data.frame(disease = dis)
+          
+          if (presence_age) row$age_grp10 <- age
+          if (presence_sex) row$sex <- if (!is.na(sexe)) sexe else NA
+          if (presence_area) row$area_type <- area
+          
+          for (out in outcome_vec){
+            IC <- IC_func(data_sub, out)
+            
+            row[[out]] <- round(IC[2], 3)
+            row[[paste0(out, "_low")]] <- round(IC[1], 3)
+            row[[paste0(out, "_up")]] <- round(IC[3], 3)
+          }
+          
+          HIA_burden <- dplyr::bind_rows(HIA_burden, row)
         }
-        
-        HIA_burden <- dplyr::bind_rows(HIA_burden, row)
       }
     }
   }
