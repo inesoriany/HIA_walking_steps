@@ -275,10 +275,16 @@ reduc_incidence = function(data) {
 # Goal : To know the number of sick or death years prevented for each individual by walking
 
 # FUNCTION daly : Calculate DALY (Disability-Adjusted Life Years) for each disease
-daly = function(data, dis) { 
+daly = function(data, dep_duration_table, dis, prop_relapse, duration_recovery) { 
   if (dis == "dep") {
-    data <- data %>%
-      mutate(daly = pmin(years_remaining, duration_dep) * dw * cases)
+
+    # Randomly associate depression duration for each individual
+    dis_data <- dis_data %>%
+        left_join(dep_duration_table, by = c("age_grp10", "sex")) %>%
+        mutate(duration_dep = map_dbl(simulated_duration_dep, ~ if(length(.x) > 0)sample(.x, 1)
+          else
+          NA_real_)) %>%
+        mutate(daly =  prop_relapse * pmin(years_remaining, duration_dep) / (duration_recovery + pmin(years_remaining, duration_dep)) * years_remaining)
   } else {
     data <- data %>%
       mutate(daly = years_remaining * dw * cases)
@@ -529,7 +535,7 @@ dw_replicate = function(data_list, dw_distrib_table, dis_vec) {
 ##############################################################
 # FUNCTION calc_HIA_replicate : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for 1 run
   # set.seed()
-calc_HIA_replicate = function(data_list, incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table, dis_vec, vsl) {
+calc_HIA_replicate = function(data_list, incidence_distrib_table, dep_duration_table, reduction_risk_distrib_table, dw_distrib_table, dis_vec, vsl) {
   
 
   # 1. Disease incidence
@@ -557,7 +563,7 @@ calc_HIA_replicate = function(data_list, incidence_distrib_table, reduction_risk
     dis_data <- reduc_incidence(dis_data)
     
     # 5. DALY
-    dis_data <- daly(dis_data, dis)
+    dis_data <- daly(dis_data, dep_duration_table, dis)
     
     # 6. Economic impact
     dis_data <- medic_costs(dis_data, dis)
