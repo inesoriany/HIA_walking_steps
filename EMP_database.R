@@ -29,6 +29,9 @@ ind <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2
 # Individual characteristics
 ind_kish <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "tcm_ind_kish_public_V3.csv" ))
 
+# Household characteristics 
+household <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "tcm_men_public_V3.csv"))
+
 # Trip data
 trip <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "5. k_deploc_public_V4.csv" ))
 
@@ -50,12 +53,23 @@ ind <- ind %>%
 # Individual characteristics
 ind_kish <- ind_kish %>% 
   rename_with(tolower) %>% 
-  select(ident_ind,
+  select(ident_men,
+         ident_ind,
          sexe, 
          age) %>% 
-  mutate(ident_ind = as.character(ident_ind))
+  mutate(ident_men = as.character(ident_men),
+         ident_ind = as.character(ident_ind))
 
 
+# Household characteristics
+household <- household  %>% 
+  rename_with(tolower) %>% 
+  select(ident_men,
+        densitecom_res)  %>% 
+  mutate(ident_men = as.character(ident_men))
+
+
+# Trips
 trip <- trip %>% 
   rename_with(tolower) %>% 
   select(ident_ind, 
@@ -94,7 +108,11 @@ walk_ind <- trip %>%
   
 # Add individual characteristics
   left_join(ind, by = "ident_ind") %>%
-  left_join(ind_kish, by = "ident_ind")
+  left_join(ind_kish, by = "ident_ind")  %>% 
+
+# Add household characteristics
+  left_join(household, by = "ident_men")
+
 
 
 
@@ -104,7 +122,8 @@ walk_ind <- trip %>%
 walk_trip <- ind %>%                                  
   left_join(trip, by ="ident_ind", relationship = "many-to-many") %>% 
   mutate(intermodal_walk_time = if_else(is.na(mtempsmap), 0, mtempsmap)) %>% 
-  rename(nbkm_main_walk = mdisttot_fin) %>% 
+  mutate(main_walk = mtp == 1.1,
+         nbkm_main_walk = if_else(main_walk, mdisttot_fin, 0)) %>% 
   
 # Add individual characteristics
   left_join(ind_kish, by = "ident_ind")
