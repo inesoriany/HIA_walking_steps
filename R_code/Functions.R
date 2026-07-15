@@ -356,8 +356,8 @@ daly = function(data, dep_duration_table , dis, prop_relapse, duration_recovery)
       left_join(duration_age_sex, by = c("age_grp10", "sex")) %>%
       mutate(duration_dep = map_dbl(duration_values, ~ if (length(.x) > 0) sample(.x, 1) else NA_real_)) %>%
       select(-duration_values) %>%
-      mutate(daly = prop_relapse * pmin(years_remaining, duration_dep) / 
-                    (duration_recovery + pmin(years_remaining, duration_dep)) * years_remaining)
+      mutate(daly = cases * dw * prop_relapse * pmin(years_remaining, duration_dep) / 
+                    (duration_recovery + duration_dep) * years_remaining)
     
       
   } else {

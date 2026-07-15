@@ -294,7 +294,7 @@ for (i in 1:N) {
 
 # Export reduction in mortality risk for 1000 replications
 export(reduc_mortality_risk, here("output", "RDS", "2019", "Monte Carlo",  "reduc_mortality_risk_1000_rep.RDS"))
-                                                                                                                                                                                                                                                                                                                    
+
 
 
 # Load reduction in mortality risk for 1000 replications
