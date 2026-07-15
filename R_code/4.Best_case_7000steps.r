@@ -19,6 +19,7 @@ pacman :: p_load(
   rio,          # Data importation
   here,         # Localization of files 
   dplyr,        # Data management
+  purrr,        # Loop
   stringr,      # Text extraction
   srvyr,        # Survey
   survey,
@@ -42,12 +43,15 @@ incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_dist
 # Risk reduction distribution table
 reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
 
+# Duration of depression distribution table
+dep_duration_distrib_table <- import(here("data_clean", "Diseases", "dep_duration_distrib_table.xlsx"))
+
 # Disability weights distribution table
 dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx"))
 
 
 # Import functions
-source(here("0_Functions.R"))
+source(here("R_code", "Functions.R"))
 
 
 

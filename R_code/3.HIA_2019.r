@@ -54,7 +54,7 @@ dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx
 
 
 # Import functions
-source(here("Functions.R"))
+source(here("R_code", "Functions.R"))
 
 
 
@@ -63,7 +63,7 @@ source(here("Functions.R"))
 ################################################################################################################################
 
 # Import parameters
-source(here("Parameters.R"))
+source(here("R_code", "Parameters.R"))
 
 # Diseases considered
 dis_vec <- c("mort", "cvd", "cancer", "diab2", "dem", "dep")
