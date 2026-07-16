@@ -203,7 +203,7 @@ MODAL_burden_total <- import(here("output", "RDS", "Modal shift", "HIA_modal_shi
 ################################################################################################################################
 
 # Import 2019 data
-burden_2019 <- import(here("output", "Tables", "2019", "Monte carlo", "HIA_per_disease.xlsx"))
+burden_2019 <- import(here("output", "Tables", "2019", "HIA_per_disease.xlsx"))
 
 
 # Data preparation
