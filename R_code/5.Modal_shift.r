@@ -19,6 +19,7 @@ pacman :: p_load(
   rio,          # Data importation
   here,         # Localization of files 
   dplyr,        # Data management
+  purrr,        # Loop
   srvyr,        # Survey
   tidyr,        # Table - Data organization, extraction
   tidyverse,    # Data manipulation and visualization
@@ -38,6 +39,9 @@ emp_car_trip <- import(here("data_clean", "EMP_dis_car_trips.xlsx"))
 # Incidence distribution table
 incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
+# Depression duration distribution table
+dep_distrib_table <- import(here("data_clean", "Diseases", "dep_duration_distrib_table.xlsx"))
+
 # Risk reduction distribution table
 reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
 
@@ -46,7 +50,7 @@ dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx
 
 
 # Import functions
-source(here("0_Functions.R"))
+source(here("R_code", "Functions.R"))
 
 
 
@@ -56,7 +60,7 @@ source(here("0_Functions.R"))
 ################################################################################################################################
 
 # Import parameters
-source(here("0_Parameters.R"))
+source(here("R_code", "Parameters.R"))
 
 # Diseases considered
 dis_vec <- c("mort", "cvd", "cancer", "diab2", "dem", "dep")
@@ -109,8 +113,8 @@ for (i in 1:N) {
     }
 
     burden_run <- HIA_burden_total(short_trip_list, 
-             incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
-             dis_vec, vsl, NULL, 1, FALSE)  %>% 
+             incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
+             dis_vec, prop_relapse, duration_recovery, vsl, NULL, 1, FALSE)  %>% 
              mutate(run = i)
 
     MODAL_burden_total <- bind_rows(MODAL_burden_total, burden_run)

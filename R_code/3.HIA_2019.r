@@ -483,36 +483,36 @@ soc_euro_unit_2019 <- soc_euro_step_unit_2019 %>%
 #                                                      11. EXPORT DATA                                                         #
 ################################################################################################################################
 # Plot
-  ggsave(here("output", "Plots", "2019", "Monte Carlo", "cases_prevented.png"), plot = plot_cases_prev)
-  ggsave(here("output", "Plots", "2019", "Monte Carlo", "DALY_prevented.png"), plot = plot_daly_prevented)
+  ggsave(here("output", "Plots", "2019", "cases_prevented.png"), plot = plot_cases_prev)
+  ggsave(here("output", "Plots", "2019", "DALY_prevented.png"), plot = plot_daly_prevented)
 
   
 # Tables of HIA outcomes per simulation
-  export(burden_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_1000replicate.rds"))
-  export(burden_sex_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_per_sex_1000replicate.rds"))
-  export(burden_age_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_per_age_1000replicate.rds"))
+  export(burden_total, here("output", "RDS", "2019", "HIA_1000replicate.rds"))
+  export(burden_sex_total, here("output", "RDS", "2019", "HIA_per_sex_1000replicate.rds"))
+  export(burden_age_total, here("output", "RDS", "2019", "HIA_per_age_1000replicate.rds"))
 
   
 # Tables of HIA outcomes
-  export(burden, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_disease.xlsx"))
-  export(Rubin_burden, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_disease_Rubin.xlsx"))
-  export(burden_per_sex, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_sex.xlsx"))
-  export(Rubin_burden_per_sex, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_sex_Rubin.xlsx"))
-  export(burden_per_age, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_age.xlsx"))
-  export(Rubin_burden_per_age, here("output", "Tables", "2019", "Monte Carlo", "HIA_per_age_Rubin.xlsx"))
+  export(burden, here("output", "Tables", "2019", "HIA_per_disease.xlsx"))
+  export(Rubin_burden, here("output", "Tables", "2019", "HIA_per_disease_Rubin.xlsx"))
+  export(burden_per_sex, here("output", "Tables", "2019", "HIA_per_sex.xlsx"))
+  export(Rubin_burden_per_sex, here("output", "Tables", "2019", "HIA_per_sex_Rubin.xlsx"))
+  export(burden_per_age, here("output", "Tables", "2019", "HIA_per_age.xlsx"))
+  export(Rubin_burden_per_age, here("output", "Tables", "2019", "HIA_per_age_Rubin.xlsx"))
 
   
 # Table of reduction of mortality risk
-  export(reduc_mortality_risk_IC, here("output", "Tables", "2019", "Monte Carlo", "reduc_mortality_risk.xlsx"))
+  export(reduc_mortality_risk_IC, here("output", "Tables", "2019", "reduc_mortality_risk.xlsx"))
   
   
 # Tables economic unit value
   # Economic value of 1 km walked
-  export(unit_value_2019, here("output", "Tables", "2019", "Monte Carlo", "1km_value_1000replicate.xlsx"))
+  export(unit_value_2019, here("output", "Tables", "2019", "1km_value_1000replicate.xlsx"))
   # Social economic value of 1 km walked
-  export(unit_soc_value_2019, here("output", "Tables", "2019", "Monte Carlo", "1km_soc_value_1000replicate.xlsx"))
+  export(unit_soc_value_2019, here("output", "Tables", "2019", "1km_soc_value_1000replicate.xlsx"))
   
   # Number of steps, distance and duration to save 1€ of medical costs in 2019
-  export(euro_unit_2019, here("output", "Tables", "2019", "Monte Carlo", "1€_step_km_min_1000replicate.xlsx"))
+  export(euro_unit_2019, here("output", "Tables", "2019", "1€_step_km_min_1000replicate.xlsx"))
   # Number of steps, distance and duration to save 1€ of intangible costs in 2019
-  export(soc_euro_unit_2019, here("output", "Tables", "2019", "Monte Carlo", "soc_1€_step_km_min_1000replicate.xlsx"))
+  export(soc_euro_unit_2019, here("output", "Tables", "2019", "soc_1€_step_km_min_1000replicate.xlsx"))

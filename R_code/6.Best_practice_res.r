@@ -12,6 +12,7 @@ pacman :: p_load(
   rio,          # Data importation
   here,         # Localization of files 
   dplyr,        # Data management
+  purrr,        # Loop
   srvyr,        # Survey
   tidyr,        # Table - Data organization, extraction
   tidyverse,    # Data manipulation and visualization
@@ -32,6 +33,9 @@ emp_walk <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 # Incidence distribution table
 incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
+# Depression duration distribution table
+dep_distrib_table <- import(here("data_clean", "Diseases", "dep_duration_distrib_table.xlsx"))
+
 # Risk reduction distribution table
 reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
 
@@ -41,7 +45,7 @@ dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx
 
 
 # Import functions
-source(here("0_Functions.R"))
+source(here("R_code", "Functions.R"))
 
 
 
@@ -51,7 +55,7 @@ source(here("0_Functions.R"))
 ################################################################################################################################
 
 # Import parameters
-source(here("0_Parameters.R"))
+source(here("R_code", "Parameters.R"))
 
 # Diseases considered
 dis_vec <- c("mort", "cvd", "cancer", "diab2", "dem", "dep")
@@ -151,9 +155,9 @@ for (dis in dis_vec) {
 # Total of prevented burden of each disease per area type for each simulation 
 set.seed(123)
 PRACT_burden_total <- HIA_burden_total(PRACT_list,
-                                       incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
+                                       incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
                                        dis_vec,
-                                       vsl,
+                                       prop_relapse, duration_recovery, vsl,
                                        group = "area_type",
                                        N = 1000)
 
@@ -241,14 +245,14 @@ for (dis in dis_vec) {
 # Total of prevented burden of each disease per area type for each simulation 
 set.seed(123)
 burden_2019_total <- HIA_burden_total(walk_trips_2019_list,
-                                      incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
+                                      incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
                                       dis_vec,
-                                      vsl,
+                                      prop_relapse, duration_recovery, vsl,
                                       group = "area_type",
                                       N = 1000)
 
 # Export HIA outcomes of 1000 replications
-export(burden_2019_total, here("output", "RDS", "2019", "Monte Carlo", "Residence", "HIA_area_2019_1000replicate.rds"))
+export(burden_2019_total, here("output", "RDS", "2019", "Residence", "HIA_area_2019_1000replicate.rds"))
 
 
 
@@ -258,7 +262,7 @@ export(burden_2019_total, here("output", "RDS", "2019", "Monte Carlo", "Residenc
 ################################################################################################################################
 
 # Import data
-burden_2019_total <- import(here("output", "RDS", "2019", "Monte Carlo", "Residence", "HIA_area_2019_1000replicate.rds"))
+burden_2019_total <- import(here("output", "RDS", "2019", "Residence", "HIA_area_2019_1000replicate.rds"))
 
 
 ##############################################################

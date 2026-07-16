@@ -60,7 +60,7 @@ source(here("R_code", "Functions.R"))
 ################################################################################################################################
 
 # Import parameters
-source(here("0_Parameters.R"))
+source(here("R_code", "Parameters.R"))
 
 # Diseases considered
 dis_vec <- c("mort", "cvd", "cancer", "diab2", "dem", "dep")
@@ -99,10 +99,10 @@ for (dis in dis_vec) {
 #                      ALL DISEASES                          #
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
-set.seed(123)
-BEST_burden_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+set.seed(123) 
+BEST_burden_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
-                                 vsl, 
+                                 prop_relapse, duration_recovery,vsl, 
                                  group = NULL,
                                  N = 1000)
 
@@ -116,9 +116,9 @@ export(BEST_burden_total, here("output", "RDS", "7000 steps", "HIA_7000steps_100
 ##############################################################
 # Total of prevented burden of each disease per sex for each simulation
 set.seed(123)
-BEST_burden_sex_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+BEST_burden_sex_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
-                                 vsl, 
+                                 prop_relapse, duration_recovery,vsl, 
                                  group ="sex", 
                                  N = 1000)
 
@@ -133,9 +133,9 @@ export(BEST_burden_sex_total, here("output", "RDS", "7000 steps", "HIA_sex_7000_
 ##############################################################
 # Total of prevented burden of each disease per age for each simulation
 set.seed(123)
-BEST_burden_age_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+BEST_burden_age_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                      dis_vec, 
-                                     vsl, 
+                                     prop_relapse, duration_recovery, vsl, 
                                      group = "age_grp10", 
                                      N = 1000)
 
@@ -238,6 +238,7 @@ BEST_Rubin_burden_per_sex <- HIA_burden_IC(BEST_burden_sex_total, dis_vec, outco
 
 
 
+
 ##############################################################
 #                         PER AGE                            #
 ##############################################################
@@ -267,7 +268,7 @@ BEST_Rubin_burden_per_age <- HIA_burden_IC(BEST_burden_age_total, dis_vec, outco
 ################################################################################################################################
 
 # Import 2019 data
-burden_sex_2019 <- import(here("output", "Tables", "2019", "Monte Carlo", "HIA_per_sex.xlsx"))
+burden_sex_2019 <- import(here("output", "Tables", "2019", "HIA_per_sex.xlsx"))
 
 
 # Plot : Cases prevented had the 2019 population walked 7000 steps according to sex, compared to 2019 levels
@@ -312,7 +313,7 @@ plot_BEST_cases_prev
 #                                                      11. EXPORT DATA                                                         #
 ################################################################################################################################
 # Plot
-  ggsave(here("output", "Plots", "7000 steps", "Monte Carlo", "7000steps_cases_prev.png"), plot = plot_BEST_cases_prev)
+  ggsave(here("output", "Plots", "7000 steps", "7000steps_cases_prev.png"), plot = plot_BEST_cases_prev)
 
 
 # HIA of best case scenario
@@ -321,4 +322,4 @@ plot_BEST_cases_prev
   export(BEST_burden_per_sex, here("output", "Tables", "7000 steps", "HIA_sex_7000steps_1000replicate.xlsx"))
   export(BEST_Rubin_burden_per_sex, here("output", "Tables", "7000 steps", "HIA_sex_Rubin_7000steps_1000replicate.xlsx"))
   export(BEST_burden_per_age, here("output", "Tables", "7000 steps", "HIA_age_7000steps_1000replicate.xlsx"))
-  export(BEST_Rubin_burden_per_age, here("output", "Tables", "2019", "7000 steps", "HIA_age_Rubin_7000steps_1000replicate.xlsx"))
+  export(BEST_Rubin_burden_per_age, here("output", "Tables", "7000 steps", "HIA_age_Rubin_7000steps_1000replicate.xlsx"))
