@@ -71,7 +71,7 @@ dw_table <- import(here("data", "dw_table.xlsx"))
 
 
 # Import functions
-source(here("0_Functions.R"))
+source(here("R_code", "Functions.R"))
 
 
 
@@ -79,7 +79,7 @@ source(here("0_Functions.R"))
 #                                                     3. SET PARAMETERS                                                        #
 ################################################################################################################################
 # Import parameters
-source(here("0_Parameters.R"))
+source(here("R_code", "Parameters.R"))
 
 # Diseases considered
 dis_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
@@ -316,7 +316,7 @@ walk_individual <- emp_walk_ind %>%
 
 
 # Create walkers dataset combing walking exposure for each individual
-walkers <- walk_dataset(walk_individual, incid_mid_10, insee, morbi_vec, 
+walkers <- walk_dataset(walk_individual, dis_mid_10, insee, morbi_vec, 
                            walk_dist_var = "nbkm_tot_walking", 
                            walk_dist_jour_var = "nbkm_tot_walking_jour", 
                            step_length = step_length, 
@@ -350,6 +350,17 @@ walk_trip <- emp_walk_trip  %>%
          nbkm_tot_walking_jour = nbkm_tot_walking * pond_jour / (pond_indc * 7))
 
 
+# Mode of transport
+walk_trip <- walk_trip %>% 
+  mutate(mode = case_when(
+    mtp %in% c(1.1, 1.2, 1.3, 1.4)                                     ~ "walk",
+    mtp %in% c(2.1, 2.2)                                               ~ "bike",
+    mtp %in% c(2.3, 2.4, 2.5, 2.6, 2.7, 3.1, 3.2, 3.3, 3.4, 4.1)       ~ "car",
+    mtp %in% c(4.2, 4.3, 4.4, 5.1, 5.10, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6.1, 6.2, 6.3, 6.4, 6.5) ~ "public_transport",
+    TRUE                                                             ~ "other"
+  ))
+
+
 # Area type depend on density
 walk_trip <- walk_trip %>%
   mutate(
@@ -361,7 +372,7 @@ walk_trip <- walk_trip %>%
 
 
 # Create walkers dataset combing diseases incidence and walking exposure for each individual
-walking_trip <- walk_dataset(walk_trip, incid_mid_10, insee, morbi_vec, 
+walking_trip <- walk_dataset(walk_trip, dis_mid_10, insee, morbi_vec, 
                            walk_dist_var = "nbkm_tot_walking", 
                            walk_dist_jour_var = "nbkm_tot_walking_jour", 
                            step_length = step_length, 
@@ -431,7 +442,7 @@ car_trip <- emp_car_trip  %>%
   mutate(nbkm_car_jour = nbkm_car * pond_jour / (pond_indc * 7))
 
 # Create drives dataset combing diseases incidence and walking exposure for each individual
-car_trip <- walk_dataset(car_trip, incid_mid_10, insee, morbi_vec, 
+car_trip <- walk_dataset(car_trip, dis_mid_10, insee, morbi_vec, 
                            walk_dist_var = "nbkm_car", 
                            walk_dist_jour_var = "nbkm_car_jour", 
                            step_length = step_length, 
@@ -451,9 +462,9 @@ car_trip <- car_trip %>%
 # Associate drive speed
 car_trip <- car_trip %>%
   mutate(drive_speed = case_when(
-    area_type == c("urban", "periurban") ~ urban_car_speed,
-    tuu2017_ori == 8     ~ paris_car_speed,
-    TRUE                 ~ rural_car_speed))
+    area_type %in% c("urban", "periurban")    ~ urban_car_speed,
+    tuu2017_ori == 8                          ~ paris_car_speed,
+    TRUE                      ~ rural_car_speed))
 
 
 

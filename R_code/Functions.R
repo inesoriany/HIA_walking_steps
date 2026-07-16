@@ -63,7 +63,7 @@ walk_dataset <- function(data, diseases_10, insee, dis_vec,
         select(pop_age_grp10, sex, age_grp10),     
       by = c("sex", "age_grp10"))  %>% 
   
-  # Add diseases incidences / prevalences
+  # Add diseases incidences
     left_join(diseases_10 %>% 
         select(cvd_incidence_mid, cancer_incidence_mid, diab2_incidence_mid, dem_incidence_mid, dep_incidence_mid, sex, age_grp10),    
       by = c("sex", "age_grp10")                                                                                               ) 

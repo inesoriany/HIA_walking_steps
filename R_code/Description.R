@@ -56,7 +56,7 @@ emp_car_trips <- import(here("data_clean", "EMP_car_trips.xlsx"))
 ################################################################################################################################
 
 # Import parameters
-source(here("0_Parameters.R"))
+source(here("R_code", "Parameters.R"))
 
 # Diseases considered
 dis_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
@@ -452,7 +452,10 @@ plot_mean_walk <- ggplot() +
 
 plot_mean_walk
 
-# De combien ça augmente d'ajouter la marche intermodale ?
+
+
+# Mean intermodal walking distance associated to different modes of transport
+
 
 
 
