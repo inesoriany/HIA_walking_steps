@@ -47,12 +47,15 @@ pacman::p_load(
 
 
 # Import functions
-source(here("0_Functions.R"))  
+source(here("R_code", "Functions.R")) 
 
 
 ################################################################################################################################
 #                                                      3. PARAMETERS                                                           #
 ################################################################################################################################
+
+# Import parameters
+source(here("R_code", "Parameters.R"))
 
 # Number of simulations
 n <- 1000
@@ -199,9 +202,15 @@ ic95_rr <- rr_table_interpolated %>%
   summarise(
     rr_mean = mean(rr_interpolated, na.rm = TRUE),
     rr_lci = quantile(rr_interpolated, 0.025, na.rm = TRUE), # Lower limit of the 95% CI
-    rr_uci = quantile(rr_interpolated, 0.975, na.rm = TRUE)  # Upper limit of the 95% CI
+    rr_uci = quantile(rr_interpolated, 0.975, na.rm = TRUE),  # Upper limit of the 95% CI
   ) %>% 
   ungroup()
+
+
+# Export data
+export(rr_central_table, here("data_clean", "Diseases", "DRF", "rr_central_interpolated.rds"))
+export(rr_table_interpolated, here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
+export(ic95_rr, here("data_clean", "Diseases", "DRF", "rr_interpolated_mean.csv"))
 
 
 
@@ -210,9 +219,9 @@ ic95_rr <- rr_table_interpolated %>%
 ################################################################################################################################
 
 # Import data
-rr_central_table <- import(here("data_clean", "DRF", "rr_central_interpolated.rds"))
-rr_table_interpolated <- import(here("data_clean", "DRF", "rr_sim_interpolated.rds"))
-ic95_rr <- import(here("data_clean", "DRF", "rr_interpolated_mean.csv"))
+rr_central_table <- import(here("data_clean", "Diseases", "DRF", "rr_central_interpolated.rds"))
+rr_table_interpolated <- import(here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
+ic95_rr <- import(here("data_clean", "Diseases", "DRF", "rr_interpolated_mean.csv"))
 
 
 
@@ -330,6 +339,7 @@ ic95_rr <- import(here("data_clean", "DRF", "rr_interpolated_mean.csv"))
   
   
   
+  
   # All DRF curves simulated
   list_drf <- list(graph_drf_sim_mort, graph_drf_sim_cvd, graph_drf_sim_cancer, graph_drf_sim_diab2, graph_drf_sim_dem,
                   graph_drf_sim_dep)
@@ -345,6 +355,7 @@ ic95_rr <- import(here("data_clean", "DRF", "rr_interpolated_mean.csv"))
   combined_plot_drf <- reduce(list_drf, `+`) + plot_layout(ncol = 3)
   
   print(combined_plot_drf) 
+
 
 
   # Mean + IC95
@@ -410,4 +421,3 @@ ggsave(here("output", "Plots", "DRF", "Simulation", "Mean", "drf_dem_mean.png"),
 ggsave(here("output", "Plots", "DRF", "Simulation", "Mean", "drf_dep_mean.png"), plot = graph_drf_dep)
 
 ggsave(here("output", "Plots", "DRF", "Simulation", "Mean", "drf_all_mean.png"), plot = combined_plot_mean_drf)
-
