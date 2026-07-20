@@ -333,11 +333,6 @@ walkers <- walkers %>%
     area_type = factor(area_type, levels = c("rural", "periurban", "urban")))
 
 
-# Exclusively walking trips
-walkers <- walkers %>% 
-  mutate(step_main = nbkm_main_walk / step_length)
-
-
 
 # --------------------------------------
 # TRIPS
