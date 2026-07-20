@@ -1,6 +1,6 @@
 #################################################
 ########          BEST PRACTICE          ########
-########       Commune de résidence      ########
+########        Commune de départ        ########
 #################################################
 
 
@@ -26,8 +26,8 @@ pacman :: p_load(
 #                                                     2. IMPORT DATA                                                           #
 ################################################################################################################################
 
-# Drivers dataset
-emp_walk <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
+# Import drivers dataset
+emp_walk_trip <- import(here("data_clean", "EMP_dis_walking_trips.xlsx"))
 
 
 # Incidence distribution table
@@ -65,80 +65,12 @@ outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 
 
 
-################################################################################################################################
-#                                                     4. STEP TARGETS                                                          #
-################################################################################################################################
-# Mean intermodal walking distance associated to different modes of transport
-intermodal_area <- emp_walk_trips %>%
-  filter(!is.na(pond_jour)) %>% 
-  as_survey_design(ids = ident_ind, 
-                   weights = pond_jour) %>% 
-  group_by(area_type, mode) %>%
-  summarise(intermodal_mean_km = survey_mean(nbkm_intermodal_walk, na.rm = TRUE))  %>% 
-  mutate(intermodal_mean_step = intermodal_mean_km / step_length)
-
-
-# Modal share of each mode of transport by area type (ADEME, September 2025 - "Contribution de la marche et du vélo à la décarbonation et à l'amélioration de la qualité de l'air en France")
-intermodal_area <- intermodal_area %>%
-  mutate(
-    modal_share = case_when(
-      area_type == "urban" & mode == "car" ~ 0.27,
-      area_type == "urban" & mode == "public_transport" ~ 0.16,
-      area_type == "urban" & mode == "bike" ~ 0.13,
-      area_type == "urban" & mode == "walk" ~ 0.44,
-      area_type == "urban" & mode == "other" ~ 0,
-      area_type == "periurban" & mode == "car" ~ 0.64,
-      area_type == "periurban" & mode == "public_transport" ~ 0.04,
-      area_type == "periurban" & mode == "bike" ~ 0.05,
-      area_type == "periurban" & mode == "walk" ~ 0.27,
-      area_type == "periurban" & mode == "other" ~ 0,
-      area_type == "rural" & mode == "car" ~ 0.74,
-      area_type == "rural" & mode == "public_transport" ~ 0.03,
-      area_type == "rural" & mode == "bike" ~ 0.04,
-      area_type == "rural" & mode == "walk" ~ 0.18,
-      area_type == "rural" & mode == "other" ~ 0.01,
-      TRUE ~ NA_real_
-    )
-  )
-
-
-# Target steps by area_type : weighted mean of intermodal walking distance by mode of transport
-target_steps_area <- intermodal_area %>%
-  group_by(area_type) %>%
-  summarise(target_steps = case_when(
-    first(area_type) == "urban"     ~ urban_target + sum(intermodal_mean_step * modal_share, na.rm = TRUE),
-    first(area_type) == "periurban" ~ periurban_target + sum(intermodal_mean_step * modal_share, na.rm = TRUE),
-    first(area_type) == "rural"     ~ rural_target + sum(intermodal_mean_step * modal_share, na.rm = TRUE),
-  ))
-
-
-# Associate target steps to individuals
-urban_target <- target_steps_area %>%
-  filter(area_type == "urban") %>%
-  pull(target_steps)
-
-periurban_target <- target_steps_area %>%
-  filter(area_type == "periurban") %>%
-  pull(target_steps)
-
-rural_target <- target_steps_area %>%
-  filter(area_type == "rural") %>%
-  pull(target_steps)
-
-emp_walk <- emp_walk  %>% 
-  mutate(target_area = case_when(
-    area_type == "urban"     ~ urban_target,
-    area_type == "periurban" ~ periurban_target,
-    area_type == "rural"     ~ rural_target
-  ))
-
-
 
 ################################################################################################################################
-#                                                   5. AGE DISTRIBUTION                                                        #
+#                                                   4. AGE DISTRIBUTION                                                        #
 ################################################################################################################################
 # Survey design ponderated by day
-main_jour <- emp_walk %>% 
+main_jour <- emp_walk_trip %>% 
   filter(pond_jour != "NA") %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_jour,
@@ -150,7 +82,7 @@ main_jour <- emp_walk %>%
 # Walking pyramid : Age distribution of walking volume for each territory (in steps)
 distrib_main_walk_EMP2019 <- main_jour %>% 
   group_by(age_grp10, area_type) %>% 
-  summarise(mean_ind = survey_mean(step_commute, na.rm = TRUE))
+  summarise(mean_ind = survey_mean(step_main, na.rm = TRUE))
 
 
 # Distribution coefficient by area type
@@ -159,7 +91,7 @@ distrib_main_walk_EMP2019 <- distrib_main_walk_EMP2019 %>%
   mutate(rho = mean_ind / mean_ind[age_grp10 == "20-29"]) %>% 
   ungroup()
 
-emp_target_walk <- emp_walk %>% 
+emp_target_walk <- emp_walk_trip %>% 
   left_join(distrib_main_walk_EMP2019 %>% 
   select(age_grp10, area_type, rho), by = c("age_grp10", "area_type"))
 
@@ -172,10 +104,21 @@ emp_target_walk <- emp_target_walk  %>%
   ungroup()
 
 
-# Calculate target steps per person for each individual, adjusted by the distribution coefficient and population structure
+# Calculate target to reach for each individual depending on their area type and age group
+#(steps per person by age group and area type)
 emp_target_walk <- emp_target_walk %>% 
-  mutate(target_ind = rho * target_area * sum(pop_age_area) / sum(pop_age_area * rho))
+  group_by(area_type) %>%
+  mutate(
+    target_area = case_when(
+      area_type == "urban" ~ urban_target,
+      area_type == "periurban" ~ periurban_target,
+      area_type == "rural" ~ rural_target),
 
+    
+    # target steps per person for each individual, adjusted by the distribution coefficient and population structure
+    target_step = rho * target_area * sum(pop_age_area) / sum(pop_age_area * rho)) %>%
+  
+  ungroup()
 
 
 ###########################################################################################################################################################################
@@ -191,7 +134,8 @@ emp_target_walk <- emp_target_walk %>%
 # Initialization
 emp_target_walk <- emp_target_walk %>% 
   # Round the number of steps to the nearest hundred and baseline at 2000
-  mutate(step = pmin(12000, round(target_ind / 100) * 100 + 2000))
+  mutate(step = pmin(12000, round(target_step / 100) * 100 + 2000))  %>% 
+  filter(mtp ==1.1)             # Exclusively walking
 
 
 # EMP Dataset per disease
@@ -219,7 +163,7 @@ PRACT_burden_total <- HIA_burden_total(PRACT_list,
 
 
 # Export : Table of HIA outcomes per simulation
-export(PRACT_burden_total, here("output", "RDS", "Best practice", "Residence", "HIA_best_practice_1000replicate.rds"))
+export(PRACT_burden_total, here("output", "RDS", "Best practice", "HIA_best_practice_1000replicate.rds"))
 
 
 
@@ -230,7 +174,7 @@ export(PRACT_burden_total, here("output", "RDS", "Best practice", "Residence", "
 ################################################################################################################################
 
 # Import data
-PRACT_burden_total <- import(here("output", "RDS", "Best practice", "Residence", "HIA_best_practice_1000replicate.rds"))
+PRACT_burden_total <- import(here("output", "RDS", "Best practice", "HIA_best_practice_1000replicate.rds"))
 
 
 ##############################################################
@@ -280,16 +224,17 @@ PRACT_burden <- bind_rows(PRACT_burden_per_area, PRACT_burden_morbidity, PRACT_b
 ################################################################################################################################
 
 # Initialization
-emp_2019 <- emp_walk  %>% 
+walk_2019 <- emp_walk_trip  %>% 
   # Round the number of steps to the nearest hundred and baseline at 2000
-  mutate(step = pmin(12000, round(step_commute/ 100) * 100 + 2000))
+  mutate(step = pmin(12000, round(step_main/ 100) * 100 + 2000))  %>% 
+  filter(mtp == 1.1)
 
 
 # EMP Dataset per disease and bound
-emp_2019_list <- list()
+walk_trips_2019_list <- list()
 
 for (dis in dis_vec) {
-  emp_2019_list[[dis]] <- emp_2019 %>% 
+  walk_trips_2019_list[[dis]] <- walk_2019 %>% 
     filter(disease == dis)
 }
 
@@ -300,7 +245,7 @@ for (dis in dis_vec) {
 ################################################################################################################################
 # Total of prevented burden of each disease per area type for each simulation 
 set.seed(123)
-burden_2019_total <- HIA_burden_total(emp_2019_list,
+burden_2019_total <- HIA_burden_total(walk_trips_2019_list,
                                       incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
                                       dis_vec,
                                       prop_relapse, duration_recovery, vsl,
@@ -308,7 +253,7 @@ burden_2019_total <- HIA_burden_total(emp_2019_list,
                                       N = 1000)
 
 # Export HIA outcomes of 1000 replications
-export(burden_2019_total, here("output", "RDS", "2019", "Residence", "HIA_area_2019_1000replicate.rds"))
+export(burden_2019_total, here("output", "RDS", "2019", "HIA_area_2019_1000replicate.rds"))
 
 
 
@@ -318,7 +263,7 @@ export(burden_2019_total, here("output", "RDS", "2019", "Residence", "HIA_area_2
 ################################################################################################################################
 
 # Import data
-burden_2019_total <- import(here("output", "RDS", "2019", "Residence", "HIA_area_2019_1000replicate.rds"))
+burden_2019_total <- import(here("output", "RDS", "2019", "HIA_area_2019_1000replicate.rds"))
 
 
 ##############################################################
@@ -454,8 +399,8 @@ plot_PRACT_cases_prev
 ################################################################################################################################
 
 # Plot
-ggsave(here("output", "Plots", "Best practice", "Residence", "best_practice_cases_prev_RES.png"), plot = plot_PRACT_cases_prev)
+ggsave(here("output", "Plots", "Best practice", "best_practice_cases_prev.png"), plot = plot_PRACT_cases_prev)
 
 # Tables
-export(PRACT_burden, here("output", "Tables", "Best practice", "Residence", "HIA_best_practice_1000replicate_RES.xlsx"))
-export(burden_2019, here("output", "Tables", "Best practice", "Residence", "HIA_area_2019_1000replicate_RES.xlsx"))
+export(PRACT_burden, here("output", "Tables", "Best practice", "HIA_best_practice_1000replicate.xlsx"))
+export(burden_2019, here("output", "Tables", "Best practice", "HIA_area_2019_1000replicate.xlsx"))
