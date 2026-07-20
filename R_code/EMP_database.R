@@ -79,6 +79,7 @@ trip <- trip %>%
          mtempsmap,                                  # Walking duration
          mtp,                                        # Main mean of transportation
          densitecom_ori,                             # Departure commune density  
+         densitecom_des,                             # Arrival commune density
          tuu2017_ori) %>%
   mutate(ident_ind = as.character(ident_ind),
          ident_dep = as.character(ident_dep))
@@ -146,6 +147,7 @@ car_trip <- trip %>%
          pond_jour,
          nbkm_car,
          densitecom_ori,
+         densitecom_des,
          tuu2017_ori) %>% 
   
 # Add individual characteristics 
