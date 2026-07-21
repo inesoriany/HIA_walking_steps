@@ -248,23 +248,47 @@ PRACT_burden_per_area <- HIA_burden_IC(PRACT_burden_total, dis_vec, outcome_vec,
 
 # Total for morbidity
 PRACT_burden_morbidity <- PRACT_burden_per_area %>%
-  filter(disease != "mort") %>% 
-  summarise(across(where(is.numeric), 
-                   ~ sum(.x, na.rm = TRUE) )) %>%
-  mutate(disease = "Morbidity") %>%
-  select(disease, everything()) 
-  
-  
-# Total for all diseases
-PRACT_burden_global <- PRACT_burden_per_area %>%
-  summarise(across(where(is.numeric), 
-                   ~ sum(.x, na.rm = TRUE) )) %>%
+  filter(disease != "mort") %>%
+  summarise(across(where(is.numeric),
+                   ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
+  mutate(disease = "Morbidity",
+         area_type = "All") %>%
+  select(disease, area_type, everything())
+
+
+# Total per disease without area_type stratification
+PRACT_burden_by_disease <- PRACT_burden_per_area %>%
+  group_by(disease) %>%
+  summarise(across(where(is.numeric),
+                   ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
+  mutate(area_type = "All") %>%
+  select(disease, area_type, everything())
+
+
+# Total for all diseases by area_type
+PRACT_burden_by_area <- PRACT_burden_per_area %>%
+  group_by(area_type) %>%
+  summarise(across(where(is.numeric),
+                   ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
   mutate(disease = "All") %>%
-  select(disease, everything()) 
-  
+  select(disease, area_type, everything())
+
+
+# Total for all diseases across all area types
+PRACT_burden_global <- PRACT_burden_per_area %>%
+  summarise(across(where(is.numeric),
+                   ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
+  mutate(disease = "All",
+         area_type = "All") %>%
+  select(disease, area_type, everything())
+
 
 # Gather results
-PRACT_burden <- bind_rows(PRACT_burden_per_area, PRACT_burden_morbidity, PRACT_burden_global)
+PRACT_burden <- bind_rows(PRACT_burden_per_area,
+                          PRACT_burden_by_disease,
+                          PRACT_burden_by_area,
+                          PRACT_burden_global,
+                          PRACT_burden_morbidity)
 
 
 
@@ -336,23 +360,43 @@ burden_per_area <- HIA_burden_IC(burden_2019_total, dis_vec, outcome_vec, calc_r
 
 # Total for morbidity
 burden_morbidity <- burden_per_area %>%
-  filter(disease != "mort") %>% 
-  summarise(across(where(is.numeric), 
-                   ~ sum(.x, na.rm = TRUE) )) %>%
-  mutate(disease = "Morbidity") %>%
-  select(disease, everything()) 
-  
-  
-# Total for all diseases
-burden_global <- burden_per_area %>%
-  summarise(across(where(is.numeric), 
-                   ~ sum(.x, na.rm = TRUE) )) %>%
+  filter(disease != "mort") %>%
+  summarise(across(where(is.numeric),
+                   ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
+  mutate(disease = "Morbidity",
+         area_type = "All") %>%
+  select(disease, area_type, everything())
+
+# Total per disease without area_type stratification
+burden_by_disease <- burden_per_area %>%
+  group_by(disease) %>%
+  summarise(across(where(is.numeric),
+                   ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
+  mutate(area_type = "All") %>%
+  select(disease, area_type, everything())
+
+# Total for all diseases by area_type
+burden_by_area <- burden_per_area %>%
+  group_by(area_type) %>%
+  summarise(across(where(is.numeric),
+                   ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
   mutate(disease = "All") %>%
-  select(disease, everything()) 
-  
+  select(disease, area_type, everything())
+
+# Total for all diseases across all area types
+burden_global <- burden_per_area %>%
+  summarise(across(where(is.numeric),
+                   ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
+  mutate(disease = "All",
+         area_type = "All") %>%
+  select(disease, area_type, everything())
 
 # Gather results
-burden_2019 <- bind_rows(burden_per_area, burden_morbidity, burden_global)
+burden_2019 <- bind_rows(burden_per_area,
+                         burden_by_disease,
+                         burden_by_area,
+                         burden_global,
+                         burden_morbidity)
 
 
 
