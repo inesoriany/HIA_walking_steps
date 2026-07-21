@@ -32,8 +32,11 @@ pacman :: p_load(
 #                                                     2. IMPORT DATA                                                           #
 ################################################################################################################################
 
-# Import drivers dataset
+# Drivers dataset
 emp_car_trip <- import(here("data_clean", "EMP_dis_car_trips.xlsx"))
+
+# Walkers dataset
+emp_walkers <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 
 
 # Incidence distribution table
@@ -73,19 +76,31 @@ outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
   # Driven distance shifted to walked (km)
   dist <- 2 
 
-  # Percentage of car trips shifted to walking
+  # Percentage of drivers shifted to walking
   perc <- 0.5
 
 
 ################################################################################################################################
 #                                                    3. DATA PREPARATION                                                       #
 ################################################################################################################################
-
 # Initialization
 emp_short_trip <- emp_car_trip %>% 
-    filter(!is.na(nbkm_car) & nbkm_car <= dist)  %>% 
-    # Round the number of steps to the nearest hundred and baseline at 2000
-  mutate(step = pmin(12000,round(step_commute / 100) * 100 + baseline_step))
+    filter(!is.na(nbkm_car) & nbkm_car <= dist) 
+
+
+# Conversion of short car trips to steps
+step_shift_by_ind <- emp_short_trip %>% 
+  distinct(ident_ind, ident_dep, .keep_all = TRUE) %>% 
+  group_by(ident_ind) %>% 
+  summarise(step_shift = sum(step_commute))
+
+emp_short_driver <- emp_short_trip %>% 
+    left_join(step_shift_by_ind, by = "ident_ind")  %>% 
+    mutate(short_car = TRUE)  %>% 
+    group_by(ident_ind)  %>% 
+    distinct(disease, .keep_all = TRUE)
+
+
 
 
 
@@ -99,27 +114,40 @@ N <- 1000
 MODAL_burden_total <- data.frame()
 
 for (i in 1:N) {
-    print(paste0("Run ", i))
+  print(paste0("Run ", i))
+  
+  sampled_ids <- emp_short_driver %>%
+    distinct(ident_ind) %>%
+    ungroup() %>%
+    slice_sample(prop = perc) %>%
+    pull(ident_ind)
 
-    short_trip_list <- list()
+  emp_driver_sample <- emp_short_driver %>%
+      filter(ident_ind %in% sampled_ids)
 
-    for (dis in dis_vec) {
-      emp_short_sample <- emp_short_trip %>%
-      filter(disease == dis)  %>% 
-      slice_sample(prop = perc)  %>% 
-      mutate (disease = dis)
-        
-      short_trip_list[[dis]] <- emp_short_sample
-    }
+  emp_walk_drive_sample <- emp_walkers  %>% 
+      left_join(emp_driver_sample  %>% select(ident_ind, disease, step_shift, short_car), by = c("ident_ind", "disease"))  %>% 
+      replace_na(list(step_shift = 0))  %>%
+      mutate(step_total = step_commute + step_shift,
+             step = pmin(12000, round(step_total / 100) * 100 + baseline_step))     # Round the number of steps to the nearest hundred and baseline at 2000
 
-    burden_run <- HIA_burden_total(short_trip_list, 
-             incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
-             dis_vec, prop_relapse, duration_recovery, vsl, NULL, 1, FALSE)  %>% 
-             mutate(run = i)
+  short_trip_list <- list()
+  
+  for (dis in dis_vec) {
+    emp_dis_sample <- emp_walk_drive_sample %>%
+      filter(disease == dis)
 
-    MODAL_burden_total <- bind_rows(MODAL_burden_total, burden_run)
-
+    short_trip_list[[dis]] <- emp_dis_sample
+  }
+  
+  burden_run <- HIA_burden_total(short_trip_list, 
+                incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
+                dis_vec, prop_relapse, duration_recovery, vsl, NULL, 1, FALSE)
+    mutate(run = i)
+  
+  MODAL_burden_total <- bind_rows(MODAL_burden_total, burden_run)
 }
+
 
 
 # Export HIA outcomes of 1000 replications
@@ -198,6 +226,22 @@ MODAL_burden_total <- import(here("output", "RDS", "Modal shift", "HIA_modal_shi
 
 
 
+# Import 2019 data
+burden_2019 <- import(here("output", "Tables", "2019", "HIA_per_disease.xlsx"))
+
+
+# Additional gains of the modal shift scenario
+MODAL_burden_add <- MODAL_burden %>% 
+    mutate(tot_cases = tot_cases - burden_2019[["tot_cases"]],
+           tot_cases_low = tot_cases_low - burden_2019[["tot_cases_low"]], 
+           tot_cases_up = tot_cases_up - burden_2019[["tot_cases_up"]],
+           tot_daly = tot_daly - burden_2019[["tot_daly"]],
+           tot_daly_low = tot_daly_low - burden_2019[["tot_daly_low"]],
+           tot_daly_up = tot_daly_up - burden_2019[["tot_daly_up"]])  %>% 
+    select(disease, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up)
+
+
+
 ################################################################################################################################
 #                                                       6. VISUALIZATION                                                       #
 ################################################################################################################################
@@ -205,16 +249,6 @@ MODAL_burden_total <- import(here("output", "RDS", "Modal shift", "HIA_modal_shi
 # Import 2019 data
 burden_2019 <- import(here("output", "Tables", "2019", "HIA_per_disease.xlsx"))
 
-
-# Data preparation
-MODAL_burden_add <- MODAL_burden  %>% 
-    mutate(tot_cases = tot_cases + burden_2019[["tot_cases"]],
-           tot_cases_low = tot_cases_low + burden_2019[["tot_cases_low"]], 
-           tot_cases_up = tot_cases_up + burden_2019[["tot_cases_up"]],
-           tot_daly = tot_daly + burden_2019[["tot_daly"]],
-           tot_daly_low = tot_daly_low + burden_2019[["tot_daly_low"]],
-           tot_daly_up = tot_daly_up + burden_2019[["tot_daly_up"]])  %>% 
-    select(disease, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up)
 
 
 # Plot : Cases prevented had 50% of short car trips (<2km) been walked, compared to 2019 levels
@@ -239,7 +273,7 @@ plot_MODAL_cases_prev <-
   scale_fill_manual(values = colors_disease, labels = names_disease) +
   
   # Modal shift
-  geom_bar(data = MODAL_burden_add %>%  
+  geom_bar(data = MODAL_burden %>%  
            filter(!disease %in% c("All", "Morbidity")), 
            mapping = aes(x = disease, y = tot_cases, fill = disease, alpha = "Modal shift scenario"),
            width = 0.7,
@@ -248,7 +282,7 @@ plot_MODAL_cases_prev <-
   scale_alpha_manual(name   = "Scenario",
                      values = c("2019 baseline" = 1, "Modal shift scenario" = 0.4)) +
   
-  geom_errorbar(data = MODAL_burden_add %>%  
+  geom_errorbar(data = MODAL_burden %>%  
                 filter(!disease %in% c("All", "Morbidity")),
                 mapping = aes(x = disease, ymin = tot_cases_low, ymax = tot_cases_up, alpha = "Modal shift scenario"),
                 position = position_dodge(0.7),
@@ -274,14 +308,14 @@ N <- 1000
 
 tot_km_CO2 <- data.frame()
 
-emp_short_sample <- emp_car_trip %>% 
-  filter(!is.na(nbkm_car) & nbkm_car <= dist)                                       # Select the drivers under this distance
-
-tot_km_drivers <- data.frame()                                                    # 1 dataframe per scenario
+tot_km_drivers <- data.frame()                                                      # 1 dataframe per scenario
 for(i in 1:N) {
   print(i)
-  tot_sample <- emp_short_sample %>%                                                  # Distances shifted for a year for 1 scenario
-  filter(pond_jour != "NA") %>% 
+
+  tot_sample <- emp_short_driver %>%  
+  filter(!is.na(pond_jour)) %>%                                                     # Distances shifted for a year for 1 scenario
+  distinct(ident_ind, .keep_all = TRUE)  %>% 
+  ungroup() %>%
   slice_sample(prop = perc) %>% 
   as_survey_design(ids= ident_ind, weights = pond_jour) %>% 
   summarise(tot_km = survey_total(nbkm_car, na.rm = T)*365.25/7)
@@ -314,6 +348,7 @@ tot_km_CO2 <- bind_rows(tot_km_CO2, data.frame(
 
 
 
+
 ################################################################################################################################
 #                                                           8. DESCRIPTION                                                     #
 ################################################################################################################################
@@ -335,29 +370,16 @@ short_km_driven <- emp_car_trip  %>%
 ##############################################################
 #                            DRIVERS                         #
 ##############################################################
-# Number of drivers with short car trips (< 2 km) per year
-short_drivers <- emp_car_trip  %>% 
-  filter(!is.na(nbkm_car) & nbkm_car <= dist)
-
-sample_drivers <- short_drivers %>% 
-  slice_sample(prop = perc) 
-
 # Calculate number of unique drivers (weighted) by summing the weight per unique `ident_ind`.
 # Some individuals may have multiple trip rows; we take one row per `ident_ind` and use their `pond_indc`.
-nb_short_drivers <- short_drivers %>%
-  distinct(ident_ind, .keep_all = TRUE) %>%
-  summarise(total = sum(pond_indc, na.rm = TRUE)) %>%
-  pull(total)
+short_drivers <- emp_short_driver %>%
+  distinct(ident_ind, .keep_all = TRUE)
+
+nb_short_drivers <- tibble(
+  nb_respondents = nrow(short_drivers),
+  total = sum(short_drivers[["pond_indc"]], na.rm = TRUE))
 
 nb_short_drivers
-
-# For the sampled (shifted) drivers, also count unique individuals and sum their weights
-nb_shifted_drivers <- sample_drivers %>%
-  distinct(ident_ind, .keep_all = TRUE) %>%
-  summarise(total = sum(pond_indc, na.rm = TRUE)) %>%
-  pull(total)
-
-nb_shifted_drivers
 
 
 
