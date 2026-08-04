@@ -92,7 +92,8 @@ emp_short_trip <- emp_car_trip %>%
 step_shift_by_ind <- emp_short_trip %>% 
   distinct(ident_ind, ident_dep, .keep_all = TRUE) %>% 
   group_by(ident_ind) %>% 
-  summarise(step_shift = sum(step_commute))
+  summarise(step_shift = sum(step_commute, na.rm = TRUE), .groups = "drop")
+  
 
 emp_short_driver <- emp_short_trip %>% 
     left_join(step_shift_by_ind, by = "ident_ind")  %>% 

@@ -11,17 +11,8 @@ step_length <- 0.715*1e-3   # km
 walk_speed <- 4.8  # km/h
 
 
-## DRIVING SPEED (Kahlmeier, Götschi et al, 2017) ----
-paris_car_speed <- 31  # km/h 
-urban_car_speed <-  32
-rural_car_speed <- 60 
-
-
 ## BASELINE: 2000 steps daily
 baseline_step = 2000
-  # Number of minimum weekly steps 
-week_base <- 7* 2000 / (80/0.715)     
-
 
 
 

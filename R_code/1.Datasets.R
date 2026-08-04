@@ -444,24 +444,6 @@ car_trip <- walk_dataset(car_trip, dis_mid_10, insee, morbi_vec,
                            walk_speed = walk_speed)
 
 
-# Area type depend on density
-car_trip <- car_trip %>%
-  mutate(
-    area_type = case_when(
-      densitecom_ori == 1    ~ "urban",
-      densitecom_ori == 2    ~ "periurban",
-      TRUE                   ~ "rural"),
-    area_type = factor(area_type, levels = c("rural", "periurban", "urban")))
-
-
-# Associate drive speed
-car_trip <- car_trip %>%
-  mutate(drive_speed = case_when(
-    area_type %in% c("urban", "periurban")    ~ urban_car_speed,
-    tuu2017_ori == 8                          ~ paris_car_speed,
-    TRUE                      ~ rural_car_speed))
-
-
 
 ################################################################################################################################
 #                                                   5. DISEASE EMP SUBSET                                                      #
