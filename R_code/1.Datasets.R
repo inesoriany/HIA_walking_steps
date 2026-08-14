@@ -62,7 +62,6 @@ insee <- import(here("data", "INSEE_2019.RDS"))
 
 
 # RR by step, simulated dose-response relationships
-rr_central_table <- import(here("data_clean", "Diseases", "DRF", "rr_central_interpolated.rds"))
 rr_distrib_table <- import(here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
 
 
@@ -182,22 +181,6 @@ incidence_distrib_table <- incidence_distrib_table %>%
 ################################################################################################################################
 #                                                  5. REDUCTION RISKS DATASET                                                  #
 ################################################################################################################################
-
-##############################################################
-#                REDUCTION RISKS CENTRAL VALUE               #
-##############################################################
-# Baseline RR
-rr_central_baseline <- rr_central_table %>%
-  filter(step == baseline_step) %>%
-  select(disease, rr2000 = mid)
-
-
-# Compute reduction risk
-reduc_central_table <- rr_central_table %>%
-  left_join(rr_central_baseline, by = c("disease")) %>%
-  mutate(reduction_risk = (rr2000 - mid) / rr2000)
-
-
 
 ##############################################################
 #                REDUCTION RISKS DISTRIBUTIONS               #
