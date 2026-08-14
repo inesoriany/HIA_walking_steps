@@ -100,7 +100,7 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123) 
-BEST_burden_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+BEST_burden_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, duration_recovery,vsl, 
                                  group = NULL,
@@ -116,7 +116,7 @@ export(BEST_burden_total, here("output", "RDS", "7000 steps", "HIA_7000steps_100
 ##############################################################
 # Total of prevented burden of each disease per sex for each simulation
 set.seed(123)
-BEST_burden_sex_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+BEST_burden_sex_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, duration_recovery,vsl, 
                                  group ="sex", 
@@ -133,7 +133,7 @@ export(BEST_burden_sex_total, here("output", "RDS", "7000 steps", "HIA_sex_7000_
 ##############################################################
 # Total of prevented burden of each disease per age for each simulation
 set.seed(123)
-BEST_burden_age_total <- HIA_burden_total(BEST_replicate_list, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+BEST_burden_age_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                      dis_vec, 
                                      prop_relapse, duration_recovery, vsl, 
                                      group = "age_grp10", 

@@ -155,6 +155,7 @@ for (dis in dis_vec) {
 # Total of prevented burden of each disease per area type for each simulation 
 set.seed(123)
 PRACT_burden_total <- HIA_burden_total(PRACT_list,
+                                       calc_HIA_replicate,
                                        incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
                                        dis_vec,
                                        prop_relapse, duration_recovery, vsl,
@@ -246,6 +247,7 @@ for (dis in dis_vec) {
 # Total of prevented burden of each disease per area type for each simulation 
 set.seed(123)
 burden_2019_total <- HIA_burden_total(walk_trips_2019_list,
+                                      calc_HIA_replicate,
                                       incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
                                       dis_vec,
                                       prop_relapse, duration_recovery, vsl,

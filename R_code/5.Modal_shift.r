@@ -142,8 +142,9 @@ for (i in 1:N) {
   }
   
   burden_run <- HIA_burden_total(short_trip_list, 
+                calc_HIA_replicate,
                 incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
-                dis_vec, prop_relapse, duration_recovery, vsl, NULL, 1, FALSE)
+                dis_vec, prop_relapse, duration_recovery, vsl, NULL, 1, FALSE) %>%
     mutate(run = i)
   
   MODAL_burden_total <- bind_rows(MODAL_burden_total, burden_run)
