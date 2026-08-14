@@ -103,7 +103,7 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-burden_total <- HIA_burden_total(replicate_list, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, duration_recovery, vsl, 
                                  group = NULL,
@@ -119,7 +119,7 @@ export(burden_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_1000repli
 ##############################################################
 # Total of prevented burden of each disease per sex for each simulation
 set.seed(123)
-burden_sex_total <- HIA_burden_total(replicate_list, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_sex_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, duration_recovery,vsl, 
                                  group ="sex", 
@@ -136,7 +136,7 @@ export(burden_sex_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_per_s
 ##############################################################
 # Total of prevented burden of each disease per age for each simulation
 set.seed(123)
-burden_age_total <- HIA_burden_total(replicate_list, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_age_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                      dis_vec, 
                                      prop_relapse, duration_recovery, vsl,
                                      group = "age_grp10", 
