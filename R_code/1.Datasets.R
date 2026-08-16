@@ -81,7 +81,7 @@ source(here("R_code", "Functions.R"))
 source(here("R_code", "Parameters.R"))
 
 # Diseases considered
-dis_vec = c("mort", "cvd", "cancer", "diab2", "dem", "dep")
+dis_vec = c("mort", "bc", "cc", "cvd", "cancer", "diab2", "dem", "dep")
 
 morbi_vec <- dis_vec[dis_vec != "mort"]
 
@@ -262,8 +262,6 @@ dep_duration_distrib_table <- dep_incid_distrib_table %>%
   export(incidence_distrib_table, here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
 
-# Reduction risks central table
-  export(reduc_central_table, here("data_clean", "Diseases", "DRF", "reduction_risk_central_table.xlsx"))
 # Reduction risks distribution table
   export(reduc_distrib_table, here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
 

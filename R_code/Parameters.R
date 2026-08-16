@@ -56,6 +56,8 @@ colors_sex <- c(
 
 
 ## MEDICAL COSTS ----
+bc_cost <- 46242
+cc_cost <- 25126
 cancer_cost <- 14807
 cvd_cost <- 55702
 dem_cost <- 16839
