@@ -22,11 +22,8 @@ pacman :: p_load(
   progress      # Progression bar
 )
 
-
 ################################################################################################################################
-################################################################################################################################
-#                                                       ALTERNATIVE DRF                                                        #
-################################################################################################################################
+#                                                     2. IMPORT DATA                                                           #
 ################################################################################################################################
 
 # Walkers dataset
@@ -63,6 +60,12 @@ outcome_vec <- c("tot_cases", "tot_daly")
 
 
 ################################################################################################################################
+################################################################################################################################
+#                                                       ALTERNATIVE DRF                                                        #
+################################################################################################################################
+################################################################################################################################
+
+################################################################################################################################
 #                                                3. RELATIVE RISKS DISTRIBUTION                                                #
 ################################################################################################################################
 rr_women <- data.frame()
@@ -82,7 +85,7 @@ for (dis in alt_dis_vec){
   ungroup()
   if (dis %in% c("bc", "cc")) {                                                          # if disease is bc or cc
     rr_men <- data.frame(
-      dis = dis,
+      disease = dis,
       sex = "Male", 
       ref = params$ref_men) %>%
     mutate(disease = dis) %>%
@@ -144,12 +147,10 @@ for (dis in alt_dis_vec) {
 ################################################################################################################################
 #                                                 5. HEALTH IMPACT ASSESSMENT                                                  #
 ################################################################################################################################
+
 ##############################################################
 #                      PER DISEASES                          #
 ##############################################################
-
-alt_replicate_list <- calc_alt_HIA(alt_replicate_list, incidence_distrib_table, dep_distrib_table, alt_rr_distrib_table, dw_distrib_table, alt_dis_vec, prop_relapse, duration_recovery, vsl)
-# ça fonctionne
 
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
@@ -165,15 +166,95 @@ alt_burden_total <- HIA_burden_total(
   duration_recovery = duration_recovery,
   vsl = vsl,
   group = NULL,
-  N = 1
+  N = 1000
 )
  
 
 # Export : Table of HIA outcomes per simulation
-export(alt_burden_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_1000replicate.rds"))
+export(alt_burden_total, here("output", "RDS", "Sensitivity analysis", "HIA_sensitivity_1000replicate.rds"))
+
 
 
 ################################################################################################################################
 #                                            6. HEALTH IMPACT ASSESSMENT - baseline                                            #
 ################################################################################################################################
 
+##############################################################
+#                      PER DISEASES                          #
+##############################################################
+
+# Total of prevented burden of each disease for each simulation 
+set.seed(123)
+baseline_burden_total <- HIA_burden_total(
+  data_list = baseline_replicate_list,
+  function_calc_HIA = calc_alt_HIA,
+  incidence_distrib_table = incidence_distrib_table,
+  dep_duration_table = dep_distrib_table,
+  reduction_risk_distrib_table = alt_rr_distrib_table,
+  dw_distrib_table = dw_distrib_table,
+  dis_vec = alt_dis_vec,
+  prop_relapse = prop_relapse,
+  duration_recovery = duration_recovery,
+  vsl = vsl,
+  group = NULL,
+  N = 1000
+)
+ 
+
+# Export : Table of HIA outcomes per simulation
+export(baseline_burden_total, here("output", "RDS", "Sensitivity analysis", "HIA_baseline_sensitivity_1000replicate.rds"))
+
+
+
+################################################################################################################################
+#                         7. IC and MEDIAN - TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                        #
+################################################################################################################################
+
+# Import data
+alt_burden_total <- import(here("output", "RDS", "Sensitivity analysis", "HIA_sensitivity_1000replicate.rds"))
+baseline_burden_total <- import(here("output", "RDS", "Sensitivity analysis", "HIA_baseline_sensitivity_1000replicate.rds"))
+
+
+##############################################################
+#                       PER DISEASES                         #
+##############################################################
+
+# 2019 burden (compared to a counterfactual scenario of "zero walking")
+set.seed(123)
+ALT_burden_per_disease <- HIA_burden_IC(alt_burden_total, alt_dis_vec, outcome_vec, calc_replicate_IC) 
+
+# Baseline burden
+set.seed(123)
+BASE_burden_per_disease <- HIA_burden_IC(baseline_burden_total, alt_dis_vec, outcome_vec, calc_replicate_IC)
+
+
+# Additional gains of the modal shift scenario
+SENSI_burden <- ALT_burden_per_disease %>% 
+    mutate(tot_cases = tot_cases - BASE_burden_per_disease[["tot_cases"]],
+           tot_cases_low = tot_cases_low - BASE_burden_per_disease[["tot_cases_low"]], 
+           tot_cases_up = tot_cases_up - BASE_burden_per_disease[["tot_cases_up"]],
+           tot_daly = tot_daly - BASE_burden_per_disease[["tot_daly"]],
+           tot_daly_low = tot_daly_low - BASE_burden_per_disease[["tot_daly_low"]],
+           tot_daly_up = tot_daly_up - BASE_burden_per_disease[["tot_daly_up"]])  %>% 
+    select(disease, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up)
+
+
+
+################################################################################################################################
+#                                                      8. EXPORT DATA                                                          #
+################################################################################################################################
+export(SENSI_burden, here("output", "Tables", "Sensitivity analysis", "HIA_sensitivity_1000replicate.xlsx"))
+
+
+
+
+
+################################################################################################################################
+################################################################################################################################
+#                                                        WALKING SPEED                                                         #
+################################################################################################################################
+################################################################################################################################
+
+
+
+# Change of age pyramid ? (cf. P. Barban) but check DRF why 2000 steps and age

@@ -63,9 +63,9 @@ walk_dataset <- function(data, diseases_10, insee, dis_vec,
         select(pop_age_grp10, sex, age_grp10),     
       by = c("sex", "age_grp10"))  %>% 
   
-  # Add diseases incidences
+  # Add diseases incidences (include all *_incidence_mid columns present in diseases_10)
     left_join(diseases_10 %>% 
-        select(cvd_incidence_mid, cancer_incidence_mid, diab2_incidence_mid, dem_incidence_mid, dep_incidence_mid, sex, age_grp10),    
+        select(sex, age_grp10, matches("_incidence_mid$")),    
       by = c("sex", "age_grp10")                                                                                               ) 
   
   # Add mortality rates
@@ -707,28 +707,22 @@ calc_alt_HIA <- function(data_list, incidence_distrib_table, dep_duration_table,
   
   # 1. Disease incidence
   if (!is.null(incidence_distrib_table)) {
-    data_list <- incidence_replicate(
-      data_list = data_list,
-      incidence_distrib_table = incidence_distrib_table,
-      dis_vec = dis_vec
-    )
-  }
+    data_list <- incidence_replicate(data_list = data_list,
+                                     incidence_distrib_table = incidence_distrib_table,
+                                     dis_vec = dis_vec)}
   
   # 2. Relative risks
-  data_list <- value_associate(
-    data_list = data_list,
-    distrib_table = rr_distrib_table,
-    dis_vec = dis_vec,
-    variable = "rr"
-  )
+  data_list <- value_associate(data_list = data_list,
+                               distrib_table = rr_distrib_table,
+                               dis_vec = dis_vec,
+                               variable = "rr")
   
   # 3. Disability weights
-  data_list <- value_associate(
-    data_list = data_list,
-    distrib_table = dw_distrib_table,
-    dis_vec = dis_vec,
-    variable = "dw"
-  )
+  data_list <- value_associate(data_list = data_list,
+                               distrib_table = dw_distrib_table,
+                               dis_vec = dis_vec,
+                               variable = "dw")
+  
   
   for (dis in dis_vec) {
     
@@ -736,36 +730,27 @@ calc_alt_HIA <- function(data_list, incidence_distrib_table, dep_duration_table,
     
     # 4. Disease reduction risk
     dis_data <- dis_data %>%
-      mutate(
-        reduction_risk = 1 - exp(log(rr) * week_time / ref)
-      )
+      mutate(reduction_risk = 1 - exp(log(rr) * week_time / ref))
     
     # Cap mortality reduction to 45%
     if (dis == "mort") {
       dis_data <- dis_data %>%
-        mutate(
-          reduction_risk = if_else(
-            reduction_risk > (1 - 0.45),
-            1 - 0.45,
-            reduction_risk
-          )
-        )
-    }
+        mutate(reduction_risk = if_else(reduction_risk > (1 - 0.45), 1 - 0.45, reduction_risk))}
     
     # 5. Cases prevented
     dis_data <- reduc_incidence(dis_data) %>%
-      mutate(
-        cases = ifelse(cases > 0.40, 0.40, cases)
-      )
+      mutate(cases = ifelse(cases > 0.40, 0.40, cases))
     
+
     # 6. DALY
-    dis_data <- daly(
-      dis_data,
-      dep_duration_table,
-      dis,
-      prop_relapse,
-      duration_recovery
-    )
+    dis_data <- daly(dis_data, dep_duration_table, dis, prop_relapse, duration_recovery)
+
+    
+    # 7. Economic impact
+    dis_data <- medic_costs(dis_data, dis)
+    
+    dis_data <- dis_data %>%
+      mutate(soc_costs = daly * vsl)
     
     data_list[[dis]] <- dis_data
   }
