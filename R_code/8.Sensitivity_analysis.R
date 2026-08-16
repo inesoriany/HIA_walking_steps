@@ -1,10 +1,11 @@
 #################################################
-########     SENSITIVITY ANALYSIS         #######
+########     SENSITIVITY ANALYSES         #######
 #################################################
 
 # Modified parameters - files outputted :
-  # Walking speed 5.3 km/h
   # Former DRF
+  # Walking speed 5.3 km/h
+  
 
 
 ################################################################################################################################
@@ -32,6 +33,9 @@ emp_long <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 # Incidence distribution table
 incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
+# Risk reduction distribution table
+reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
+
 # Depression duration distribution table
 dep_distrib_table <- import(here("data_clean", "Diseases", "dep_duration_distrib_table.xlsx"))
 
@@ -53,9 +57,6 @@ source(here("R_code", "Parameters.R"))
 
 # Diseases considered
 alt_dis_vec <- c("mort", "bc", "cc", "cvd", "diab2", "dem", "dep")
-
-# HIA outcomes
-outcome_vec <- c("tot_cases", "tot_daly")
 
 
 
@@ -171,7 +172,7 @@ alt_burden_total <- HIA_burden_total(
  
 
 # Export : Table of HIA outcomes per simulation
-export(alt_burden_total, here("output", "RDS", "Sensitivity analysis", "HIA_sensitivity_1000replicate.rds"))
+export(alt_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_DRF_sensitivity_1000replicate.rds"))
 
 
 
@@ -202,7 +203,7 @@ baseline_burden_total <- HIA_burden_total(
  
 
 # Export : Table of HIA outcomes per simulation
-export(baseline_burden_total, here("output", "RDS", "Sensitivity analysis", "HIA_baseline_sensitivity_1000replicate.rds"))
+export(baseline_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_DRF_baseline_sensitivity_1000replicate.rds"))
 
 
 
@@ -211,8 +212,8 @@ export(baseline_burden_total, here("output", "RDS", "Sensitivity analysis", "HIA
 ################################################################################################################################
 
 # Import data
-alt_burden_total <- import(here("output", "RDS", "Sensitivity analysis", "HIA_sensitivity_1000replicate.rds"))
-baseline_burden_total <- import(here("output", "RDS", "Sensitivity analysis", "HIA_baseline_sensitivity_1000replicate.rds"))
+alt_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_DRF_sensitivity_1000replicate.rds"))
+baseline_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_DRF_baseline_sensitivity_1000replicate.rds"))
 
 
 ##############################################################
@@ -255,6 +256,210 @@ export(SENSI_burden, here("output", "Tables", "Sensitivity analysis", "HIA_sensi
 ################################################################################################################################
 ################################################################################################################################
 
+################################################################################################################################
+#                                                      1. PARAMETERS                                                           #
+################################################################################################################################
+
+# Change of walking speed (Compendium, 2011)
+walk_speed <- 5.3  # km/h
+
+# Diseases considered
+dis_vec <- c("mort", "cvd", "diab2", "dem", "dep")
 
 
-# Change of age pyramid ? (cf. P. Barban) but check DRF why 2000 steps and age
+################################################################################################################################
+#                                                    2. DATA PREPARATION                                                       #
+################################################################################################################################
+emp_walk_speed <- emp_long  %>% 
+  mutate(nbkm_intermodal_walk = intermodal_walk_time * walk_speed / 60,
+         nbkm_tot_walking = nbkm_main_walk + nbkm_intermodal_walk,
+         step_commute = nbkm_tot_walking / step_length,
+         step = pmin(12000, round(step_commute / 100) * 100 + baseline_step))
+
+
+# EMP Dataset per disease
+speed_replicate_list <- list() 
+
+for (dis in dis_vec) {
+  speed_replicate_list[[dis]] <- emp_walk_speed %>% 
+    filter(disease == dis)
+}
+
+
+
+################################################################################################################################
+#                                                 3. HEALTH IMPACT ASSESSMENT                                                  #
+################################################################################################################################
+
+##############################################################
+#                      PER DISEASES                          #
+##############################################################
+# Total of prevented burden of each disease for each simulation 
+set.seed(123)
+speed_burden_total <- HIA_burden_total(speed_replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+                                 dis_vec, 
+                                 prop_relapse, duration_recovery, vsl, 
+                                 group = NULL,
+                                 N = 1000)
+ 
+
+# Export : Table of HIA outcomes per simulation
+export(speed_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_speed_sensitivity_1000replicate.rds"))
+
+
+
+################################################################################################################################
+#                         4. IC and MEDIAN - TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                        #
+################################################################################################################################
+
+##############################################################
+#                       PER DISEASES                         #
+##############################################################
+
+# Import data
+speed_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_speed_sensitivity_1000replicate.rds"))
+
+
+# --------------------------------------
+# MONTE-CARLO
+# --------------------------------------
+# IC95 and median 
+  # Per disease
+  set.seed(123)
+  speed_burden_per_disease <- HIA_burden_IC(speed_burden_total, dis_vec, outcome_vec, calc_replicate_IC) 
+
+
+  # Total for morbidity
+  speed_burden_morbidity <- speed_burden_per_disease %>%
+    filter(disease != "mort") %>% 
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "Morbidity") %>%
+    select(disease, everything()) 
+  
+  
+  # Total for all diseases
+  speed_burden_global <- speed_burden_per_disease %>%
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "All") %>%
+    select(disease, everything()) 
+  
+  # Gather results
+  speed_burden <- bind_rows(speed_burden_per_disease, speed_burden_morbidity, speed_burden_global)
+
+
+
+################################################################################################################################
+#                                                      5. EXPORT DATA                                                          #
+################################################################################################################################
+export(speed_burden, here("output", "Tables", "Sensitivity analyses", "HIA_speed_sensitivity_1000replicate.xlsx")) 
+
+
+
+
+################################################################################################################################
+################################################################################################################################
+#                                                          AGE LIMIT                                                           #
+################################################################################################################################
+################################################################################################################################
+
+################################################################################################################################
+#                                                    1. DATA PREPARATION                                                       #
+################################################################################################################################
+
+emp_age <- emp_long  %>% 
+  mutate(step = pmin(12000, round(step_commute / 100) * 100 + baseline_step))  %>% 
+  filter(age < 75)       # age limit of 75 years above which physical activity doesn’t decrease the mortality risk
+
+
+# EMP Dataset per disease
+age_replicate_list <- list() 
+
+for (dis in dis_vec) {
+  age_replicate_list[[dis]] <- emp_age %>% 
+    filter(disease == dis)
+}
+
+
+
+################################################################################################################################
+#                                                 2. HEALTH IMPACT ASSESSMENT                                                  #
+################################################################################################################################
+
+##############################################################
+#                      PER DISEASES                          #
+##############################################################
+# Total of prevented burden of each disease for each simulation 
+set.seed(123)
+age_burden_total <- HIA_burden_total(age_replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+                                 dis_vec, 
+                                 prop_relapse, duration_recovery, vsl, 
+                                 group = NULL,
+                                 N = 1000)
+ 
+
+# Export : Table of HIA outcomes per simulation
+export(age_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_age_sensitivity_1000replicate.rds"))
+
+
+
+################################################################################################################################
+#                         4. IC and MEDIAN - TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                        #
+################################################################################################################################
+
+##############################################################
+#                       PER DISEASES                         #
+##############################################################
+
+# Import data
+age_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_age_sensitivity_1000replicate.rds"))
+
+
+# --------------------------------------
+# MONTE-CARLO
+# --------------------------------------
+# IC95 and median 
+  # Per disease
+  set.seed(123)
+  age_burden_per_disease <- HIA_burden_IC(age_burden_total, dis_vec, outcome_vec, calc_replicate_IC) 
+
+
+  # Total for morbidity
+  age_burden_morbidity <- age_burden_per_disease %>%
+    filter(disease != "mort") %>% 
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "Morbidity") %>%
+    select(disease, everything()) 
+  
+  
+  # Total for all diseases
+  age_burden_global <- age_burden_per_disease %>%
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "All") %>%
+    select(disease, everything()) 
+  
+  # Gather results
+  age_burden <- bind_rows(age_burden_per_disease, age_burden_morbidity, age_burden_global)
+
+
+
+################################################################################################################################
+#                                                      5. EXPORT DATA                                                          #
+################################################################################################################################
+export(age_burden, here("output", "Tables", "Sensitivity analyses", "HIA_age_sensitivity_1000replicate.xlsx"))
+
+
+
+
+################################################################################################################################
+################################################################################################################################
+#                                              SENSITIVITY ANALYSES - Figure                                                   #
+################################################################################################################################
+################################################################################################################################
+
+################################################################################################################################
+#                                                     1. VISUALIZATION                                                         #
+################################################################################################################################
