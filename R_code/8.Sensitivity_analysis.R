@@ -20,6 +20,7 @@ pacman :: p_load(
   srvyr,        # Survey
   survey,
   ggplot2,      # Data visualization
+  scales,
   progress      # Progression bar
 )
 
@@ -230,7 +231,7 @@ BASE_burden_per_disease <- HIA_burden_IC(baseline_burden_total, alt_dis_vec, out
 
 
 # Additional gains of the modal shift scenario
-SENSI_burden <- ALT_burden_per_disease %>% 
+DRF_burden_per_disease <- ALT_burden_per_disease %>% 
     mutate(tot_cases = tot_cases - BASE_burden_per_disease[["tot_cases"]],
            tot_cases_low = tot_cases_low - BASE_burden_per_disease[["tot_cases_low"]], 
            tot_cases_up = tot_cases_up - BASE_burden_per_disease[["tot_cases_up"]],
@@ -239,12 +240,29 @@ SENSI_burden <- ALT_burden_per_disease %>%
            tot_daly_up = tot_daly_up - BASE_burden_per_disease[["tot_daly_up"]])  %>% 
     select(disease, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up)
 
+# Total for morbidity
+  DRF_burden_morbidity <- DRF_burden %>%
+    filter(disease != "mort") %>% 
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "Morbidity") %>%
+    select(disease, everything()) 
+  
+  
+# Total for all diseases
+  DRF_burden_global <- DRF_burden %>%
+    summarise(across(where(is.numeric), 
+                     ~ sum(.x, na.rm = TRUE) )) %>%
+    mutate(disease = "All") %>%
+    select(disease, everything()) 
 
+# Gather results
+  DRF_burden <- bind_rows(DRF_burden_per_disease, DRF_burden_morbidity, DRF_burden_global)
 
 ################################################################################################################################
 #                                                      8. EXPORT DATA                                                          #
 ################################################################################################################################
-export(SENSI_burden, here("output", "Tables", "Sensitivity analysis", "HIA_sensitivity_1000replicate.xlsx"))
+export(DRF_burden, here("output", "Tables", "Sensitivity analyses", "HIA_DRF_sensitivity_1000replicate.xlsx"))
 
 
 
@@ -461,5 +479,121 @@ export(age_burden, here("output", "Tables", "Sensitivity analyses", "HIA_age_sen
 ################################################################################################################################
 
 ################################################################################################################################
-#                                                     1. VISUALIZATION                                                         #
+#                                                      1. IMPORT DATA                                                          #
 ################################################################################################################################
+
+# Main analysis
+HIA_main <- import(here("output", "Tables", "2019", "HIA_per_disease.xlsx"))  %>% 
+  filter(disease != "Morbidity")  %>% 
+  mutate(analysis = "main") %>% 
+  select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up)
+
+
+# Alternative DRF
+HIA_DRF <- import(here("output", "Tables", "Sensitivity analyses", "HIA_DRF_sensitivity_1000replicate.xlsx")) %>% 
+  filter(disease != "Morbidity") %>% 
+  mutate(analysis = "sc1") %>% 
+  select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up) %>% 
+  left_join(HIA_main %>% select(disease, tot_daly_ref = tot_daly), by = "disease") %>% 
+  mutate(relative_perc_daly = (tot_daly - tot_daly_ref) * 100 / tot_daly_ref) %>%               # Relative percentage change in total DALYs
+  select(-tot_daly_ref)
+
+
+# Walking speed 5.3 km/h
+HIA_speed <- import(here("output", "Tables", "Sensitivity analyses", "HIA_speed_sensitivity_1000replicate.xlsx")) %>% 
+  filter(disease == "All")  %>% 
+  mutate(analysis = "sc2") %>% 
+  select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up) %>% 
+  mutate(relative_perc_daly = (tot_daly - (HIA_main %>% filter(disease == "All") %>% pull(tot_daly))) *100 /
+                              (HIA_main %>% filter(disease == "All") %>% pull(tot_daly)))      # Relative percentage change in total DALYs
+
+
+# Age limit < 75 years
+HIA_age <- import(here("output", "Tables", "Sensitivity analyses", "HIA_age_sensitivity_1000replicate.xlsx")) %>% 
+  filter(disease == "All") %>%
+  mutate(analysis = "sc3") %>%
+  select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up)%>% 
+  mutate(relative_perc_daly = (tot_daly - (HIA_main %>% filter(disease == "All") %>% pull(tot_daly))) *100 /
+                              (HIA_main %>% filter(disease == "All") %>% pull(tot_daly)))     # Relative percentage change in total DALYs
+
+
+
+################################################################################################################################
+#                                                    2. DATA PREPARATION                                                       #
+################################################################################################################################
+SENSI_data <- bind_rows(HIA_main, HIA_DRF, HIA_speed, HIA_age)  %>% 
+  mutate(outcome = "tot_daly")
+
+
+
+################################################################################################################################
+#                                                     3. VISUALIZATION                                                         #
+################################################################################################################################
+
+# Plot : Sensitivity analysis of the number health events prevented under different assumptions
+
+labels_analysis <- c(
+  "main" = "Main Analysis",
+  "sc1"  = "Alternative DRF",
+  "sc2" = "Walking speed 5.3 km/h",
+  "sc3" = "Age limit < 75 years"
+)
+
+
+plot_sensi <- ggplot(SENSI_data) +
+  geom_point(aes(x = tot_daly,
+                 y = disease,
+                 color = factor(disease)),
+             size = 2.5,
+             shape = 18) +
+  geom_segment(aes(x = tot_daly_low,
+                   xend = tot_daly_up,
+                   y = disease,
+                   yend = disease,
+                   color = factor(disease),
+                   group = disease),
+               linewidth = 0.6) +
+  facet_grid(
+    rows = vars(analysis),
+    labeller = labeller(
+      analysis = labels_analysis,
+      outcome = c("tot_daly" = "Prevented DALYs")
+    ),
+    scales = "free_y",
+    space = "free"
+  ) +
+  scale_color_manual(
+    values = colors_disease,
+    labels = names_disease
+  ) +
+  labs(
+    title = "",
+    y = NULL,
+    x = NULL,
+    color = "Disease"
+  ) +
+  theme(
+    strip.text.y = element_text(angle = 0, hjust = 0, size = 9),
+    axis.text.x = element_text(angle = 30, hjust = 1, size = 7),
+    axis.text.y = element_text(angle = 0, hjust = 1, size = 8),
+    axis.ticks.y = element_blank(),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank(),
+    panel.spacing.y = unit(0.6, "lines")
+  ) +
+  scale_x_continuous(labels = scales::label_comma()) +
+  geom_vline(data = data.frame(outcome = c("tot_daly"),
+                               xintercept = c(50000)),
+             aes(xintercept = xintercept),
+             linetype = "dashed", color = "black", linewidth = 0.3) +
+  guides(color = guide_legend(title = NULL))
+
+
+plot_sensi 
+
+
+
+################################################################################################################################
+#                                                        2. EXPORT                                                             #
+################################################################################################################################
+ggsave(here("output", "Plots", "Sensitivity analyses", "plot_sensitivity.png"), plot = plot_sensi)

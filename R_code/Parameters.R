@@ -22,22 +22,28 @@ baseline_step = 2000
 
 # Disease name
 names_disease <- c(
+  "bc" = "Breast cancer",
+  "cc" = "Colon cancer",
   "cancer" = "Cancer",
   "cvd" = "CVD",
   "dem" = "Dementia",
   "diab2" = "T2 diabetes",
   "dep" = "MDD",
-  "mort" = "All-cause mortality"
+  "mort" = "All-cause mortality",
+  "All" = "Total"
 )
 
 # Disease colour
 colors_disease <- c(
+  "bc" = "#ee2cee",
+  "cc" = "#0d00ff",
   "cancer" = "firebrick2",      
   "cvd" = "gold" ,
   "dem" = "pink" ,
   "diab2" = "palegreen3",
   "dep" = "slateblue",
   "mort" = "steelblue"
+  ,"All" = "black"
 )
 
 # Sex colour
