@@ -330,6 +330,41 @@ test_sex_per_age <- do.call(bind_rows, lapply(age_cat, test_t_sex_age, design = 
 
 
 
+#############################################################
+#                        MEAN PER AREA                      #
+#############################################################
+mean_distance_area <- jour_walkers %>% 
+  group_by(area_type) %>% 
+  summarise(mean_distance = survey_mean(nbkm_tot_walking, na.rm = TRUE)) %>% 
+  mutate(area_type = factor(area_type, levels = c("urban", "periurban", "rural"))) %>% 
+  mutate(
+    ic_lower = mean_distance - zq * mean_distance_se,
+    ic_upper = mean_distance + zq * mean_distance_se
+  )
+
+
+mean_km_area = ggplot(mean_distance_area, aes(x = area_type, y = mean_distance,
+                                                   ymin = mean_distance - zq*mean_distance_se, ymax = mean_distance + zq*mean_distance_se,
+                                                   fill = area_type)) +
+  geom_col(width = 0.7, position = position_dodge2(0.4)) +
+  geom_errorbar(position = position_dodge(.7), width = .25) + 
+  scale_fill_manual(name = "Municipality density degree",
+                    values = colors_area) +
+  labs(x = "Area type",
+       y = "Mean distance walked (km per day)") +
+  theme_minimal()
+plot(mean_km_area)
+
+
+
+  # Test Anova
+anova_area <- svyglm(nbkm_tot_walking ~ area_type, jour_walkers)
+summary(anova_area)
+
+regTermTest(anova_area, ~ area_type)
+# p_value = < 2.22e-16                 Highly significant (p<0.0001)
+
+
 ##############################################################
 #                  RATE OF DEADLY ACCIDENTS                  #
 ##############################################################
@@ -360,7 +395,7 @@ step_total_2019_IC * 1e-9
 
 #############################################################
 #                          MEAN STEPS                       #
-##############################################################
+#############################################################
 ## Mean number of steps per day
 step_mean <- svymean(~step_commute, jour_walkers, na.rm = TRUE)
 step_mean
@@ -415,6 +450,34 @@ plot_mean_steps_walkers <-
   theme_minimal()
 
 plot_mean_steps_walkers
+
+
+
+#############################################################
+#                        MEAN PER AREA                      #
+#############################################################
+mean_step_area <- jour_walkers %>% 
+  group_by(area_type) %>% 
+  summarise(mean_step = survey_mean(step_commute, na.rm = TRUE)) %>% 
+  mutate(area_type = factor(area_type, levels = c("urban", "periurban", "rural"))) %>% 
+  mutate(
+    ic_lower = mean_step - zq * mean_step_se,
+    ic_upper = mean_step + zq * mean_step_se
+  )
+
+
+mean_step_area = ggplot(mean_step_area, aes(x = area_type, y = mean_step,
+                                              ymin = mean_step - zq*mean_step_se, ymax = mean_step + zq*mean_step_se,
+                                              fill = area_type)) +
+  geom_col(width = 0.7, position = position_dodge2(0.4)) +
+  geom_errorbar(position = position_dodge(.7), width = .25) + 
+  scale_fill_manual(name = "Municipality density degree",
+                    labels = c("urban", "periurban", "rural"),
+                    values = colors_area) +
+  labs(x = "Area type",
+       y = "Mean steps per day per area") +
+  theme_minimal()
+plot(mean_step_area)
 
 
 
@@ -574,6 +637,10 @@ plot(mean_km_drivers_2km)
     # Mean walk
     ggsave(here("output", "Plots", "Description", "Walk", "plot_mean_km_walkers.png"), plot = plot_mean_km_walkers)
     ggsave(here("output", "Plots", "Description", "Steps", "plot_mean_steps_walkers.png"), plot = plot_mean_steps_walkers)
+    ggsave(here("output", "Plots", "Description", "Walk", "plot_mean_km_area.png"), plot = mean_km_area)
+    ggsave(here("output", "Plots", "Description", "Steps", "plot_mean_step_area.png"), plot = mean_step_area)
+
+
 
 # DRIVING
     # Drivers profile
