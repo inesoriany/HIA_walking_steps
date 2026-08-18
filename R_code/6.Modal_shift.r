@@ -229,6 +229,7 @@ MODAL_burden_total <- import(here("output", "RDS", "Modal shift", "HIA_modal_shi
 
 
 # Import 2019 data
+MODAL_burden <- import(here("output", "Tables", "Modal shift", "HIA_modal_shift_1000replicate.xlsx"))
 burden_2019 <- import(here("output", "Tables", "2019", "HIA_per_disease.xlsx"))
 
 
@@ -239,8 +240,15 @@ MODAL_burden_add <- MODAL_burden %>%
            tot_cases_up = tot_cases_up - burden_2019[["tot_cases_up"]],
            tot_daly = tot_daly - burden_2019[["tot_daly"]],
            tot_daly_low = tot_daly_low - burden_2019[["tot_daly_low"]],
-           tot_daly_up = tot_daly_up - burden_2019[["tot_daly_up"]])  %>% 
-    select(disease, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up)
+           tot_daly_up = tot_daly_up - burden_2019[["tot_daly_up"]],
+           tot_medic_costs = tot_medic_costs - burden_2019[["tot_medic_costs"]],
+           tot_medic_costs_low = tot_medic_costs_low - burden_2019[["tot_medic_costs_low"]],
+           tot_medic_costs_up = tot_medic_costs_up - burden_2019[["tot_medic_costs_up"]],
+           tot_soc_costs = tot_soc_costs - burden_2019[["tot_soc_costs"]],
+           tot_soc_costs_low = tot_soc_costs_low - burden_2019[["tot_soc_costs_low"]],
+           tot_soc_costs_up = tot_soc_costs_up - burden_2019[["tot_soc_costs_up"]])  %>% 
+    select(disease, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up,
+           tot_medic_costs, tot_medic_costs_low, tot_soc_costs_up, tot_soc_costs, tot_soc_costs_low, tot_soc_costs_up)
 
 
 

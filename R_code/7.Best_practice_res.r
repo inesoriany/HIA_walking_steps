@@ -414,6 +414,10 @@ burden_2019 <- import(here("output", "Tables", "Best practice", "Residence", "HI
 PRACT_burden <- import(here("output", "Tables", "Best practice", "Residence", "HIA_best_practice_1000replicate_RES.xlsx"))
 
 
+# Incremental benefits
+
+
+
 ################################################################################################################################
 #                                                     8. VISUALIZATION                                                         #
 ################################################################################################################################
