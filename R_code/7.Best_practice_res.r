@@ -428,7 +428,7 @@ PRACT_burden_add <- PRACT_burden %>%
            tot_soc_costs = tot_soc_costs - burden_2019[["tot_soc_costs"]],
            tot_soc_costs_low = tot_soc_costs_low - burden_2019[["tot_soc_costs_low"]],
            tot_soc_costs_up = tot_soc_costs_up - burden_2019[["tot_soc_costs_up"]])  %>% 
-    select(disease, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up,
+    select(disease, area_type, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up,
            tot_medic_costs, tot_medic_costs_low, tot_soc_costs_up, tot_soc_costs, tot_soc_costs_low, tot_soc_costs_up)
 
 
