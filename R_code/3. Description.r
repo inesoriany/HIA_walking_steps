@@ -220,8 +220,8 @@ prop_sex <-  emp_walkers %>%
 ##############################################################
 ## Mean km walked per day
 km_mean <- svymean(~nbkm_tot_walking, jour_walkers, na.rm = TRUE)         # Mean km per day
-km_mean
-km_mean/step_length                # Mean number of steps per day
+km_mean                             # 1.3468 (1.290339-1.403312) km per day
+km_mean / step_length               # 1883.7 (1804.67-1962.675) steps per day  
 
 
 km_mean_IC <- confint(km_mean)
@@ -229,30 +229,28 @@ km_mean_IC
 km_mean_IC/step_length
 
 
-# In exposure time (min)
-km_mean * 60 / walk_speed
+# Intermodal walk
+intermodal_km_mean <- svymean(~nbkm_intermodal_walk, jour_walkers, na.rm = TRUE)         # Mean km per day 
+intermodal_km_mean                       # 0.48774 (0.4564521-0.519022) km per day
+intermodal_km_mean / step_length         # 682.15 (638.3945-725.9048) steps per day  
 
-
-# Mean walking distances per day, by age group
-svyby(~nbkm_tot_walking, by = ~age_grp10, jour_walkers, svymean, na.rm = T)
-
-
-## Mean walking distances per day, per age group and per sex ----
-mean_distance_people <- svyby(~nbkm_tot_walking, by = ~sex + age_grp10, jour_walkers, svymean, na.rm = T)
+intermodal_km_mean_IC <- confint(intermodal_km_mean)
+intermodal_km_mean_IC
+intermodal_km_mean_IC/step_length
 
 
 # Plot : Mean walking distance by age group and sex
 zq <- qnorm(1-0.05/2)      # Level of confidence at 95%
 
-# Total walk including intermodal
-mean_distance_people <- jour_walkers %>% 
-  group_by(sex , age_grp10) %>% 
-  summarise(mean_distance = survey_mean(nbkm_tot_walking, na.rm = TRUE))
+    # Total walk including intermodal
+    mean_distance_people <- jour_walkers %>% 
+    group_by(sex , age_grp10) %>% 
+    summarise(mean_distance = survey_mean(nbkm_tot_walking, na.rm = TRUE))
 
-# Main walk
-main_mean_distance <- jour_walkers  %>% 
-    group_by(sex, age_grp10)  %>% 
-    summarise(mean_distance = survey_mean(nbkm_main_walk, na.rm = TRUE))
+    # Main walk
+    main_mean_distance <- jour_walkers  %>% 
+        group_by(sex, age_grp10)  %>% 
+        summarise(mean_distance = survey_mean(nbkm_main_walk, na.rm = TRUE))
 
 
 plot_mean_km_walkers <- 
@@ -324,9 +322,92 @@ test_sex_per_age <- do.call(bind_rows, lapply(age_cat, test_t_sex_age, design = 
 
 
 
+
+##############################################################
+#                  RATE OF DEADLY ACCIDENTS                  #
+##############################################################
+
+# Rate of deadly accidents per km from 2019 levels
+deaths_per_km_walked <- 483 / km_total_2019                           # Number of dead walkers per km in 2019 (ONISR 2020 - Bilan 2019)
+deaths_per_km_walked
+
+
+
 ################################################################################################################################
 #                                                     8. WALKING - steps                                                       #
 ################################################################################################################################
+
+##############################################################
+#                       TOTAL STEPS                          #
+##############################################################
+
+## Total steps in 2019
+step_total_2019 <- as.numeric(svytotal(~step_commute, jour_walkers)) *365.25/7                                      # Total steps per year
+step_total_2019_IC <- as.numeric(confint(svytotal(~step_commute, jour_walkers) *365.25/7 ))                         # Confidence interval
+
+step_total_2019 * 1e-9 # billion steps
+step_total_2019_IC * 1e-9
+
+
+
+
+#############################################################
+#                          MEAN STEPS                       #
+##############################################################
+## Mean number of steps per day
+step_mean <- svymean(~step_commute, jour_walkers, na.rm = TRUE)
+step_mean
+
+step_mean_IC <- confint(step_mean)
+step_mean_IC                        # 1883.7 (1804.67-1962.675) steps per day  
+
+
+# Plot : Mean steps by age group and sex
+zq <- qnorm(1-0.05/2)      # Level of confidence at 95%
+
+    # Total walk including intermodal
+    mean_step_people <- jour_walkers %>% 
+    group_by(sex , age_grp10) %>% 
+    summarise(mean_step = survey_mean(step_commute, na.rm = TRUE))
+
+    # Main walk
+    main_mean_step <- jour_walkers  %>% 
+        group_by(sex, age_grp10)  %>% 
+        summarise(mean_step = survey_mean(nbkm_main_walk/step_length, na.rm = TRUE))
+
+
+plot_mean_steps_walkers <- 
+  ggplot() +
+  geom_bar(data = main_mean_step,
+    mapping = aes(x = age_grp10, y = mean_step, fill = sex, alpha = "Exclusively walking"),
+    width = 0.7,
+    position = position_dodge2(0.7),
+    stat = "identity") +
+  geom_errorbar(data = main_mean_step,
+    mapping = aes(x = age_grp10, ymin = mean_step - zq*mean_step_se, ymax = mean_step + zq*mean_step_se, group = sex, alpha = "Exclusively walking"),
+    position = position_dodge(0.7),
+    width = 0.25) +
+  scale_fill_manual(values = colors_sex) +
+
+  geom_bar(data = mean_step_people, 
+    mapping = aes(x = age_grp10, y = mean_step, fill = sex, alpha = "Total walking including intermodal walk"),
+    width = 0.7,
+    position = position_dodge2(0.7),
+    stat = "identity") +
+  geom_errorbar(
+    data = mean_step_people,
+    mapping = aes(x = age_grp10, ymin = mean_step - zq*mean_step_se, ymax = mean_step + zq*mean_step_se, group = sex, alpha = "Total walking including intermodal walk"),
+    position = position_dodge(0.7),
+    width = 0.25) +
+  scale_alpha_manual(
+    name = "Walking type",
+    values = c("Exclusively walking" = 1, "Total walking including intermodal walk" = 0.4)) +
+  scale_x_discrete(labels = names_disease) + 
+  ylab("Mean steps walked (steps per day)") +
+  xlab("Age group") +
+  theme_minimal()
+
+plot_mean_steps_walkers
 
 
 
@@ -341,5 +422,6 @@ test_sex_per_age <- do.call(bind_rows, lapply(age_cat, test_t_sex_age, design = 
 # WALKING
     # Sex proportion
     export(prop_sex, here("output", "Tables", "Description", "sex_proportion.xlsx"))
-    # Distance
-    ggsave(here("output", "Plots", "Description", "Walk", "plot_mean_km_walkers.png"), plot = mean_km_walkers)
+    # Mean walk
+    ggsave(here("output", "Plots", "Description", "Walk", "plot_mean_km_walkers.png"), plot = plot_mean_km_walkers)
+    ggsave(here("output", "Plots", "Description", "Steps", "plot_mean_steps_walkers.png"), plot = plot_mean_steps_walkers)
