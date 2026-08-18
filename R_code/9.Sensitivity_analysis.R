@@ -555,6 +555,7 @@ plot_sensi <- ggplot(SENSI_data) +
                linewidth = 0.6) +
   facet_grid(
     rows = vars(analysis),
+    cols = vars(outcome),
     labeller = labeller(
       analysis = labels_analysis,
       outcome = c("tot_daly" = "Prevented DALYs")
@@ -567,7 +568,7 @@ plot_sensi <- ggplot(SENSI_data) +
     labels = names_disease
   ) +
   labs(
-    title = "",
+    title = ,
     y = NULL,
     x = NULL,
     color = "Disease"
@@ -581,6 +582,7 @@ plot_sensi <- ggplot(SENSI_data) +
     panel.grid.minor = element_blank(),
     panel.spacing.y = unit(0.6, "lines")
   ) +
+  scale_y_discrete(labels = names_disease) +
   scale_x_continuous(labels = scales::label_comma()) +
   geom_vline(data = data.frame(outcome = c("tot_daly"),
                                xintercept = c(50000)),

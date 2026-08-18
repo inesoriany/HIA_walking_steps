@@ -258,6 +258,9 @@ dep_duration_distrib_table <- dep_incid_distrib_table %>%
 #                                                       8. EXPORT DATA                                                         #
 ################################################################################################################################
 
+# Incidence table
+  export(dis_long_table, here("data_clean", "Diseases", "incidence_table.xlsx"))
+
 # Incidence distribution table
   export(incidence_distrib_table, here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
