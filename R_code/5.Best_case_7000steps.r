@@ -215,6 +215,32 @@ BEST_burden_total <- import(here("output", "RDS", "7000 steps", "HIA_7000steps_1
 
 
 
+# Import data
+burden_2019 <- import(here("output", "Tables", "2019", "HIA_per_disease.xlsx"))
+BEST_burden <- import(here("output", "Tables", "7000 steps", "HIA_7000steps_1000replicate.xlsx"))
+
+
+# Incremental benefits
+BEST_burden_add <- BEST_burden %>% 
+    mutate(tot_cases = tot_cases - burden_2019[["tot_cases"]],
+           tot_cases_low = tot_cases_low - burden_2019[["tot_cases_low"]], 
+           tot_cases_up = tot_cases_up - burden_2019[["tot_cases_up"]],
+           tot_daly = tot_daly - burden_2019[["tot_daly"]],
+           tot_daly_low = tot_daly_low - burden_2019[["tot_daly_low"]],
+           tot_daly_up = tot_daly_up - burden_2019[["tot_daly_up"]],
+           tot_medic_costs = tot_medic_costs - burden_2019[["tot_medic_costs"]],
+           tot_medic_costs_low = tot_medic_costs_low - burden_2019[["tot_medic_costs_low"]],
+           tot_medic_costs_up = tot_medic_costs_up - burden_2019[["tot_medic_costs_up"]],
+           tot_soc_costs = tot_soc_costs - burden_2019[["tot_soc_costs"]],
+           tot_soc_costs_low = tot_soc_costs_low - burden_2019[["tot_soc_costs_low"]],
+           tot_soc_costs_up = tot_soc_costs_up - burden_2019[["tot_soc_costs_up"]])  %>% 
+    select(disease, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up,
+           tot_medic_costs, tot_medic_costs_low, tot_soc_costs_up, tot_soc_costs, tot_soc_costs_low, tot_soc_costs_up)
+
+
+
+
+
 ##############################################################
 #                         PER SEX                            #
 ##############################################################
@@ -323,3 +349,4 @@ plot_BEST_cases_prev
   export(BEST_Rubin_burden_per_sex, here("output", "Tables", "7000 steps", "HIA_sex_Rubin_7000steps_1000replicate.xlsx"))
   export(BEST_burden_per_age, here("output", "Tables", "7000 steps", "HIA_age_7000steps_1000replicate.xlsx"))
   export(BEST_Rubin_burden_per_age, here("output", "Tables", "7000 steps", "HIA_age_Rubin_7000steps_1000replicate.xlsx"))
+  export(BEST_burden_add, here("output", "Tables", "7000 steps", "HIA_best_practice_added_1000replicate.xlsx"))

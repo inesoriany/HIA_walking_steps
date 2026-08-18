@@ -334,7 +334,7 @@ burden_2019_total <- HIA_burden_total(emp_2019_list,
                                       N = 1000)
 
 # Export HIA outcomes of 1000 replications
-export(burden_2019_total, here("output", "RDS", "2019", "Residence", "HIA_area_2019_1000replicate.rds"))
+export(burden_2019_total, here("output", "RDS", "2019", "HIA_area_2019_1000replicate.rds"))
 
 
 
@@ -344,7 +344,7 @@ export(burden_2019_total, here("output", "RDS", "2019", "Residence", "HIA_area_2
 ################################################################################################################################
 
 # Import data
-burden_2019_total <- import(here("output", "RDS", "2019", "Residence", "HIA_area_2019_1000replicate.rds"))
+burden_2019_total <- import(here("output", "RDS", "2019", "HIA_area_2019_1000replicate.rds"))
 
 
 ##############################################################
@@ -410,12 +410,26 @@ burden_2019 <- bind_rows(burden_per_area,
 ###########################################################################################################################################################################
 
 # Import data
-burden_2019 <- import(here("output", "Tables", "Best practice", "Residence", "HIA_area_2019_1000replicate_RES.xlsx"))
-PRACT_burden <- import(here("output", "Tables", "Best practice", "Residence", "HIA_best_practice_1000replicate_RES.xlsx"))
+burden_2019 <- import(here("output", "Tables", "Best practice", "HIA_area_2019_1000replicate.xlsx"))
+PRACT_burden <- import(here("output", "Tables", "Best practice", "HIA_best_practice_1000replicate.xlsx"))
 
 
 # Incremental benefits
-
+PRACT_burden_add <- PRACT_burden %>% 
+    mutate(tot_cases = tot_cases - burden_2019[["tot_cases"]],
+           tot_cases_low = tot_cases_low - burden_2019[["tot_cases_low"]], 
+           tot_cases_up = tot_cases_up - burden_2019[["tot_cases_up"]],
+           tot_daly = tot_daly - burden_2019[["tot_daly"]],
+           tot_daly_low = tot_daly_low - burden_2019[["tot_daly_low"]],
+           tot_daly_up = tot_daly_up - burden_2019[["tot_daly_up"]],
+           tot_medic_costs = tot_medic_costs - burden_2019[["tot_medic_costs"]],
+           tot_medic_costs_low = tot_medic_costs_low - burden_2019[["tot_medic_costs_low"]],
+           tot_medic_costs_up = tot_medic_costs_up - burden_2019[["tot_medic_costs_up"]],
+           tot_soc_costs = tot_soc_costs - burden_2019[["tot_soc_costs"]],
+           tot_soc_costs_low = tot_soc_costs_low - burden_2019[["tot_soc_costs_low"]],
+           tot_soc_costs_up = tot_soc_costs_up - burden_2019[["tot_soc_costs_up"]])  %>% 
+    select(disease, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up,
+           tot_medic_costs, tot_medic_costs_low, tot_soc_costs_up, tot_soc_costs, tot_soc_costs_low, tot_soc_costs_up)
 
 
 ################################################################################################################################
@@ -509,8 +523,9 @@ plot_PRACT_cases_prev
 ################################################################################################################################
 
 # Plot
-ggsave(here("output", "Plots", "Best practice", "Residence", "best_practice_cases_prev_RES.png"), plot = plot_PRACT_cases_prev)
+ggsave(here("output", "Plots", "Best practice", "best_practice_cases_prev.png"), plot = plot_PRACT_cases_prev)
 
 # Tables
-export(PRACT_burden, here("output", "Tables", "Best practice", "Residence", "HIA_best_practice_1000replicate_RES.xlsx"))
-export(burden_2019, here("output", "Tables", "Best practice", "Residence", "HIA_area_2019_1000replicate_RES.xlsx"))
+export(PRACT_burden, here("output", "Tables", "Best practice", "HIA_best_practice_1000replicate.xlsx"))
+export(burden_2019, here("output", "Tables", "Best practice", "HIA_area_2019_1000replicate.xlsx"))
+export(PRACT_burden_add, here("output", "Tables", "Best practice", "HIA_best_practice_added_1000replicate.xlsx"))
