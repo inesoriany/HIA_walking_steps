@@ -124,8 +124,23 @@ plot_scenarios_daly_area
 #                                                  6. INCREMENTAL BENEFIT                                                      #
 ################################################################################################################################
 
-# best case : pas incremental
-MODAL_burden_add <- import(here("output", "Tables", "Modal shift", "HIA_modal_shift_added_1000replicate.xlsx"))
+# Import data
+BEST_burden_add <- import(here("output", "Tables", "7000 steps", "HIA_best_practice_added_1000replicate.xlsx"))  %>% 
+  mutate(scenario = "Best case scenario")  %>% 
+  filter(disease == "All")
+
+MODAL_burden_add <- import(here("output", "Tables", "Modal shift", "HIA_modal_shift_added_1000replicate.xlsx"))  %>% 
+  mutate(scenario = "Modal shift scenario") %>% 
+  filter(disease == "All")
+
+PRACT_burden_add <- import(here("output", "Tables", "Best practice", "HIA_best_practice_added_1000replicate.xlsx"))  %>% 
+  mutate(scenario = "Best practice scenario") %>% 
+  filter(disease == "All" & area_type == "All")
+
+
+burden_scenarios_add <- bind_rows(BEST_burden_add, MODAL_burden_add, PRACT_burden_add)  %>% 
+  select(-c("disease", "area_type"))
+
 
 
 
@@ -135,7 +150,7 @@ MODAL_burden_add <- import(here("output", "Tables", "Modal shift", "HIA_modal_sh
 
 # Recap table
   export(burden_scenarios, here("output", "Tables", "Scenarios", "HIA_scenarios.xlsx"))
-
+  export(burden_scenarios_add, here("output", "Tables", "Scenarios", "HIA_add_scenarios.xlsx"))
 
 # Plot
   ggsave(here("output", "Plots", "Scenarios", "scenarios_DALY_prev.png"), plot = plot_scenarios_daly)
