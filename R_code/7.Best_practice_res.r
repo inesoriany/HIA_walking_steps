@@ -409,6 +409,11 @@ burden_2019 <- bind_rows(burden_per_area,
 ###########################################################################################################################################################################
 ###########################################################################################################################################################################
 
+# Import data
+burden_2019 <- import(here("output", "Tables", "Best practice", "Residence", "HIA_area_2019_1000replicate_RES.xlsx"))
+PRACT_burden <- import(here("output", "Tables", "Best practice", "Residence", "HIA_best_practice_1000replicate_RES.xlsx"))
+
+
 ################################################################################################################################
 #                                                     8. VISUALIZATION                                                         #
 ################################################################################################################################
@@ -445,6 +450,7 @@ plot_PRACT_cases_prev <-
   # Best practice
   geom_col(data = PRACT_burden %>%
       filter(!disease %in% c("All", "Morbidity")) %>%
+      filter(!area_type %in% c("All")) %>%
       mutate(disease = factor(disease, levels = c("mort", "cancer", "cvd", "diab2", "dem", "dep")),
              area_type = factor(area_type, levels = c("urban", "periurban", "rural"))),
     aes(x = disease,
@@ -456,6 +462,7 @@ plot_PRACT_cases_prev <-
 
   geom_errorbar(data = PRACT_burden %>%
       filter(!disease %in% c("All", "Morbidity")) %>%
+      filter(!area_type %in% c("All")) %>%
       mutate(disease = factor(disease, levels = c("mort", "cancer", "cvd", "diab2", "dem", "dep")),
              area_type = factor(area_type, levels = c("urban", "periurban", "rural"))),
     aes(x = disease,
@@ -467,9 +474,7 @@ plot_PRACT_cases_prev <-
         width = 0.2) +
 
   scale_fill_manual(
-    values = c(urban = "#1b9e77",
-               periurban = "#d95f02",
-               rural = "#7570b3"),
+    values = colors_area,
     name = "Area type") +
 
   scale_alpha_manual(

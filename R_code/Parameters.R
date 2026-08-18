@@ -52,6 +52,10 @@ colors_sex <- c(
   "Male" = "chartreuse4")
 
 
+# Area colour
+colors_area <- c(urban = "#1b9e77",
+               periurban = "#d95f02",
+               rural = "#7570b3")
 
 ## DEPRESSION ----
   # Proportion of adults that relapse
