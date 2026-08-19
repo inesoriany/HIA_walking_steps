@@ -220,7 +220,7 @@ PRACT_burden_total <- HIA_burden_total(PRACT_list,
 
 
 # Export : Table of HIA outcomes per simulation
-export(PRACT_burden_total, here("output", "RDS", "Best practice", "Residence", "HIA_best_practice_1000replicate.rds"))
+export(PRACT_burden_total, here("output", "RDS", "Best practice", "HIA_best_practice_1000replicate.rds"))
 
 
 
@@ -231,7 +231,7 @@ export(PRACT_burden_total, here("output", "RDS", "Best practice", "Residence", "
 ################################################################################################################################
 
 # Import data
-PRACT_burden_total <- import(here("output", "RDS", "Best practice", "Residence", "HIA_best_practice_1000replicate.rds"))
+PRACT_burden_total <- import(here("output", "RDS", "Best practice", "HIA_best_practice_1000replicate.rds"))
 
 
 ##############################################################
@@ -254,7 +254,7 @@ PRACT_burden_morbidity <- PRACT_burden_per_area %>%
                    ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
   mutate(disease = "Morbidity",
          area_type = "All") %>%
-  select(disease, area_type, everything())
+  select(disease, area_type, everything()) 
 
 
 # Total per disease without area_type stratification
@@ -429,7 +429,7 @@ PRACT_burden_add <- PRACT_burden %>%
            tot_soc_costs_low = tot_soc_costs_low - burden_2019[["tot_soc_costs_low"]],
            tot_soc_costs_up = tot_soc_costs_up - burden_2019[["tot_soc_costs_up"]])  %>% 
     select(disease, area_type, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up,
-           tot_medic_costs, tot_medic_costs_low, tot_soc_costs_up, tot_soc_costs, tot_soc_costs_low, tot_soc_costs_up)
+           tot_medic_costs, tot_medic_costs_low, tot_medic_costs_up, tot_soc_costs, tot_soc_costs_low, tot_soc_costs_up)
 
 
 ################################################################################################################################
