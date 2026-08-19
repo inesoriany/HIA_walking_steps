@@ -125,7 +125,7 @@ plot_scenarios_daly_area
 ################################################################################################################################
 
 # Import data
-BEST_burden_add <- import(here("output", "Tables", "7000 steps", "HIA_best_practice_added_1000replicate.xlsx"))  %>% 
+BEST_burden_add <- import(here("output", "Tables", "7000 steps", "HIA_added_7000steps_1000replicate.xlsx"))  %>% 
   mutate(scenario = "Best case scenario")  %>% 
   filter(disease == "All")
 
