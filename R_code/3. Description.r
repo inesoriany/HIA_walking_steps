@@ -489,7 +489,7 @@ plot_mean_step_area = ggplot(mean_step_area, aes(x = area_type, y = mean_step,
   labs(x = "Area type",
        y = "Mean steps per day per area") +
   theme_minimal()
-plot(plot_mean_step_area)
+plot_mean_step_area
 
 
 # Test Anova
@@ -504,28 +504,32 @@ regTermTest(anova_area_step, ~ area_type)
 ################################################################################################################################
 #                                                         9.DRIVING                                                            #
 ################################################################################################################################
-
-##############################################################
-#                     SHORT TRIPS (<2km)                     #
-##############################################################
-
-# French adult reporting any short (<2km) car trip in the past day according to sex and age
-drivers_2km <- emp_car_trips %>% 
+emp_short_drivers <- emp_car_trips %>% 
   filter(!is.na(pond_jour), nbkm_car > 0) %>% 
   group_by(ident_ind, sex, age_grp10) %>%           # emp_car_trip is trip-level data, so count each individual once by ident_ind
   summarise(short_trip = any(nbkm_car <= 2),
             pond_jour = first(pond_jour),
             .groups = "drop") %>% 
-  filter(short_trip) %>% 
   as_survey_design(ids = ident_ind,
-                   weights = pond_jour) %>% 
+                   weights = pond_jour)
+
+# French adult reporting any short (<2km) car trip in the past day
+prop_short_drivers <- emp_short_drivers  %>% 
+  summarise(perc = 100 * survey_mean(short_trip, na.rm = TRUE,  vartype = "ci")) 
+
+
+##############################################################
+#                     SHORT TRIPS (<2km)                     #
+##############################################################
+# French adult reporting any short (<2km) car trip in the past day according to sex and age
+drivers_2km <- emp_short_drivers %>% 
   group_by(sex, age_grp10) %>% 
   summarise(total = survey_total(short_trip, na.rm = TRUE)) %>% 
   rename(Sex = sex)
 
 zq <- qnorm(1-0.05/2)
 
-nb_drivers_2km <- ggplot(drivers_2km, aes(x = age_grp10, y = total,
+plot_nb_drivers_2km <- ggplot(drivers_2km, aes(x = age_grp10, y = total,
                                             ymin = total - zq*total_se, ymax = total + zq*total_se, fill = Sex)) +
   geom_col(width = 0.7, position = position_dodge2(0.4))+
   geom_errorbar(position = position_dodge(0.7), width = 0.25) +
@@ -534,26 +538,19 @@ nb_drivers_2km <- ggplot(drivers_2km, aes(x = age_grp10, y = total,
   ylab ("Number of drivers driving <2km in the past day") +
   xlab("Age group") +
   theme_minimal()
-plot(nb_drivers_2km)
+plot_nb_drivers_2km
 
 
 
 # Proportion of the French adult population reporting any short (<2km) car trip in the past day according to sex and age
-mean_drivers_2km <- emp_car_trips %>% 
-  filter(!is.na(pond_jour), nbkm_car > 0) %>% 
-  group_by(ident_ind, sex, age_grp10) %>% 
-  summarise(short_trip = any(nbkm_car <= 2),
-            pond_jour = first(pond_jour),
-            .groups = "drop") %>% 
-  as_survey_design(ids = ident_ind,
-                   weights = pond_jour) %>% 
+prop_drivers_2km <- emp_short_drivers %>% 
   group_by(sex, age_grp10) %>% 
   summarise(perc = 100 * survey_mean(short_trip, na.rm = TRUE)) %>% 
   rename(Sex = sex)
 
 zq <- qnorm(1-0.05/2)
 
-perc_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp10, y = perc,
+plot_perc_drivers_2km <- ggplot(prop_drivers_2km, aes(x = age_grp10, y = perc,
                                             ymin = perc - zq*perc_se, ymax = perc + zq*perc_se, fill = Sex)) +
   geom_col(width = 0.7, position = position_dodge2(0.4))+
   geom_errorbar(position = position_dodge(0.7), width = 0.25) +
@@ -562,7 +559,7 @@ perc_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp10, y = perc,
   ylab ("Proportion of drivers driving <2km in the past day (%)") +
   xlab("Age group") +
   theme_minimal()
-plot(perc_drivers_2km)
+plot_perc_drivers_2km
 
 
 
@@ -571,7 +568,7 @@ plot(perc_drivers_2km)
 drivers_pyramid <- drivers_2km %>%
   mutate(total = ifelse(Sex == "Male", -total, total))
 
-pyramid_drivers_2km <- ggplot(drivers_pyramid, aes(x = age_grp10, y = total, fill = Sex)) +
+plot_pyramid_drivers_2km <- ggplot(drivers_pyramid, aes(x = age_grp10, y = total, fill = Sex)) +
   geom_col(width = 0.7) +
   coord_flip() +
   scale_y_continuous(labels = function(x) abs(x)) +
@@ -580,7 +577,7 @@ pyramid_drivers_2km <- ggplot(drivers_pyramid, aes(x = age_grp10, y = total, fil
        y = "Number of drivers", x = "Age group") +
   theme_minimal()
 
-plot(pyramid_drivers_2km)
+plot_pyramid_drivers_2km
 
 
 
@@ -598,6 +595,7 @@ regTermTest(anova_age_drivers, ~ age_grp10)
 svyttest(nbkm_car ~ sex, jour_car )
 # p-value = 5.81e-05                   Statistically significant (<0.05) 
 # Mean difference observed :  2,90 [1,49 - 4,32] km
+
 
 
 
@@ -627,7 +625,7 @@ mean_drivers_2km <- emp_car_trips %>%
   rename(Sex = sex)
 
 
-mean_km_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp10, y = day_mean,
+plot_mean_km_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp10, y = day_mean,
                                             ymin = day_mean - zq*day_mean_se, ymax = day_mean + zq*day_mean_se, fill = Sex)) +
   scale_fill_manual(values = c("Female" = "darkorange1",
                                "Male" = "chartreuse4")) +
@@ -636,7 +634,7 @@ mean_km_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp10, y = day_mean,
   ylab ("Mean distance of short car travel <2km (km)") +
   xlab("Age group") +
   theme_minimal() 
-plot(mean_km_drivers_2km)
+plot_mean_km_drivers_2km
 
 
 
@@ -652,7 +650,7 @@ plot(mean_km_drivers_2km)
 
 # WALKING
     # Sex proportion
-    export(prop_sex, here("output", "Tables", "Description", "sex_proportion.xlsx"))
+    export(prop_sex, here("output", "Tables", "Description", "Walk", "sex_proportion.xlsx"))
     # Mean walk
     ggsave(here("output", "Plots", "Description", "Walk", "plot_mean_km_walkers.png"), plot = plot_mean_km_walkers)
     ggsave(here("output", "Plots", "Description", "Steps", "plot_mean_steps_walkers.png"), plot = plot_mean_steps_walkers)
@@ -662,9 +660,11 @@ plot(mean_km_drivers_2km)
 
 
 # DRIVING
+    # Short drivers proportion
+    export(prop_short_drivers, here("output", "Tables", "Description", "Drivers", "short_drivers_proportion.xlsx"))
     # Drivers profile
-    ggsave(here("output", "Plots", "Description", "Drivers", "plot_drivers_2km.png"), plot = nb_drivers_2km)
-    ggsave(here("output", "Plots", "Description", "Drivers", "plot_prop_drivers_2km.png"), plot = perc_drivers_2km)
-    ggsave(here("output", "Plots", "Description", "Drivers", "pyramid_drivers_2km.png"), plot = pyramid_drivers_2km, width = 8, height = 6)
+    ggsave(here("output", "Plots", "Description", "Drivers", "plot_drivers_2km.png"), plot = plot_nb_drivers_2km)
+    ggsave(here("output", "Plots", "Description", "Drivers", "plot_prop_drivers_2km.png"), plot = plot_perc_drivers_2km)
+    ggsave(here("output", "Plots", "Description", "Drivers", "pyramid_drivers_2km.png"), plot = plot_pyramid_drivers_2km, width = 8, height = 6)
     # Mean
-    ggsave(here("output", "Plots", "Description", "Drivers", "plot_mean_drivers_2km.png"), plot = mean_km_drivers_2km)
+    ggsave(here("output", "Plots", "Description", "Drivers", "plot_mean_km_drivers_2km.png"), plot = plot_mean_km_drivers_2km)
