@@ -16,6 +16,7 @@ pacman :: p_load(
   rio,          # Data importation
   here,         # Localization of files 
   dplyr,        # Data management
+  tidyr,        # # Table - Data organization, extraction
   purrr,        # Loop
   stringr,      # Text extraction
   srvyr,        # Survey
@@ -89,7 +90,7 @@ for (dis in alt_dis_vec){
   mutate(rr_distrib =list(generate_RR_distrib (RR = params$rr_women, params$rr_women_lb, params$rr_women_ub, N=1000)))  %>% 
   mutate(rr_distrib = list(sort(unlist(rr_distrib)))) %>%
   ungroup()
-  if (dis %in% c("bc", "cc")) {                                                          # if disease is bc or cc
+  if (dis %in% c("bc", "cc", "dep")) {                                                          # if disease is bc or cc
     rr_men <- data.frame(
       disease = dis,
       sex = "Male", 
@@ -245,7 +246,7 @@ DRF_burden_per_disease <- ALT_burden_per_disease %>%
     select(disease, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up)
 
 # Total for morbidity
-  DRF_burden_morbidity <- DRF_burden %>%
+  DRF_burden_morbidity <- DRF_burden_per_disease %>%
     filter(disease != "mort") %>% 
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
@@ -254,7 +255,7 @@ DRF_burden_per_disease <- ALT_burden_per_disease %>%
   
   
 # Total for all diseases
-  DRF_burden_global <- DRF_burden %>%
+  DRF_burden_global <- DRF_burden_per_disease %>%
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
     mutate(disease = "All") %>%
