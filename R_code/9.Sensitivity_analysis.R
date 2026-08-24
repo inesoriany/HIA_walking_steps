@@ -523,9 +523,12 @@ HIA_age <- import(here("output", "Tables", "Sensitivity analyses", "HIA_age_sens
 
 
 # Main analysis VS Scenario 1 (alternative DRF)
-HIA_main <- HIA_main  %>% 
-  mutate(relative_perc_daly = (HIA_DRF %>% filter(disease == "All") %>% pull(tot_daly) - tot_daly) *100 /
-                              tot_daly)     # Relative percentage change in total DALYs compared to scenario 1 (DRF)
+HIA_main <- HIA_main %>%
+  left_join(
+    HIA_DRF %>% filter(!disease %in% c("bc", "cc")) %>% select(disease, tot_daly_drf = tot_daly), by = "disease") %>%
+  mutate(relative_perc_daly = (tot_daly - tot_daly_drf) * 100 / tot_daly_drf) %>%   # Relative percentage change in total DALYs compared to scenario 1 (DRF)
+  select(-tot_daly_drf)
+  
 
 
 
