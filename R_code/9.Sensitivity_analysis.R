@@ -491,7 +491,7 @@ export(age_burden, here("output", "Tables", "Sensitivity analyses", "HIA_age_sen
 HIA_main <- import(here("output", "Tables", "2019", "HIA_per_disease.xlsx"))  %>% 
   filter(disease != "Morbidity")  %>% 
   mutate(analysis = "main") %>% 
-  select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up)
+  select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up) 
 
 
 # Alternative DRF
@@ -500,7 +500,7 @@ HIA_DRF <- import(here("output", "Tables", "Sensitivity analyses", "HIA_DRF_sens
   mutate(analysis = "sc1") %>% 
   select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up) %>% 
   left_join(HIA_main %>% select(disease, tot_daly_ref = tot_daly), by = "disease") %>% 
-  mutate(relative_perc_daly = (tot_daly - tot_daly_ref) * 100 / tot_daly_ref) %>%               # Relative percentage change in total DALYs
+  mutate(relative_perc_daly = (tot_daly - tot_daly_ref) * 100 / tot_daly_ref) %>%               # Relative percentage change in total DALYs compared to main analysis
   select(-tot_daly_ref)
 
 
@@ -510,7 +510,7 @@ HIA_speed <- import(here("output", "Tables", "Sensitivity analyses", "HIA_speed_
   mutate(analysis = "sc2") %>% 
   select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up) %>% 
   mutate(relative_perc_daly = (tot_daly - (HIA_main %>% filter(disease == "All") %>% pull(tot_daly))) *100 /
-                              (HIA_main %>% filter(disease == "All") %>% pull(tot_daly)))      # Relative percentage change in total DALYs
+                              (HIA_main %>% filter(disease == "All") %>% pull(tot_daly)))      # Relative percentage change in total DALYs compared to main analysis
 
 
 # Age limit < 75 years
@@ -519,7 +519,13 @@ HIA_age <- import(here("output", "Tables", "Sensitivity analyses", "HIA_age_sens
   mutate(analysis = "sc3") %>%
   select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up)%>% 
   mutate(relative_perc_daly = (tot_daly - (HIA_main %>% filter(disease == "All") %>% pull(tot_daly))) *100 /
-                              (HIA_main %>% filter(disease == "All") %>% pull(tot_daly)))     # Relative percentage change in total DALYs
+                              (HIA_main %>% filter(disease == "All") %>% pull(tot_daly)))     # Relative percentage change in total DALYs compared to main analysis
+
+
+# Main analysis VS Scenario 1 (alternative DRF)
+HIA_main <- HIA_main  %>% 
+  mutate(relative_perc_daly = (HIA_DRF %>% filter(disease == "All") %>% pull(tot_daly) - tot_daly) *100 /
+                              tot_daly)     # Relative percentage change in total DALYs compared to scenario 1 (DRF)
 
 
 
