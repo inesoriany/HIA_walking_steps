@@ -508,12 +508,13 @@ emp_short_drivers <- emp_car_trips %>%
   filter(!is.na(pond_jour), nbkm_car > 0) %>% 
   group_by(ident_ind, sex, age_grp10) %>%           # emp_car_trip is trip-level data, so count each individual once by ident_ind
   summarise(short_trip = any(nbkm_car <= 2),
-            pond_jour = first(pond_jour),
+            pond_indc = first(pond_indc),
             .groups = "drop") %>% 
   as_survey_design(ids = ident_ind,
-                   weights = pond_jour)
+                   weights = pond_indc)
 
-# French adult reporting any short (<2km) car trip in the past day
+
+# Proportion of French adult reporting any short (<2km) car trip in the past day
 prop_short_drivers <- emp_short_drivers  %>% 
   summarise(perc = 100 * survey_mean(short_trip, na.rm = TRUE,  vartype = "ci")) 
 
@@ -610,9 +611,7 @@ mean_short_trips <- emp_car_trips %>%
   filter(pond_jour != "NA", nbkm_car > 0, nbkm_car <= 2) %>% 
   as_survey_design(ids = ident_ind, 
                    weights = pond_jour) %>% 
-  summarise(day_mean = survey_mean(nbkm_car, na.rm = TRUE)) %>% 
-  mutate(ic_lower = day_mean - zq * day_mean_se,
-         ic_upper = day_mean + zq * day_mean_se)
+  summarise(day_mean = survey_mean(nbkm_car, na.rm = TRUE, vartype = "ci"))
 
 
 # Mean distance driven (km) in the past day among those reporting short car trips <2km according to sex and age
@@ -667,4 +666,5 @@ plot_mean_km_drivers_2km
     ggsave(here("output", "Plots", "Description", "Drivers", "plot_prop_drivers_2km.png"), plot = plot_perc_drivers_2km)
     ggsave(here("output", "Plots", "Description", "Drivers", "pyramid_drivers_2km.png"), plot = plot_pyramid_drivers_2km, width = 8, height = 6)
     # Mean
+    export(mean_short_trips, here("output", "Tables", "Description", "Drivers", "mean_km_short_drivers.xlsx"))
     ggsave(here("output", "Plots", "Description", "Drivers", "plot_mean_km_drivers_2km.png"), plot = plot_mean_km_drivers_2km)
