@@ -3,8 +3,9 @@
 #################################################
 
 # Modified parameters - files outputted :
-  # Former DRF
-  # Walking speed 5.3 km/h
+  # Scenario 1 - Former DRF
+  # Scenario 2 - Walking speed 5.3 km/h
+  # Scenario 3 - Age limit < 75 years
   
 
 
@@ -58,6 +59,9 @@ source(here("R_code", "Parameters.R"))
 
 # Diseases considered
 alt_dis_vec <- c("mort", "bc", "cc", "cvd", "diab2", "dem", "dep")
+
+# Outcome considered
+outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 
 
 
@@ -122,7 +126,7 @@ alt_rr_distrib_table <- alt_rr_distrib  %>%
 
 # Initialization
 emp_walk <- emp_long %>% 
-  mutate(week_time = 7*(nbkm_tot_walking + baseline_step*step_length)*60/walk_speed)  %>%       # baseline at 2000 steps  %>% 
+  mutate(week_time = 7*(nbkm_tot_walking + baseline_step*step_length)*60/walk_speed)  %>%       # baseline at 2000 steps 
   left_join(alt_rr_distrib_table  %>% select(disease, sex, ref)  %>% distinct(disease, sex, .keep_all = TRUE),, by = c("disease" , "sex"))
 
 emp_baseline <- emp_long %>% 
@@ -423,7 +427,7 @@ export(age_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_age_
 
 
 ################################################################################################################################
-#                         4. IC and MEDIAN - TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                        #
+#                         3. IC and MEDIAN - TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                        #
 ################################################################################################################################
 
 ##############################################################
@@ -465,7 +469,7 @@ age_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_ag
 
 
 ################################################################################################################################
-#                                                      5. EXPORT DATA                                                          #
+#                                                      4. EXPORT DATA                                                          #
 ################################################################################################################################
 export(age_burden, here("output", "Tables", "Sensitivity analyses", "HIA_age_sensitivity_1000replicate.xlsx"))
 
@@ -599,3 +603,4 @@ plot_sensi
 #                                                        2. EXPORT                                                             #
 ################################################################################################################################
 ggsave(here("output", "Plots", "Sensitivity analyses", "plot_sensitivity.png"), plot = plot_sensi)
+export(SENSI_data, here("output", "Tables", "Sensitivity analyses", "sensitivity_analysis.xlsx"))

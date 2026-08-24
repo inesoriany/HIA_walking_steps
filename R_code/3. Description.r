@@ -4,7 +4,6 @@
 
 
 
-# Reprendre les données de l'EMP : la marche est-elle le premier mode de transport ?
 
 ################################################################################################################################
 #                                                    1. LOAD PACKAGES                                                          #
@@ -175,7 +174,7 @@ modal_share <- bind_rows(walking, transport_mode) %>%
 ################################################################################################################################
 
 # Total population
-emp_20_89 <-  emp %>% 
+emp_20_89 <-  emp_walkers %>% 
   filter(age >= 20 & age <90)
 
 pop_tot <- sum(emp_20_89$pond_indc)
@@ -194,8 +193,6 @@ km_total_2019_IC <- as.numeric(confint(svytotal(~nbkm_tot_walking, jour_walkers)
 km_total_2019 * 1e-9 # billion km
 km_total_2019_IC * 1e-9
 
-# In time Per person (min/pers/year)
-km_total_2019 / (pop_tot * walk_speed)
 
 
 ## Total walked distance per day in 2019
@@ -203,6 +200,14 @@ km_total_day <- svytotal(~nbkm_tot_walking, jour_walkers)                   # To
 km_total_day_IC <- as.numeric(confint(km_total_day))
 km_total_day *1e-6
 km_total_day_IC * 1e-6
+
+intermodal_km_total_day <- (svytotal(~nbkm_intermodal_walk, jour_walkers))                          # Total km per year
+intermodal_km_total_day_IC <- as.numeric(confint(intermodal_km_total_day))
+intermodal_km_total_day
+intermodal_km_total_day_IC 
+intermodal_km_total_day / step_length * 1e-9
+intermodal_km_total_day_IC /  step_length * 1e-9
+intermodal_km_total_day / km_total_day                    # Share of intermodal walk
 
 
 # Total walking distances per day, by age group
@@ -343,7 +348,7 @@ mean_distance_area <- jour_walkers %>%
   )
 
 
-mean_km_area = ggplot(mean_distance_area, aes(x = area_type, y = mean_distance,
+plot_mean_km_area = ggplot(mean_distance_area, aes(x = area_type, y = mean_distance,
                                                    ymin = mean_distance - zq*mean_distance_se, ymax = mean_distance + zq*mean_distance_se,
                                                    fill = area_type)) +
   geom_col(width = 0.7, position = position_dodge2(0.4)) +
@@ -353,7 +358,7 @@ mean_km_area = ggplot(mean_distance_area, aes(x = area_type, y = mean_distance,
   labs(x = "Area type",
        y = "Mean distance walked (km per day)") +
   theme_minimal()
-plot(mean_km_area)
+plot(plot_mean_km_area)
 
 
 
@@ -384,13 +389,19 @@ deaths_per_km_walked
 ##############################################################
 
 ## Total steps in 2019
-step_total_2019 <- as.numeric(svytotal(~step_commute, jour_walkers)) *365.25/7                                      # Total steps per year
-step_total_2019_IC <- as.numeric(confint(svytotal(~step_commute, jour_walkers) *365.25/7 ))                         # Confidence interval
+step_total_2019 <- as.numeric(svytotal(~step_commute, jour_walkers)) *365.25/7                            # Total steps per year
+step_total_2019_IC <- as.numeric(confint(svytotal(~step_commute, jour_walkers) *365.25/7 ))               # Confidence interval
 
 step_total_2019 * 1e-9 # billion steps
 step_total_2019_IC * 1e-9
 
 
+## Total steps per day 
+step_total_day <- as.numeric(svytotal(~step_commute, jour_walkers))                                     # Total steps per day
+step_total_day_IC <- as.numeric(confint(svytotal(~step_commute, jour_walkers)))              # Confidence interval
+
+step_total_day * 1e-9 # billion steps
+step_total_day_IC * 1e-9
 
 
 #############################################################
@@ -462,11 +473,12 @@ mean_step_area <- jour_walkers %>%
   mutate(area_type = factor(area_type, levels = c("urban", "periurban", "rural"))) %>% 
   mutate(
     ic_lower = mean_step - zq * mean_step_se,
-    ic_upper = mean_step + zq * mean_step_se
-  )
+    ic_upper = mean_step + zq * mean_step_se,
+    share = mean_step / sum(mean_step)
+  ) 
 
 
-mean_step_area = ggplot(mean_step_area, aes(x = area_type, y = mean_step,
+plot_mean_step_area = ggplot(mean_step_area, aes(x = area_type, y = mean_step,
                                               ymin = mean_step - zq*mean_step_se, ymax = mean_step + zq*mean_step_se,
                                               fill = area_type)) +
   geom_col(width = 0.7, position = position_dodge2(0.4)) +
@@ -477,8 +489,15 @@ mean_step_area = ggplot(mean_step_area, aes(x = area_type, y = mean_step,
   labs(x = "Area type",
        y = "Mean steps per day per area") +
   theme_minimal()
-plot(mean_step_area)
+plot(plot_mean_step_area)
 
+
+# Test Anova
+anova_area_step <- svyglm(step_commute ~ area_type, jour_walkers)
+summary(anova_area_step)
+
+regTermTest(anova_area_step, ~ area_type)
+# p_value < 2.22e-16                 Highly significant (p<0.0001)
 
 
 
@@ -637,8 +656,8 @@ plot(mean_km_drivers_2km)
     # Mean walk
     ggsave(here("output", "Plots", "Description", "Walk", "plot_mean_km_walkers.png"), plot = plot_mean_km_walkers)
     ggsave(here("output", "Plots", "Description", "Steps", "plot_mean_steps_walkers.png"), plot = plot_mean_steps_walkers)
-    ggsave(here("output", "Plots", "Description", "Walk", "plot_mean_km_area.png"), plot = mean_km_area)
-    ggsave(here("output", "Plots", "Description", "Steps", "plot_mean_step_area.png"), plot = mean_step_area)
+    ggsave(here("output", "Plots", "Description", "Walk", "plot_mean_km_area.png"), plot = plot_mean_km_area)
+    ggsave(here("output", "Plots", "Description", "Steps", "plot_mean_step_area.png"), plot = plot_mean_step_area)
 
 
 
