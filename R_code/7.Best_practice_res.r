@@ -191,7 +191,8 @@ emp_target_walk <- emp_target_walk %>%
 # Initialization
 emp_target_walk <- emp_target_walk %>% 
   # Round the number of steps to the nearest hundred and baseline at 2000
-  mutate(step = pmin(12000, round(target_ind / 100) * 100 + 2000))
+  mutate(step = pmin(12000, round(target_ind / 100) * 100 + baseline_step))  %>% 
+  mutate(step_2019 = pmin(12000, round(step_commute/ 100) * 100 + baseline_step))
 
 
 # EMP Dataset per disease
@@ -514,7 +515,52 @@ plot_PRACT_cases_prev
 #                                                       8. DESCRIPTION                                                         #
 ################################################################################################################################
 
-# Description : how many people below the tragets and age/sex distribution below targets by area type
+# Description : how many people below the targets and age/sex distribution below targets by area type
+
+# Proportion of French adult below targets by area type
+emp_below_target <- PRACT_list[["mort"]]  %>% 
+  mutate(below_target = step_2019 < step)  %>% 
+  group_by(area_type, sex, age_grp10)  %>% 
+  as_survey_design(ids = ident_ind,
+                   weights = pond_indc)
+
+# Proportion of French adult below targets by area type
+prop_below_target <- emp_below_target  %>% 
+  group_by(area_type)  %>% 
+  summarise(perc = 100 * survey_mean(below_target, na.rm = TRUE, vartype = "ci"))
+  
+
+
+# Proportion of French adult below targets by area type depending on age
+prop_below_target_age <- emp_below_target  %>% 
+  group_by(area_type, age_grp10)  %>% 
+  summarise(perc = 100 * survey_mean(below_target, na.rm = TRUE, vartype = "ci"))
+
+plot_prop_below_target_age <- ggplot(prop_below_target_age, aes(x = age_grp10, y = perc,
+                                            ymin = perc_low, ymax = perc_upp, fill = area_type)) +
+  geom_col(width = 0.7, position = position_dodge2(0.4))+
+  geom_errorbar(position = position_dodge(0.7), width = 0.25) +
+  scale_fill_manual(values = colors_area) +
+  ylab ("Proportion of walkers below the best practice targets in the past day (%)") +
+  xlab("Age group") +
+  theme_minimal()
+plot_prop_below_target_age
+
+
+# Proportion of French adult below targets by area type depending on sex
+prop_below_target_sex <- emp_below_target  %>% 
+  group_by(area_type, sex)  %>% 
+  summarise(perc = 100 * survey_mean(below_target, na.rm = TRUE, vartype = "ci"))
+
+plot_prop_below_target_sex <- ggplot(prop_below_target_sex, aes(x = area_type, y = perc,
+                                            ymin = perc_low, ymax = perc_upp, fill = sex)) +
+  geom_col(width = 0.7, position = position_dodge2(0.4))+
+  geom_errorbar(position = position_dodge(0.7), width = 0.25) +
+  scale_fill_manual(values = colors_sex) +
+  ylab ("Proportion of walkers below the best practice targets in the past day (%)") +
+  xlab("Area type") +
+  theme_minimal()
+plot_prop_below_target_sex
 
 
 
@@ -524,8 +570,11 @@ plot_PRACT_cases_prev
 
 # Plot
 ggsave(here("output", "Plots", "Best practice", "best_practice_cases_prev.png"), plot = plot_PRACT_cases_prev)
+ggsave(here("output", "Plots", "Best practice", "prop_below_target_age.png"), plot = plot_prop_below_target_age)
+ggsave(here("output", "Plots", "Best practice", "prop_below_target_sex.png"), plot = plot_prop_below_target_sex)
 
 # Tables
 export(PRACT_burden, here("output", "Tables", "Best practice", "HIA_best_practice_1000replicate.xlsx"))
 export(burden_2019, here("output", "Tables", "Best practice", "HIA_area_2019_1000replicate.xlsx"))
 export(PRACT_burden_add, here("output", "Tables", "Best practice", "HIA_best_practice_added_1000replicate.xlsx"))
+export(prop_below_target, here("output", "Tables", "Best practice", "prop_below_target.xlsx"))
