@@ -515,8 +515,6 @@ plot_PRACT_cases_prev
 #                                                       8. DESCRIPTION                                                         #
 ################################################################################################################################
 
-# Description : how many people below the targets and age/sex distribution below targets by area type
-
 # Proportion of French adult below targets by area type
 emp_below_target <- PRACT_list[["mort"]]  %>% 
   mutate(below_target = step_2019 < step)  %>% 

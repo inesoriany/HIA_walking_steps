@@ -77,7 +77,8 @@ outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 # Initialization
 BEST_emp_long <- emp_long %>% 
   # Recommendation of 7000 steps and baseline at 2000
-  mutate(step = 7000 + baseline_step)
+  mutate(step = 7000 + baseline_step)  %>% 
+  mutate(step_2019 = pmin(12000, round(step_commute/ 100) * 100 + baseline_step))
 
 
 
@@ -331,6 +332,14 @@ plot_BEST_cases_prev <-
   theme_minimal()
 
 plot_BEST_cases_prev 
+
+
+
+
+################################################################################################################################
+#                                                      10. DESCRIPTION                                                         #
+################################################################################################################################
+
 
 
 
