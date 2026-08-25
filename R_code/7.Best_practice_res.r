@@ -518,9 +518,9 @@ plot_PRACT_cases_prev
 # Proportion of French adult below targets by area type
 emp_below_target <- PRACT_list[["mort"]]  %>% 
   mutate(below_target = step_2019 < step)  %>% 
-  group_by(area_type, sex, age_grp10)  %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_indc)
+
 
 # Proportion of French adult below targets by area type
 prop_below_target <- emp_below_target  %>% 

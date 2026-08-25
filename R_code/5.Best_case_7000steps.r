@@ -340,6 +340,32 @@ plot_BEST_cases_prev
 #                                                      10. DESCRIPTION                                                         #
 ################################################################################################################################
 
+# Proportion of French adults above 7,000 steps
+emp_above_7000 <- BEST_replicate_list[["mort"]]  %>% 
+  mutate(above_7000 = step_2019 > step)  %>% 
+  as_survey_design(ids = ident_ind,
+                   weights = pond_indc)
+
+
+# Proportion of French adults above 7,000 steps
+prop_above_7000 <- emp_above_7000  %>% 
+  summarise(perc = 100 * survey_mean(above_7000, na.rm = TRUE, vartype = "ci"))
+  
+
+# Proportion of French adults above 7,000 steps depending on age and sex
+prop_above_7000_age_sex <- emp_above_7000  %>% 
+  group_by(sex, age_grp10)  %>% 
+  summarise(perc = 100 * survey_mean(above_7000, na.rm = TRUE, vartype = "ci"))
+
+plot_prop_above_7000 <-  ggplot(prop_above_7000_age_sex, aes(x = age_grp10, y = perc,
+                                            ymin = perc_low, ymax = perc_upp, fill = sex)) +
+  geom_col(width = 0.7, position = position_dodge2(0.4))+
+  geom_errorbar(position = position_dodge(0.7), width = 0.25) +
+  scale_fill_manual(values = colors_sex) +
+  ylab ("Proportion of walkers exceeding 7,000 steps in the past day (%)") +
+  xlab("Age group") +
+  theme_minimal()
+plot_prop_above_7000
 
 
 
@@ -349,6 +375,7 @@ plot_BEST_cases_prev
 ################################################################################################################################
 # Plot
   ggsave(here("output", "Plots", "7000 steps", "7000steps_cases_prev.png"), plot = plot_BEST_cases_prev)
+  ggsave(here("output", "Plots", "7000 steps", "prop_above_7000steps.png"), plot = plot_prop_above_7000)
 
 
 # HIA of best case scenario
@@ -359,3 +386,4 @@ plot_BEST_cases_prev
   export(BEST_burden_per_age, here("output", "Tables", "7000 steps", "HIA_age_7000steps_1000replicate.xlsx"))
   export(BEST_Rubin_burden_per_age, here("output", "Tables", "7000 steps", "HIA_age_Rubin_7000steps_1000replicate.xlsx"))
   export(BEST_burden_add, here("output", "Tables", "7000 steps", "HIA_added_7000steps_1000replicate.xlsx"))
+  export(prop_above_7000, here("output", "Tables", "7000 steps", "prop_above_7000steps.xlsx"))
