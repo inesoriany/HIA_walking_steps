@@ -108,6 +108,12 @@ indiv_car <- emp_car_trips %>%
 ################################################################################################################################
 #                                                        5. HEALTH                                                             #
 ################################################################################################################################
+# Death incidence for 100,000
+mort_incidence <- indiv_walkers  %>% 
+  summarise (rate_mean = survey_mean(mort_rate, vartype = "ci")) %>% 
+  mutate(rate_mean*100000, rate_mean_low*100000, rate_mean_upp*100000)
+
+
 # Incidence distribution per age and sex
 list_incidence <- lapply(morbi_vec, function(dis) {
   
@@ -174,10 +180,7 @@ modal_share <- bind_rows(walking, transport_mode) %>%
 ################################################################################################################################
 
 # Total population
-emp_20_89 <-  emp_walkers %>% 
-  filter(age >= 20 & age <90)
-
-pop_tot <- sum(emp_20_89$pond_indc)
+pop_tot <- sum(emp_walkers$pond_indc)
 pop_tot
 
 
