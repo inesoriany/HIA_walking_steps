@@ -26,6 +26,7 @@ pacman :: p_load(
   srvyr,        # Survey
   survey,
   ggplot2,      # Data visualization
+  scales,       # Format visualization
   progress      # Progression bar
 )
 

@@ -14,11 +14,13 @@ pacman :: p_load(
   here,         # Localization of files 
   dplyr,        # Data manipulation
   tidyr,        # Data manipulation
+  purrr,        # Loop
   epikit,       # Age categories creation
   survey,       # Survey management
   srvyr,        # Survey management
-  ggplot2,       # Data visualization
-  patchwork           # graphs combination
+  ggplot2,      # Data visualization
+  scales,       # Format visualization
+  patchwork     # Graphs combination
 )
 
 
@@ -130,6 +132,7 @@ list_incidence <- lapply(morbi_vec, function(dis) {
     ) +
     geom_point(size = 2) +
     scale_color_manual(values = colors_sex) +
+    scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
     labs(
       title = names_disease[[dis]],
       y = "Incidence",
@@ -294,7 +297,9 @@ plot_mean_km_walkers <-
   scale_alpha_manual(
     name = "Walking type",
     values = c("Exclusively walking" = 1, "Total walking including intermodal walk" = 0.4)) +
+    
   scale_x_discrete(labels = names_disease) + 
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +  
   ylab("Mean distance walked (km per day)") +
   xlab("Age group") +
   theme_minimal()
@@ -358,6 +363,7 @@ plot_mean_km_area = ggplot(mean_distance_area, aes(x = area_type, y = mean_dista
   geom_errorbar(position = position_dodge(.7), width = .25) + 
   scale_fill_manual(name = "Municipality density degree",
                     values = colors_area) +
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   labs(x = "Area type",
        y = "Mean distance walked (km per day)") +
   theme_minimal()
@@ -459,6 +465,7 @@ plot_mean_steps_walkers <-
     name = "Walking type",
     values = c("Exclusively walking" = 1, "Total walking including intermodal walk" = 0.4)) +
   scale_x_discrete(labels = names_disease) + 
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   ylab("Mean steps walked (steps per day)") +
   xlab("Age group") +
   theme_minimal()
@@ -489,6 +496,7 @@ plot_mean_step_area = ggplot(mean_step_area, aes(x = area_type, y = mean_step,
   scale_fill_manual(name = "Municipality density degree",
                     labels = c("urban", "periurban", "rural"),
                     values = colors_area) +
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   labs(x = "Area type",
        y = "Mean steps per day per area") +
   theme_minimal()
@@ -538,6 +546,7 @@ plot_nb_drivers_2km <- ggplot(drivers_2km, aes(x = age_grp10, y = total,
   geom_col(width = 0.7, position = position_dodge2(0.4))+
   geom_errorbar(position = position_dodge(0.7), width = 0.25) +
   scale_fill_manual(values = colors_sex) +
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   ylab ("Number of drivers driving <2km in the past day") +
   xlab("Age group") +
   theme_minimal()
@@ -558,6 +567,7 @@ plot_perc_drivers_2km <- ggplot(prop_drivers_2km, aes(x = age_grp10, y = perc,
   geom_col(width = 0.7, position = position_dodge2(0.4))+
   geom_errorbar(position = position_dodge(0.7), width = 0.25) +
   scale_fill_manual(values = colors_sex) +
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   ylab ("Proportion of drivers driving <2km in the past day (%)") +
   xlab("Age group") +
   theme_minimal()
@@ -573,7 +583,7 @@ drivers_pyramid <- drivers_2km %>%
 plot_pyramid_drivers_2km <- ggplot(drivers_pyramid, aes(x = age_grp10, y = total, fill = Sex)) +
   geom_col(width = 0.7) +
   coord_flip() +
-  scale_y_continuous(labels = function(x) abs(x)) +
+  scale_y_continuous(labels = function(x) label_comma(big.mark = ",", decimal.mark = ".")(abs(x))) +
   scale_fill_manual(values = colors_sex) +
   labs(title = "Age pyramid of drivers that reported a short car trip (<2km) in the past day",
        y = "Number of drivers", x = "Age group") +
@@ -629,6 +639,7 @@ plot_mean_km_drivers_2km <- ggplot(mean_drivers_2km, aes(x = age_grp10, y = day_
                                             ymin = day_mean - zq*day_mean_se, ymax = day_mean + zq*day_mean_se, fill = Sex)) +
   scale_fill_manual(values = c("Female" = "darkorange1",
                                "Male" = "chartreuse4")) +
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   geom_col(width = 0.7, position = position_dodge2(0.4)) +
   geom_errorbar(position = position_dodge(0.7), width = 0.25) +
   ylab ("Mean distance of short car travel <2km (km)") +
@@ -646,7 +657,7 @@ plot_mean_km_drivers_2km
 
 # HEALTH
     # Incidence
-    ggsave(here("output", "Plots", "Description", "Disease", "morbi_incidence.png"), plot = combined_plot_incidence)
+    ggsave(here("output", "Plots", "Description", "Diseases", "morbi_incidence.png"), plot = combined_plot_incidence)
 
 # WALKING
     # Sex proportion
