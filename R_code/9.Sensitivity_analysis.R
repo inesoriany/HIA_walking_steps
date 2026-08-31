@@ -589,7 +589,8 @@ plot_sensi <- ggplot(SENSI_data) +
     color = "Disease"
   ) +
   theme(
-    strip.text.y = element_text(angle = 0, hjust = 0, size = 9),
+    strip.text.y = element_text(angle = 0, hjust = 0, size = 10),
+    strip.text.x = element_text(angle = 0, hjust = 0.5, size = 10),
     axis.text.x = element_text(angle = 30, hjust = 1, size = 7),
     axis.text.y = element_text(angle = 0, hjust = 1, size = 8),
     axis.ticks.y = element_blank(),
@@ -598,7 +599,14 @@ plot_sensi <- ggplot(SENSI_data) +
     panel.spacing.y = unit(0.6, "lines")
   ) +
   scale_y_discrete(labels = names_disease) +
-  scale_x_continuous(labels = scales::label_comma()) +
+  scale_x_continuous(
+    labels = scales::label_comma(),
+    breaks = function(x) {
+      top <- ceiling(x[2] / 200000) * 200000
+      br <- seq(0, top, by = 200000)
+      sort(unique(c(br, 50000)))
+    }
+  ) +
   geom_vline(data = data.frame(outcome = c("tot_daly"),
                                xintercept = c(50000)),
              aes(xintercept = xintercept),
