@@ -112,7 +112,7 @@ burden_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_d
  
 
 # Export : Table of HIA outcomes per simulation
-export(burden_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_1000replicate.rds"))
+export(burden_total, here("output", "RDS", "2019", "HIA_1000replicate.rds"))
 
 
 ##############################################################
@@ -128,7 +128,7 @@ burden_sex_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, inciden
 
 
 # Export : Table of HIA outcomes per simulation
-export(burden_sex_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_per_sex_1000replicate.rds"))
+export(burden_sex_total, here("output", "RDS", "2019", "HIA_per_sex_1000replicate.rds"))
 
 
 
@@ -144,7 +144,7 @@ burden_age_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, inciden
                                      N = 1000)
 
 # Export : Table of HIA outcomes per simulation
-export(burden_age_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_per_age_1000replicate.rds"))
+export(burden_age_total, here("output", "RDS", "2019", "HIA_per_age_1000replicate.rds"))
 
 
 
@@ -158,7 +158,7 @@ export(burden_age_total, here("output", "RDS", "2019", "Monte Carlo", "HIA_per_a
 ##############################################################
 
 # Import data
-burden_total <- import(here("output", "RDS", "2019", "Monte Carlo", "HIA_1000replicate.rds"))
+burden_total <- import(here("output", "RDS", "2019", "HIA_1000replicate.rds"))
 
 
 # --------------------------------------
@@ -224,7 +224,7 @@ burden_total <- import(here("output", "RDS", "2019", "Monte Carlo", "HIA_1000rep
 ##############################################################
 
 # Import data
-burden_sex_total <- import(here("output", "RDS", "2019", "Monte Carlo", "HIA_per_sex_1000replicate.rds"))
+burden_sex_total <- import(here("output", "RDS", "2019", "HIA_per_sex_1000replicate.rds"))
 
 
 # --------------------------------------
@@ -247,7 +247,7 @@ Rubin_burden_per_sex <- HIA_burden_IC(burden_sex_total, dis_vec, outcome_vec, ca
 ##############################################################
 
 # Import data
-burden_age_total <- import(here("output", "RDS", "2019", "Monte Carlo", "HIA_per_age_1000replicate.rds"))
+burden_age_total <- import(here("output", "RDS", "2019", "HIA_per_age_1000replicate.rds"))
 
 
 # --------------------------------------
@@ -294,18 +294,18 @@ for (i in 1:N) {
 }
 
 # Export reduction in mortality risk for 1000 replications
-export(reduc_mortality_risk, here("output", "RDS", "2019", "Monte Carlo",  "reduc_mortality_risk_1000_rep.RDS"))
+export(reduc_mortality_risk, here("output", "RDS", "2019", "reduc_mortality_risk_1000_rep.RDS"))
 
 
 
 # Load reduction in mortality risk for 1000 replications
-reduc_mortality_risk <- import(here("output", "RDS", "2019", "Monte Carlo",  "reduc_mortality_risk_1000_rep.RDS"))
+reduc_mortality_risk <- import(here("output", "RDS", "2019", "reduc_mortality_risk_1000_rep.RDS"))
 
 # IC95 and median mean
 N <- 1000
 IC <-  calc_replicate_IC(reduc_mortality_risk, "mean_mort_reduction_risk")
 reduc_mortality_risk_IC <- data.frame(
-  reduc_mortality_risk = paste0(round(IC["50%"], 3), " (", round(IC["2.5%"], 3), " - ", round(IC["97.5%"],3),  ")"),
+  reduc_mortality_risk = paste0(round(UI["50%"], 3), " (", round(UI["2.5%"], 3), " - ", round(UI["97.5%"],3),  ")"),
   N_replications = N)
 
 
@@ -323,6 +323,7 @@ plot_cases_prev <- burden_per_sex %>%
   geom_errorbar(position = position_dodge(.7), width = .25) +
   scale_fill_manual(values = colors_sex) +
   scale_x_discrete(labels = names_disease) + 
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   ylab ("Cases prevented") +
   xlab("Disease") +
   theme_minimal() +
@@ -341,6 +342,7 @@ plot_daly_prevented <- burden_per_age %>%
   ggplot(aes(x = age_grp10, y = tot_daly, fill = disease)) +
   geom_bar(width = 0.7, position = "stack", stat = "identity")  +
   scale_fill_manual(values = colors_disease, labels = names_disease) +
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   xlab("Age group") +
   ylab("Median DALY") +
   theme_minimal()

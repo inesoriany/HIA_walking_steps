@@ -323,10 +323,9 @@ plot_BEST_cases_prev <-
     mapping = aes(x = disease, ymin = tot_cases_low, ymax = tot_cases_up, group = sex, alpha = "7000 steps recommendation"),
     position = position_dodge(0.7),
     width = 0.25) +
-  scale_alpha_manual(
-    name = "Scenario",
-    values = c("2019 baseline" = 1, "7000 steps recommendation" = 0.4)) +
+  scale_alpha_manual(values = c("2019 baseline" = 1, "7000 steps recommendation" = 0.4), guide = "none") +
   scale_x_discrete(labels = names_disease) + 
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   ylab("Cases prevented") +
   xlab("Disease") +
   theme_minimal()

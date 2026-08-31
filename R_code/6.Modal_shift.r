@@ -289,8 +289,7 @@ plot_MODAL_cases_prev <-
            width = 0.7,
            position = position_dodge2(0.7),
            stat = "identity") +
-  scale_alpha_manual(name   = "Scenario",
-                     values = c("2019 baseline" = 1, "Modal shift scenario" = 0.4)) +
+  scale_alpha_manual(values = c("2019 baseline" = 1, "Modal shift scenario" = 0.4), guide = "none") +
   
   geom_errorbar(data = MODAL_burden %>%  
                 filter(!disease %in% c("All", "Morbidity")),
@@ -299,6 +298,7 @@ plot_MODAL_cases_prev <-
                 width = 0.25) +
   
   scale_x_discrete(labels = names_disease) + 
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   ylab("Cases prevented") +
   xlab("Disease") +
   theme_minimal() 
