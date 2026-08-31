@@ -31,7 +31,13 @@ BEST_burden <- import(here("output", "Tables", "7000 steps", "HIA_7000steps_1000
 MODAL_burden <- import(here("output", "Tables", "Modal shift", "HIA_modal_shift_1000replicate.xlsx"))
 
 # Best practice scenario
-PRACT_burden <- import(here("output", "Tables", "Best practice", "Residence", "HIA_best_practice_1000replicate_RES.xlsx"))
+PRACT_burden <- import(here("output", "Tables", "Best practice", "HIA_best_practice_1000replicate.xlsx"))
+
+
+# Import parameters
+source(here("R_code", "Parameters.R"))
+
+
 
 
 ################################################################################################################################
@@ -73,7 +79,7 @@ plot_scenarios_daly <-
   geom_errorbar(data = burden_scenarios,
                 mapping = aes(x = scenario, ymin = tot_cases_low, ymax = tot_cases_up),
                 width = 0.25) +
-
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   ylab("DALY prevented") +
   xlab(NULL) +
   theme_minimal() +
@@ -101,16 +107,14 @@ plot_scenarios_daly_area <-
   geom_bar(data = PRACT_area_burden,
            mapping = aes(x = scenario, y = tot_cases, fill = area_type),
            width = 0.7, stat = "identity", position = "stack") +
-    scale_fill_manual(values = c(urban = "#1b9e77",
-                                 periurban = "#d95f02",
-                                 rural = "#7570b3"),
+    scale_fill_manual(values = colors_area,
                       name = "Area type") +
 
   geom_errorbar(data = PRACT_area_burden,
                 mapping = aes(x = scenario, ymin = tot_cases_low_cum, ymax = tot_cases_up_cum),
                 width = 0.25) +
   
-
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   ylab("DALY prevented") +
   xlab(NULL) +
   theme_minimal() +
