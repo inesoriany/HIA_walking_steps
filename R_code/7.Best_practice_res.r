@@ -192,10 +192,16 @@ emp_target_walk <- emp_target_walk %>%
 ################################################################################################################################
 
 # Initialization
-emp_target_walk <- emp_target_walk %>% 
+emp_target_walk_with_diminution <- emp_target_walk %>% 
   # Round the number of steps to the nearest hundred and baseline at 2000
   mutate(step = pmin(12000, round(target_ind / 100) * 100 + baseline_step))  %>% 
   mutate(step_2019 = pmin(12000, round(step_commute/ 100) * 100 + baseline_step))
+
+emp_target_walk <- emp_target_walk %>%
+  mutate(step = pmin(
+      12000,
+      round(pmax(target_ind, step_commute) / 100) * 100 + baseline_step),           # No diminution 
+    step_2019 = pmin(12000, round(step_commute / 100) * 100 + baseline_step))
 
 
 # EMP Dataset per disease
@@ -520,6 +526,29 @@ plot_PRACT_cases_prev
 ################################################################################################################################
 #                                                       8. DESCRIPTION                                                         #
 ################################################################################################################################
+# Nombre de km walked si les personnes ne diminuent pas
+jour_walkers_target <- emp_target_walk %>% 
+  filter(pond_jour != "NA") %>% 
+  as_survey_design(ids = ident_ind,
+                   weights = pond_jour,
+                   strata = c(sex, age_grp10),
+                   nest = TRUE)
+
+step_total_day <- svytotal(~step, jour_walkers_target)                   # Total steps per day
+step_total_day 
+step_total_day * step_length                                             # Total km per day
+
+# Nombre de km si les personnes avec diminution
+jour_walkers_target_diminution <- emp_target_walk_with_diminution %>% 
+  filter(pond_jour != "NA") %>% 
+  as_survey_design(ids = ident_ind,
+                   weights = pond_jour,
+                   strata = c(sex, age_grp10),
+                   nest = TRUE)
+step_total_day_diminution <- svytotal(~step, jour_walkers_target_diminution)   
+step_total_day_diminution
+step_total_day_diminution * step_length
+
 
 # Proportion of French adult below targets by area type
 emp_below_target <- PRACT_list[["mort"]]  %>% 
