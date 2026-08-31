@@ -268,7 +268,7 @@ plot_MODAL_cases_prev <-
   # 2019 baseline
   geom_bar(data = burden_2019 %>%  
            filter(!disease %in% c("All", "Morbidity"))  %>% 
-           mutate(disease = factor(disease, levels = c("mort", "cancer", "cvd", "diab2", "dem", "dep"))),
+           mutate(disease = factor(disease, levels = c("mort", "cvd", "cancer", "diab2", "dem", "dep"))),
            mapping = aes(x = disease, y = tot_cases, fill = disease, alpha = "2019 baseline"),
            width = 0.7,
            position = position_dodge2(0.7),
@@ -284,7 +284,8 @@ plot_MODAL_cases_prev <-
   
   # Modal shift
   geom_bar(data = MODAL_burden %>%  
-           filter(!disease %in% c("All", "Morbidity")), 
+           filter(!disease %in% c("All", "Morbidity")) %>% 
+           mutate(disease = factor(disease, levels = c("mort", "cvd", "cancer", "diab2", "dem", "dep"))), 
            mapping = aes(x = disease, y = tot_cases, fill = disease, alpha = "Modal shift scenario"),
            width = 0.7,
            position = position_dodge2(0.7),

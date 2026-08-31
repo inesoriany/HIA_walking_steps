@@ -454,7 +454,7 @@ plot_PRACT_cases_prev <-
   geom_col(data = burden_2019 %>%
       filter(!disease %in% c("All", "Morbidity")) %>%
       filter(!area_type %in% c("All")) %>%
-      mutate(disease = factor(disease, levels = c("mort", "cancer", "cvd", "diab2", "dem", "dep")),
+      mutate(disease = factor(disease, levels = c("mort", "cvd", "cancer", "diab2", "dem", "dep")),
              area_type = factor(area_type, levels = c("urban", "periurban", "rural"))),
       aes(x = disease,
           y = tot_cases,
@@ -466,7 +466,7 @@ plot_PRACT_cases_prev <-
   geom_errorbar(data = burden_2019 %>%
       filter(!disease %in% c("All", "Morbidity")) %>%
       filter(!area_type %in% c("All")) %>%
-      mutate(disease = factor(disease, levels = c("mort", "cancer", "cvd", "diab2", "dem", "dep")),
+      mutate(disease = factor(disease, levels = c("mort", "cvd", "cancer", "diab2", "dem", "dep")),
              area_type = factor(area_type, levels = c("urban", "periurban", "rural"))),
     aes(x = disease,
         ymin = tot_cases_low,
@@ -481,7 +481,7 @@ plot_PRACT_cases_prev <-
   geom_col(data = PRACT_burden %>%
       filter(!disease %in% c("All", "Morbidity")) %>%
       filter(!area_type %in% c("All")) %>%
-      mutate(disease = factor(disease, levels = c("mort", "cancer", "cvd", "diab2", "dem", "dep")),
+      mutate(disease = factor(disease, levels = c("mort", "cvd", "cancer", "diab2", "dem", "dep")),
              area_type = factor(area_type, levels = c("urban", "periurban", "rural"))),
     aes(x = disease,
         y = tot_cases,
@@ -493,7 +493,7 @@ plot_PRACT_cases_prev <-
   geom_errorbar(data = PRACT_burden %>%
       filter(!disease %in% c("All", "Morbidity")) %>%
       filter(!area_type %in% c("All")) %>%
-      mutate(disease = factor(disease, levels = c("mort", "cancer", "cvd", "diab2", "dem", "dep")),
+      mutate(disease = factor(disease, levels = c("mort", "cvd", "cancer", "diab2", "dem", "dep")),
              area_type = factor(area_type, levels = c("urban", "periurban", "rural"))),
     aes(x = disease,
         ymin = tot_cases_low,

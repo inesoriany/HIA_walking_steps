@@ -536,7 +536,8 @@ HIA_main <- HIA_main %>%
 #                                                    2. DATA PREPARATION                                                       #
 ################################################################################################################################
 SENSI_data <- bind_rows(HIA_main, HIA_DRF, HIA_speed, HIA_age)  %>% 
-  mutate(outcome = "tot_daly")
+  mutate(outcome = "tot_daly") %>%
+  mutate(disease = factor(disease, levels = c("dep", "dem", "diab2", "cancer", "cc", "bc", "cvd", "mort", "All")))
 
 
 
@@ -558,7 +559,7 @@ plot_sensi <- ggplot(SENSI_data) +
   geom_point(aes(x = tot_daly,
                  y = disease,
                  color = factor(disease)),
-             size = 2.5,
+             size = 5,
              shape = 18) +
   geom_segment(aes(x = tot_daly_low,
                    xend = tot_daly_up,
