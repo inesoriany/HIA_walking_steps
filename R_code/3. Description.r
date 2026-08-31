@@ -295,8 +295,8 @@ plot_mean_km_walkers <-
     position = position_dodge(0.7),
     width = 0.25) +
   scale_alpha_manual(
-    name = "Walking type",
-    values = c("Exclusively walking" = 1, "Total walking including intermodal walk" = 0.4)) +
+    values = c("Exclusively walking" = 1, "Total walking including intermodal walk" = 0.4),
+    guide = "none") +
     
   scale_x_discrete(labels = names_disease) + 
   scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +  
@@ -462,8 +462,8 @@ plot_mean_steps_walkers <-
     position = position_dodge(0.7),
     width = 0.25) +
   scale_alpha_manual(
-    name = "Walking type",
-    values = c("Exclusively walking" = 1, "Total walking including intermodal walk" = 0.4)) +
+    values = c("Exclusively walking" = 1, "Total walking including intermodal walk" = 0.4),
+    guide = "none") +
   scale_x_discrete(labels = names_disease) + 
   scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   ylab("Mean steps walked (steps per day)") +
