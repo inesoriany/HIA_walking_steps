@@ -341,11 +341,14 @@ walk_trip <- walk_trip %>%
 
 
 # Area type depend on density
+walk_trip <- walk_trip  %>% 
+  left_join(emp_walk_ind  %>% select(ident_ind, densitecom_res), by = "ident_ind")
+
 walk_trip <- walk_trip %>%
   mutate(
     area_type = case_when(
-      densitecom_ori == 1    ~ "urban",
-      densitecom_ori == 2    ~ "periurban",
+      densitecom_res == 1    ~ "urban",
+      densitecom_res == 2    ~ "periurban",
       TRUE                   ~ "rural"),
     area_type = factor(area_type, levels = c("rural", "periurban", "urban")))
 
@@ -393,7 +396,7 @@ walking_trip_long <- walking_trip %>%
 ################################################################################################################################
 #                                                       6. EXPORT DATA                                                         #
 ################################################################################################################################
-
+ 
 # Tables of walkers
   export(walkers, here("data_clean", "EMP_walkers.xlsx")) 
   export(walkers_long, here("data_clean", "EMP_dis_walkers.xlsx"))

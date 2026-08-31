@@ -26,8 +26,11 @@ pacman :: p_load(
 #                                                     2. IMPORT DATA                                                           #
 ################################################################################################################################
 
-# Drivers dataset
+# Walkers dataset
 emp_walk <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
+
+# Walk trips
+emp_walk_trips <- import(here("data_clean", "EMP_walking_trips.xlsx"))
 
 
 # Incidence distribution table
@@ -444,6 +447,7 @@ plot_PRACT_cases_prev <-
   # 2019 baseline
   geom_col(data = burden_2019 %>%
       filter(!disease %in% c("All", "Morbidity")) %>%
+      filter(!area_type %in% c("All")) %>%
       mutate(disease = factor(disease, levels = c("mort", "cancer", "cvd", "diab2", "dem", "dep")),
              area_type = factor(area_type, levels = c("urban", "periurban", "rural"))),
       aes(x = disease,
@@ -455,6 +459,7 @@ plot_PRACT_cases_prev <-
 
   geom_errorbar(data = burden_2019 %>%
       filter(!disease %in% c("All", "Morbidity")) %>%
+      filter(!area_type %in% c("All")) %>%
       mutate(disease = factor(disease, levels = c("mort", "cancer", "cvd", "diab2", "dem", "dep")),
              area_type = factor(area_type, levels = c("urban", "periurban", "rural"))),
     aes(x = disease,
@@ -497,11 +502,12 @@ plot_PRACT_cases_prev <-
     name = "Area type") +
 
   scale_alpha_manual(
-    name = "Scenario",
     values = c("2019 baseline" = 1,
-               "Best practice scenario" = 0.4)) +
+               "Best practice scenario" = 0.4), 
+    guide = "none") +
 
   scale_x_discrete(labels = names_disease) +
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
 
   labs(x = "Disease",
        y = "Cases prevented") +
@@ -539,6 +545,7 @@ plot_prop_below_target_age <- ggplot(prop_below_target_age, aes(x = age_grp10, y
   geom_col(width = 0.7, position = position_dodge2(0.4))+
   geom_errorbar(position = position_dodge(0.7), width = 0.25) +
   scale_fill_manual(values = colors_area) +
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
   ylab ("Proportion of walkers below the best practice targets in the past day (%)") +
   xlab("Age group") +
   theme_minimal()
