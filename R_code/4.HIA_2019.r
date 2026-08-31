@@ -315,6 +315,9 @@ reduc_mortality_risk_IC <- data.frame(
 #                                                     7. VISUALIZATION                                                         #
 ################################################################################################################################
 
+# Import 2019 data
+burden_per_sex <- import(here("output", "Tables", "2019", "HIA_per_sex.xlsx"))
+
 # Plot : Cases prevented by walking in 2019 according to sex
 plot_cases_prev <- burden_per_sex %>% 
   mutate(disease = factor(disease, levels = c("mort", "cvd", "cancer", "diab2", "dem", "dep"))) %>%
@@ -323,7 +326,8 @@ plot_cases_prev <- burden_per_sex %>%
   geom_errorbar(position = position_dodge(.7), width = .25) +
   scale_fill_manual(values = colors_sex) +
   scale_x_discrete(labels = names_disease) + 
-  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = "."),
+                     breaks = seq(0, max(burden_per_sex$tot_cases_up, na.rm = TRUE) + 10000, by = 10000)) +
   ylab ("Cases prevented") +
   xlab("Disease") +
   theme_minimal() +
@@ -336,6 +340,9 @@ plot_cases_prev <- burden_per_sex %>%
 plot_cases_prev
 
 
+
+# Import 2019 data
+burden_per_age <- import(here("output", "Tables", "2019", "HIA_per_age.xlsx"))
 
 # Plot : Median DALY prevented by walking in 2019 according to age group
 plot_daly_prevented <- burden_per_age %>% 
