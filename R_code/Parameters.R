@@ -7,10 +7,6 @@
 step_length <- 0.715*1e-3   # km
 
 
-## WALKING SPEED (Barban et al, 2022) ----
-walk_speed <- 4.8  # km/h
-
-
 ## BASELINE: 2000 steps daily
 baseline_step = 2000
 
@@ -164,3 +160,23 @@ CO2_emit <- 124                    # 124g CO2 per km
 urban_target <- 9/100 * 15 / step_length        # 1.35 km per person per day, in steps
 periurban_target <- 4/100 * 22 / step_length    # 0.88 km per person per day, in steps
 rural_target <- 2/100 * 32 / step_length        # 0.64 km per person per day, in steps
+
+
+
+##############################################################
+#                      Transport speeds                      #
+##############################################################
+## WALKING SPEED (Barban et al, 2022) ----
+walk_speed <- 4.8  # km/h
+
+bike_urban_speed <- 12 #km/h
+bike_periurban_speed <- 15 #km/h
+bike_rural_speed <- 18 #km/h
+
+public_transport_urban_speed <- 12 #km/h
+public_transport_periuban_speed <- 35 #km/h
+public_transport_rural_speed <-55 #km/h
+
+car_urban_speed <- 20 #km/h
+car_periurban_speed <- 35 #km/h
+car_rural_speed <- 55 #km/h
