@@ -169,6 +169,7 @@ rural_target <- 2/100 * 32 / step_length        # 0.64 km per person per day, in
 ## WALKING SPEED (Barban et al, 2022) ----
 walk_speed <- 4.8  # km/h
 
+# Transport speeds for different modes and areas (ADEME, Contribution du développement de la marche et du vélo à la décarbonation et à l'amélioration de la qualité de l'air en France, 2025)
 bike_urban_speed <- 12 #km/h
 bike_periurban_speed <- 15 #km/h
 bike_rural_speed <- 18 #km/h
