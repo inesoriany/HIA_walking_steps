@@ -160,6 +160,9 @@ print(combined_plot_incidence)
 #                                                    6. TRANSPORT MODE                                                         #
 ################################################################################################################################
 
+##############################################################
+#                          DISTANCE                          #
+##############################################################
 # Total walking including intermodal trips
 walking <- indiv_trips  %>% 
     summarise(tot_km = survey_total(nbkm_tot_walking, na.rm = TRUE))  %>% 
@@ -172,9 +175,45 @@ transport_mode <- indiv_trips  %>%
     summarise(tot_km = survey_total(mdisttot_fin, na.rm = TRUE))  %>% 
     filter(mode != "walk")
 
-# Modal share
+# Modal share in distance
 modal_share <- bind_rows(walking, transport_mode) %>%
   mutate(share_perc = tot_km * 100 / sum(tot_km))
+
+
+
+##############################################################
+#                           TIME                             #
+##############################################################
+# Total walking including intermodal trips and walking in private spaces
+walking_time <- indiv_trips  %>% 
+    summarise(tot_min = survey_total((nbkm_tot_walking + baseline_step*step_length)*60/walk_speed, na.rm = TRUE))  %>% 
+    mutate(mode = "tot_walk")
+
+
+# Transport mode
+transport_mode_time <- indiv_trips  %>% 
+    filter(mode != "walk")  %>% 
+    # Associate transport speeds to corresponding mode and area
+    mutate (speed = case_when(
+      area_type == "urban" & mode == "bike" ~ bike_urban_speed,
+      area_type == "periurban" & mode == "bike" ~ bike_periurban_speed,
+      area_type == "rural" & mode == "bike" ~ bike_rural_speed,
+      area_type == "urban" & mode == "public_transport" ~ public_transport_urban_speed,
+      area_type == "periurban" & mode == "public_transport" ~ public_transport_periuban_speed,
+      area_type == "rural" & mode == "public_transport" ~ public_transport_rural_speed,
+      area_type == "urban" & mode == "car" ~ car_urban_speed,
+      area_type == "periurban" & mode == "car" ~ car_periurban_speed,
+      area_type == "rural" & mode == "car" ~ car_rural_speed,
+      TRUE ~ NA_real_
+    ))  %>% 
+    group_by(mode)  %>% 
+    summarise(tot_min = survey_total(mdisttot_fin*60/speed, na.rm = TRUE))  
+
+
+# Modal share in distance
+modal_share_time <- bind_rows(walking_time, transport_mode_time) %>%
+  mutate(share_perc = tot_min * 100 / sum(tot_min))
+
 
 
 
