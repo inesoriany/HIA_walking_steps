@@ -279,11 +279,20 @@ prop_sex <-  emp_walkers %>%
 km_mean <- svymean(~nbkm_tot_walking, jour_walkers, na.rm = TRUE)         # Mean km per day
 km_mean                             # 1.3468 (1.290339-1.403312) km per day
 km_mean / step_length               # 1883.7 (1804.67-1962.675) steps per day  
+km_mean*60 / walk_speed             # 16.84 (16.13-17.54) minutes per day
 
 
 km_mean_IC <- confint(km_mean)
 km_mean_IC
 km_mean_IC/step_length
+km_mean_IC*60 / walk_speed 
+
+
+# Exclusive walking
+main_km_mean <- svymean(~nbkm_main_walk, jour_walkers, na.rm = TRUE)      # Mean km per day
+main_km_mean
+main_km_mean / step_length               # 1201.5 steps per day
+main_km_mean*60 / walk_speed             # 10.74 minutes per day
 
 
 # Intermodal walk
