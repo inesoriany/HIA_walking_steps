@@ -95,11 +95,11 @@ trip <- trip %>%
 # --------------------------------------
 # Walking levels
 walk_ind <- trip %>% 
-  mutate(intermodal_walk_time = if_else(is.na(mtempsmap), 0, mtempsmap)) %>% 
+  mutate(mtempsmap = if_else(is.na(mtempsmap), 0, mtempsmap)) %>% 
   mutate(main_walk = mtp == 1.1,
          nbkm_main_walk = if_else(main_walk, mdisttot_fin, 0)) %>%
   group_by(ident_ind, pond_jour) %>%
-  summarise(intermodal_walk_time = sum(intermodal_walk_time, na.rm = TRUE),
+  summarise(intermodal_walk_time = sum(mtempsmap, na.rm = TRUE),
             nbkm_main_walk = sum(nbkm_main_walk, na.rm = TRUE),
             .groups = "drop") %>% 
   select(ident_ind,
@@ -113,7 +113,7 @@ walk_ind <- trip %>%
 
 # Add household characteristics
   left_join(household, by = "ident_men")
-
+  
 
 
 
