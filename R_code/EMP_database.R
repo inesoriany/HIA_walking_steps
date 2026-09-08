@@ -94,26 +94,28 @@ trip <- trip %>%
 # INDIVIDUAL
 # --------------------------------------
 # Walking levels
-walk_ind <- trip %>% 
-  mutate(mtempsmap = if_else(is.na(mtempsmap), 0, mtempsmap)) %>% 
-  mutate(main_walk = mtp == 1.1,
-         nbkm_main_walk = if_else(main_walk, mdisttot_fin, 0)) %>%
-  group_by(ident_ind, pond_jour) %>%
-  summarise(intermodal_walk_time = sum(mtempsmap, na.rm = TRUE),
-            nbkm_main_walk = sum(nbkm_main_walk, na.rm = TRUE),
-            .groups = "drop") %>% 
-  select(ident_ind,
-         pond_jour,
-         intermodal_walk_time,
-         nbkm_main_walk) %>% 
+walk_ind <-  ind %>%
+  left_join(
+    trip %>% 
+    mutate(mtempsmap = if_else(is.na(mtempsmap), 0, mtempsmap)) %>% 
+    mutate(main_walk = mtp %in% c(1.1, 1.2, 1.3, 1.4),
+          nbkm_main_walk = if_else(main_walk, mdisttot_fin, 0)) %>%
+    group_by(ident_ind, pond_jour) %>%
+    summarise(intermodal_walk_time = sum(mtempsmap, na.rm = TRUE),
+              nbkm_main_walk = sum(nbkm_main_walk, na.rm = TRUE),
+              .groups = "drop"),
+  by = "ident_ind") %>% 
+   mutate(
+    intermodal_walk_time = replace_na(intermodal_walk_time, 0),
+    nbkm_main_walk = replace_na(nbkm_main_walk, 0)
+  ) %>%
   
 # Add individual characteristics
-  left_join(ind, by = "ident_ind") %>%
   left_join(ind_kish, by = "ident_ind")  %>% 
 
 # Add household characteristics
   left_join(household, by = "ident_men")
-  
+
 
 
 
@@ -123,7 +125,7 @@ walk_ind <- trip %>%
 walk_trip <- ind %>%                                  
   left_join(trip, by ="ident_ind", relationship = "many-to-many") %>% 
   mutate(intermodal_walk_time = if_else(is.na(mtempsmap), 0, mtempsmap)) %>% 
-  mutate(main_walk = mtp == 1.1,
+  mutate(main_walk = mtp %in% c(1.1, 1.2, 1.3, 1.4),
          nbkm_main_walk = if_else(main_walk, mdisttot_fin, 0)) %>% 
   
 # Add individual characteristics

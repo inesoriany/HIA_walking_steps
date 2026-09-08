@@ -30,6 +30,10 @@ pacman :: p_load(
 ################################################################################################################################
 
 # EMP 2019
+emp <- 
+
+
+# EMP 2019 trips
 emp_trip <- import(here("data_clean", "EMP_walking_trips.xlsx")) 
 
 # EMP 2019 subset for walkers
@@ -231,6 +235,11 @@ pop_tot
 #                  TOTAL WALKED DISTANCE                     #
 ##############################################################
 
+week <- emp_walkers  %>% 
+  mutate(km_pond = nbkm_tot_walking * pond_jour)
+
+sum(week$km_pond)
+
 ## Total walked distance in 2019
 km_total_2019 <- as.numeric(svytotal(~nbkm_tot_walking, jour_walkers)) *365.25/7                              # Total km per year
 km_total_2019_IC <- as.numeric(confint(svytotal(~nbkm_tot_walking, jour_walkers) *365.25/7 ))                 # Confidence interval
@@ -241,10 +250,22 @@ km_total_2019_IC * 1e-9
 
 
 ## Total walked distance per day in 2019
-km_total_day <- svytotal(~nbkm_tot_walking, jour_walkers)                   # Total km per day
-km_total_day_IC <- as.numeric(confint(km_total_day))
+jour <- emp_walkers %>% 
+  filter(pond_jour != "NA") %>% 
+  as_survey_design(ids = ident_ind,
+                   weights = pond_jour,
+                   strata = c(sex, age_grp10))
+
+walk_week <- jour %>% 
+  summarise(
+    km_week = survey_total(week, na.rm = TRUE)
+  )
+
+km_total_day <- svytotal(~nbkm_tot_walking, jour_walkers)/7                   # Total km per day
+km_total_day_IC <- as.numeric(confint(km_total_day))/7
 km_total_day *1e-6
 km_total_day_IC * 1e-6
+
 
 intermodal_km_total_day <- (svytotal(~nbkm_intermodal_walk, jour_walkers))                          # Total km per year
 intermodal_km_total_day_IC <- as.numeric(confint(intermodal_km_total_day))

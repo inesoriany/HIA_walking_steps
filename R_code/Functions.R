@@ -41,7 +41,7 @@ walk_dataset <- function(data, diseases_10, insee, dis_vec,
                             step_length, walk_speed) {
   
   # Re-write sexe as female and male and convert as factors
-  data<- data %>% 
+  data <- data %>% 
     mutate(sexe = as.character(sexe)) %>%                                 
     mutate(sexe = fct_recode(sexe, "Male" = "1", "Female" = "2")) %>%     
     rename(sex = sexe)  %>% 

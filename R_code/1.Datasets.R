@@ -21,7 +21,6 @@
 ################################################################################################################################
 #                                                    1. LOAD PACKAGES                                                          #
 ################################################################################################################################
-
 pacman :: p_load(
   rio,          # Data importation
   here,         # Localization of files 
@@ -317,10 +316,6 @@ walkers <- walkers %>%
     area_type = factor(area_type, levels = c("rural", "periurban", "urban")))
 
 
-# Age limits
-walkers <- walkers %>%
-  filter(age >= 20 & age <= 89)
-
 
 # --------------------------------------
 # TRIPS
@@ -371,9 +366,6 @@ walking_trip <- walking_trip  %>%
   mutate(step_main = nbkm_main_walk / step_length)
 
 
-# Age limit 
-walking_trip <- walking_trip %>%
-  filter(age >= 20 & age <= 89)
 
 
 ################################################################################################################################
@@ -431,17 +423,13 @@ walking_trip_long <- walking_trip %>%
 car_trip <- emp_car_trip  %>% 
   mutate(nbkm_car_jour = nbkm_car * pond_jour / (pond_indc * 7))
 
+
 # Create drives dataset combing diseases incidence and walking exposure for each individual
 car_trip <- walk_dataset(car_trip, dis_mid_10, insee, morbi_vec, 
                            walk_dist_var = "nbkm_car", 
                            walk_dist_jour_var = "nbkm_car_jour", 
                            step_length = step_length, 
                            walk_speed = walk_speed)
-
-
-# Age limit
-car_trip <- car_trip %>%
-  filter(age >= 20 & age <= 89)
 
 
 
