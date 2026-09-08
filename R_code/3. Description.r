@@ -29,10 +29,6 @@ pacman :: p_load(
 #                                                     2. IMPORT DATA                                                           #
 ################################################################################################################################
 
-# EMP 2019
-emp <- 
-
-
 # EMP 2019 trips
 emp_trip <- import(here("data_clean", "EMP_walking_trips.xlsx")) 
 
