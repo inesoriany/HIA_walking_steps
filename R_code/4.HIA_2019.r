@@ -81,7 +81,7 @@ outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 # Initialization
 emp_long <- emp_long %>% 
   # Round the number of steps to the nearest hundred and baseline at 2000 steps
-  mutate(step = pmin(12000, round(step_commute / 100) * 100 + baseline_step))
+  mutate(step = pmin(12000, round(step_commute_jour / 100) * 100 + baseline_step))
 
 
 

@@ -153,7 +153,7 @@ main_jour <- emp_walk %>%
 # Walking pyramid : Age distribution of walking volume for each territory (in steps)
 distrib_main_walk_EMP2019 <- main_jour %>% 
   group_by(age_grp10, area_type) %>% 
-  summarise(mean_ind = survey_mean(step_commute, na.rm = TRUE))
+  summarise(mean_ind = survey_mean(step_commute_jour, na.rm = TRUE))
 
 
 # Distribution coefficient by area type
@@ -195,13 +195,13 @@ emp_target_walk <- emp_target_walk %>%
 emp_target_walk_with_diminution <- emp_target_walk %>% 
   # Round the number of steps to the nearest hundred and baseline at 2000
   mutate(step = pmin(12000, round(target_ind / 100) * 100 + baseline_step))  %>% 
-  mutate(step_2019 = pmin(12000, round(step_commute/ 100) * 100 + baseline_step))
+  mutate(step_2019 = pmin(12000, round(step_commute_jour/ 100) * 100 + baseline_step))
 
 emp_target_walk <- emp_target_walk %>%
   mutate(step = pmin(
       12000,
-      round(pmax(target_ind, step_commute) / 100) * 100 + baseline_step),           # No diminution 
-    step_2019 = pmin(12000, round(step_commute / 100) * 100 + baseline_step))
+      round(pmax(target_ind, step_commute_jour) / 100) * 100 + baseline_step),           # No diminution 
+    step_2019 = pmin(12000, round(step_commute_jour / 100) * 100 + baseline_step))
 
 
 # EMP Dataset per disease
@@ -317,7 +317,7 @@ PRACT_burden <- bind_rows(PRACT_burden_per_area,
 # Initialization
 emp_2019 <- emp_walk  %>% 
   # Round the number of steps to the nearest hundred and baseline at 2000
-  mutate(step = pmin(12000, round(step_commute/ 100) * 100 + 2000))
+  mutate(step = pmin(12000, round(step_commute_jour/ 100) * 100 + 2000))
 
 
 # EMP Dataset per disease and bound

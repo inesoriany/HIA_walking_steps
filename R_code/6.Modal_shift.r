@@ -92,7 +92,7 @@ emp_short_trip <- emp_car_trip %>%
 step_shift_by_ind <- emp_short_trip %>% 
   distinct(ident_ind, ident_dep, .keep_all = TRUE) %>% 
   group_by(ident_ind) %>% 
-  summarise(step_shift = sum(step_commute, na.rm = TRUE), .groups = "drop")
+  summarise(step_shift = sum(step_commute_jour, na.rm = TRUE), .groups = "drop")
   
 
 emp_short_driver <- emp_short_trip %>% 
@@ -129,7 +129,7 @@ for (i in 1:N) {
   emp_walk_drive_sample <- emp_walkers  %>% 
       left_join(emp_driver_sample  %>% select(ident_ind, disease, step_shift, short_car), by = c("ident_ind", "disease"))  %>% 
       replace_na(list(step_shift = 0))  %>%
-      mutate(step_total = step_commute + step_shift,
+      mutate(step_total = step_commute_jour + step_shift,
              step = pmin(12000, round(step_total / 100) * 100 + baseline_step))     # Round the number of steps to the nearest hundred and baseline at 2000
 
   short_trip_list <- list()
