@@ -293,7 +293,8 @@ dep_duration_distrib_table <- dep_incid_distrib_table %>%
 
 # Total walking distance
 walk_individual <- emp_walk_ind %>% 
-  mutate(nbkm_intermodal_walk = intermodal_walk_time * walk_speed / 60,
+  mutate(nbkm_main_walk_jour = nbkm_main_walk * pond_jour / (pond_indc * 7),
+         nbkm_intermodal_walk = intermodal_walk_time * walk_speed / 60,
          nbkm_tot_walking = nbkm_main_walk + nbkm_intermodal_walk,
          nbkm_tot_walking_jour = nbkm_tot_walking * pond_jour / (pond_indc * 7))
 
