@@ -303,7 +303,7 @@ reduc_mortality_risk <- import(here("output", "RDS", "2019", "reduc_mortality_ri
 
 # IC95 and median mean
 N <- 1000
-IC <-  calc_replicate_IC(reduc_mortality_risk, "mean_mort_reduction_risk")
+UI <-  calc_replicate_IC(reduc_mortality_risk, "mean_mort_reduction_risk")
 reduc_mortality_risk_IC <- data.frame(
   reduc_mortality_risk = paste0(round(UI["50%"], 3), " (", round(UI["2.5%"], 3), " - ", round(UI["97.5%"],3),  ")"),
   N_replications = N)

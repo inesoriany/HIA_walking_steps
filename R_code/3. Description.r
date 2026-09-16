@@ -231,11 +231,6 @@ pop_tot
 #                  TOTAL WALKED DISTANCE                     #
 ##############################################################
 
-week <- emp_walkers  %>% 
-  mutate(km_pond = nbkm_tot_walking * pond_jour)
-
-sum(week$km_pond)
-
 ## Total walked distance in 2019
 km_total_2019 <- as.numeric(svytotal(~nbkm_tot_walking, jour_walkers)) *365.25/7                              # Total km per year
 km_total_2019_IC <- as.numeric(confint(svytotal(~nbkm_tot_walking, jour_walkers) *365.25/7 ))                 # Confidence interval
@@ -292,11 +287,35 @@ prop_sex <-  emp_walkers %>%
 #############################################################
 #                    MEAN WALKED DISTANCE                    #
 ##############################################################
+# MANUEL (sans package)
+week <- emp_walkers  %>% 
+  mutate(km_pond = nbkm_tot_walking * pond_jour, 
+         km_main_pond = nbkm_main_walk * pond_jour,
+         km_inter_pond = nbkm_intermodal_walk * pond_jour)
+sum(week$pond_indc, na.rm = TRUE)
+sum(week$pond_jour, na.rm = TRUE)
+sum(week$km_pond, na.rm = TRUE)
+sum(week$km_pond, na.rm = TRUE) / sum(week$pond_indc, na.rm = TRUE)   # Total
+sum(week$km_main_pond, na.rm = TRUE) / sum(week$pond_indc, na.rm = TRUE)
+sum(week$km_inter_pond, na.rm = TRUE) / sum(week$pond_indc, na.rm = TRUE)
+
+
+day <- emp_walkers  %>% 
+  mutate(km_pond = nbkm_tot_walking * pond_jour/7, 
+         km_main_pond = nbkm_main_walk * pond_jour/7,
+         km_inter_pond = nbkm_intermodal_walk * pond_jour/7)
+sum(day$pond_indc, na.rm = TRUE)
+sum(day$km_pond, na.rm = TRUE)
+sum(day$km_pond, na.rm = TRUE) / sum(day$pond_indc, na.rm = TRUE)   # Total
+sum(day$km_main_pond, na.rm = TRUE) / sum(day$pond_indc, na.rm = TRUE)
+sum(day$km_inter_pond, na.rm = TRUE) / sum(day$pond_indc, na.rm = TRUE)
+
+
 ## Mean km walked per day
 km_mean <- svymean(~nbkm_tot_walking, jour_walkers, na.rm = TRUE)         # Mean km per day
-km_mean                             # 1.3468 (1.290339-1.403312) km per day
-km_mean / step_length               # 1883.7 (1804.67-1962.675) steps per day  
-km_mean*60 / walk_speed             # 16.84 (16.13-17.54) minutes per day
+km_mean                             # 1.3553 (1.298616-1.41199) km per day
+km_mean / step_length               # 1895.5 (1816.247-1974.811) steps per day  
+km_mean*60 / walk_speed             # 16.94 (16.2327-17.64987) minutes per day
 
 
 km_mean_IC <- confint(km_mean)
@@ -307,9 +326,9 @@ km_mean_IC*60 / walk_speed
 
 # Exclusive walking
 main_km_mean <- svymean(~nbkm_main_walk, jour_walkers, na.rm = TRUE)      # Mean km per day
-main_km_mean
-main_km_mean / step_length               # 1201.5 steps per day
-main_km_mean*60 / walk_speed             # 10.74 minutes per day
+main_km_mean                             # 0.86757 km per day
+main_km_mean / step_length               # 1213.4 steps per day
+main_km_mean*60 / walk_speed             # 10.845 minutes per day
 
 
 # Intermodal walk

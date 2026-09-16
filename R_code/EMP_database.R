@@ -33,8 +33,7 @@ ind_kish <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_nove
 household <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "tcm_men_public_V3.csv"))
 
 # Trip data
-trip <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "5. k_deploc_public_V4.csv" ))
-
+trip <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "k_deploc_public_V4.csv" ))
 
 
 
