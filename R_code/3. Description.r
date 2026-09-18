@@ -257,11 +257,42 @@ intermodal_km_total_day / km_total_day                    # Share of intermodal 
 svyby(~nbkm_tot_walking, by = ~age_grp10, jour_walkers, svytotal, na.rm = T)  
 
 
-# Proportion of distances walked by each sex
+## EMP METHODOLOGY
+day <- emp_walkers  %>% 
+    mutate(km_pond = nbkm_tot_walking * pond_jour/7, 
+          km_main_pond = nbkm_main_walk * pond_jour/7,
+          km_inter_pond = nbkm_intermodal_walk * pond_jour/7)
+
+# Total walked by sex (EMP methodology)
+  # Women
+  km_female <- day  %>% 
+    filter(sex == "Female") %>% 
+    mutate(sex = sex) %>%
+    summarise(tot_km = sum(km_pond, na.rm = TRUE))
+  # Men
+  km_male <- day  %>% 
+    filter(sex == "Male") %>% 
+    mutate(sex = sex) %>%
+    summarise(tot_km = sum(km_pond, na.rm = TRUE))
+
+  # Proportion of distances walked by each sex
+  prop_sex <- bind_rows(km_female, km_male) %>% 
+    mutate(proportion = tot_km / sum(tot_km))
+
+
+# Proportion of total distance walked by each sex (individual methodology)
 prop_sex <-  indiv_walkers  %>% 
   group_by (sex) %>% 
-  summarise(tot_km = survey_total(nbkm_tot_walking_jour, na.rm = TRUE)) %>% 
+  summarise(tot_km = survey_total(nbkm_tot_walking_jour, na.rm = TRUE))  %>% 
   mutate(proportion = tot_km / sum(tot_km))
+
+
+# Chi2 test to compare
+chi2_prop_sex <- chisq.test(
+  x = prop_sex$tot_km,
+  p = rep(1 / nrow(prop_sex), nrow(prop_sex)))
+chi2_prop_sex
+  # p-value < 2.2e-16
 
 
 

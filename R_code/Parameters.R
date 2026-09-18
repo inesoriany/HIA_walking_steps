@@ -62,12 +62,12 @@ colors_area <- c(urban = "#1b9e77",
 
 
 ## MEDICAL COSTS ----
-bc_cost <- 46242
-cc_cost <- 25126
-cancer_cost <- 14807
-cvd_cost <- 55702
-dem_cost <- 16839
-diab2_cost <- 75201
+bc_cost <- 44499
+cc_cost <- 24626
+cancer_cost <- 29319
+cvd_cost <- 52695
+dem_cost <- 16648
+diab2_cost <- 39201
 dep_cost <- NA
 mort_cost <- NA
 

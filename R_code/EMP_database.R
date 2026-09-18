@@ -106,8 +106,7 @@ walk_ind <-  ind %>%
   by = "ident_ind") %>% 
    mutate(
     intermodal_walk_time = replace_na(intermodal_walk_time, 0),
-    nbkm_main_walk = replace_na(nbkm_main_walk, 0)
-  ) %>%
+    nbkm_main_walk = replace_na(nbkm_main_walk, 0)) %>%
   
 # Add individual characteristics
   left_join(ind_kish, by = "ident_ind")  %>% 

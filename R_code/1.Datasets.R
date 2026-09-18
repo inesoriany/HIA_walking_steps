@@ -140,40 +140,48 @@ dis_long_table <- dis_table %>%
 
 
 ##############################################################
-#               DISEASE INCIDENCE DISTRIBUTIONS              #
+#         DISEASE INCIDENCE/PREVALENCE DISTRIBUTIONS         #
 ##############################################################
-# Generate incidence normal distributions
+# Generate incidence/prevalence normal distributions
 set.seed(123)
 dis_distrib_table <- dis_long_table %>%
   rowwise() %>%
-  mutate(incidence_distrib = list(
+  mutate(cases_distrib = list(
     generate_RR_distrib(mid, low, up, 1000)))
 
 
-# Sort the incidence distributions in ascending order
+# Sort the incidence/prevalence in ascending order
 dis_distrib_table <- dis_distrib_table %>% 
   rowwise() %>% 
-  mutate(incidence_distrib = list(sort(unlist(incidence_distrib)))) %>%
+  mutate(cases_distrib = list(sort(unlist(cases_distrib)))) %>%
   ungroup()
 
-# Separate the incidence_distrib column into multiple columns
+# Separate the cases_distrib column into multiple columns
 dis_distrib_table <- dis_distrib_table  %>% 
-  unnest_wider(incidence_distrib, names_sep = "_") %>% 
+  unnest_wider(cases_distrib, names_sep = "_") %>% 
   pivot_longer(
-    cols = starts_with("incidence_distrib_"), 
+    cols = starts_with("cases_distrib_"), 
     names_to = "simulation_id",                     # column name for the simulation ID
-    values_to = "simulated_incidence")  %>%         # column name for the simulated incidence values
-  mutate(simulation_id = as.numeric(str_remove(simulation_id, "incidence_distrib_")))      # simulation ID as a numeric value
+    values_to = "simulated_cases")  %>%         # column name for the simulated incidence values
+  mutate(simulation_id = as.numeric(str_remove(simulation_id, "cases_distrib_")))      # simulation ID as a numeric value
 
 
 # Keep incidence only
 incidence_distrib_table <- dis_distrib_table %>%
-  filter(measure == "incidence")
+  filter(measure == "incidence")  %>% 
+  rename(simulated_incidence = simulated_cases)
 
 
 # Calculate incidence rate
 incidence_distrib_table <- incidence_distrib_table %>%
   mutate(rate = simulated_incidence / pop_age_grp10)
+
+
+# Keep prevalence only
+prevalence_distrib_table <- dis_distrib_table %>%
+  filter(measure == "prevalence")  %>% 
+  rename(simulated_prevalence = simulated_cases)
+
 
 
 
@@ -233,23 +241,13 @@ dw_distrib_table <- dw_distrib_table  %>%
 
 
 ################################################################################################################################
-#                                              7. MAJOR DEPRESSIVE EPISODE DURATION                                            #
+#                                                      7. DISEASE DURATION                                                     #
 ################################################################################################################################
-
-# Depression incidence distribution table
-dep_incid_distrib_table <- dis_distrib_table %>%
-  filter(disease == "dep" & measure == "incidence")
-
-# Depression prevalence distribution table
-dep_prev_distrib_table <- dis_distrib_table  %>% 
-  filter(disease == "dep" & measure == "prevalence")  %>% 
-  rename(simulated_prevalence = simulated_incidence)
-
-# Depression duration distribution table
-dep_duration_distrib_table <- dep_incid_distrib_table %>%
-  left_join(dep_prev_distrib_table, by = c("age_grp10", "sex", "disease","simulation_id")) %>%
-  mutate(simulated_duration_dep = simulated_prevalence / simulated_incidence)  %>% 
-  select(age_grp10, sex, disease, simulation_id, simulated_incidence, simulated_prevalence, simulated_duration_dep)
+# Disease duration distribution table
+duration_distrib_table <- incidence_distrib_table %>%
+  left_join(prevalence_distrib_table, by = c("age_grp10", "sex", "disease","simulation_id")) %>%
+  mutate(simulated_duration = simulated_prevalence / simulated_incidence)  %>% 
+  select(age_grp10, sex, disease, simulation_id, simulated_incidence, simulated_prevalence, simulated_duration)
 
 
 
@@ -272,8 +270,8 @@ dep_duration_distrib_table <- dep_incid_distrib_table %>%
   export(dw_distrib_table, here("data_clean", "Diseases", "dw_distrib_table.xlsx"))
 
 
-# Depression duration distribution table
-  export(dep_duration_distrib_table, here("data_clean", "Diseases", "dep_duration_distrib_table.xlsx"))
+# Disease duration distribution table
+  export(duration_distrib_table, here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
 
 

@@ -340,26 +340,28 @@ value_associate = function(data_list, distrib_table, dis_vec, variable) {
 # Goal : To know the number of sick or death years prevented for each individual by walking
 
 # FUNCTION daly : Calculate DALY (Disability-Adjusted Life Years) for each disease
-daly = function(data, dep_duration_table , dis, prop_relapse, duration_recovery) { 
-  if (dis == "dep") {
+daly = function(data, duration_table , dis, prop_relapse, dep_recovery) { 
+
 
     # Randomly associate depression duration for each individual and compute DALY
-    duration_age_sex <- dep_duration_table %>%
+    duration_age_sex <- duration_table %>%
       filter(disease == dis) %>%
       group_by(age_grp10, sex) %>%
-      summarise(duration_values = list(simulated_duration_dep), .groups = "drop")
+      summarise(duration_values = list(simulated_duration), .groups = "drop")
 
     data <- data %>%
       left_join(duration_age_sex, by = c("age_grp10", "sex")) %>%
-      mutate(duration_dep = map_dbl(duration_values, ~ if (length(.x) > 0) sample(.x, 1) else NA_real_)) %>%
-      select(-duration_values) %>%
-      mutate(daly = cases * dw * prop_relapse * pmin(years_remaining, duration_dep) / 
-                    (duration_recovery + duration_dep) * years_remaining)
+      mutate(duration = map_dbl(duration_values, ~ if (length(.x) > 0) sample(.x, 1) else NA_real_)) %>%
+      select(-duration_values)
+
+  if (dis == "dep") {
+    data <- data %>% 
+      mutate(daly = cases * dw * prop_relapse * pmin(years_remaining, duration) / 
+                    (dep_recovery + duration) * years_remaining)
     
-      
   } else {
     data <- data %>%
-      mutate(daly = years_remaining * dw * cases)
+      mutate(daly = duration * dw * cases)
   }
   return(data) 
 }
@@ -384,8 +386,8 @@ medic_costs = function(data, dis) {
 ##############################################################
 # FUNCTION calc_HIA_replicate : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for 1 run
   # set.seed()
-calc_HIA_replicate = function(data_list, incidence_distrib_table, dep_duration_table, reduction_risk_distrib_table, dw_distrib_table, dis_vec, 
-                              prop_relapse, duration_recovery, vsl) {
+calc_HIA_replicate = function(data_list, incidence_distrib_table, duration_table, reduction_risk_distrib_table, dw_distrib_table, dis_vec, 
+                              prop_relapse, dep_recovery, vsl) {
   
 
   # 1. Disease incidence
@@ -414,7 +416,7 @@ calc_HIA_replicate = function(data_list, incidence_distrib_table, dep_duration_t
     dis_data <- reduc_incidence(dis_data)
     
     # 5. DALY
-    dis_data <- daly(dis_data, dep_duration_table, dis, prop_relapse, duration_recovery)
+    dis_data <- daly(dis_data, duration_table, dis, prop_relapse, dep_recovery)
     
     # 6. Economic impact
     dis_data <- medic_costs(dis_data, dis)
@@ -464,9 +466,9 @@ burden_run <- data.frame()
 
 # FUNCTION HIA_burden_total : HIA calculations and Total of prevented cases, DALY and saved medical costs for N simulations
   # set.seed()
-HIA_burden_total = function(data_list, function_calc_HIA, incidence_distrib_table, dep_duration_table, reduction_risk_distrib_table, dw_distrib_table, 
+HIA_burden_total = function(data_list, function_calc_HIA, incidence_distrib_table, duration_table, reduction_risk_distrib_table, dw_distrib_table, 
                             dis_vec, 
-                            prop_relapse, duration_recovery, vsl, group, N, show_progress = TRUE) {
+                            prop_relapse, dep_recovery, vsl, group, N, show_progress = TRUE) {
   
   burden_total <- data.frame()
   burden_total_list <- list()
@@ -483,7 +485,7 @@ HIA_burden_total = function(data_list, function_calc_HIA, incidence_distrib_tabl
   }
   
   for (i in 1:N) {
-    data_list_replicate <- function_calc_HIA(data_list, incidence_distrib_table, dep_duration_table, reduction_risk_distrib_table, dw_distrib_table, dis_vec, prop_relapse, duration_recovery, vsl)
+    data_list_replicate <- function_calc_HIA(data_list, incidence_distrib_table, duration_table, reduction_risk_distrib_table, dw_distrib_table, dis_vec, prop_relapse, dep_recovery, vsl)
     burden_total_list[[i]] <- burden_prevented_replicate(data_list_replicate, dis_vec, group)  %>% 
       mutate(simulation_id = i)
     
@@ -701,9 +703,9 @@ dis_setting = function (dis) {
 
 # FUNCTION calc_HIA_replicate : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for 1 run
   # set.seed()
-calc_alt_HIA <- function(data_list, incidence_distrib_table, dep_duration_table, rr_distrib_table, dw_distrib_table, 
+calc_alt_HIA <- function(data_list, incidence_distrib_table, duration_table, rr_distrib_table, dw_distrib_table, 
                           dis_vec,
-                          prop_relapse, duration_recovery, vsl) {
+                          prop_relapse, dep_recovery, vsl) {
   
   # 1. Disease incidence
   if (!is.null(incidence_distrib_table)) {
@@ -743,7 +745,7 @@ calc_alt_HIA <- function(data_list, incidence_distrib_table, dep_duration_table,
     
 
     # 6. DALY
-    dis_data <- daly(dis_data, dep_duration_table, dis, prop_relapse, duration_recovery)
+    dis_data <- daly(dis_data, duration_table, dis, prop_relapse, dep_recovery)
 
     
     # 7. Economic impact
