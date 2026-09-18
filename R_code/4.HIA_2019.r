@@ -44,8 +44,8 @@ emp_long <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 # Incidence distribution table
 incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
-# Depression duration distribution table
-duration_distrib_table <- import(here("data_clean", "Diseases", "dep_duration_distrib_table.xlsx"))
+# Disease duration distribution table
+duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
 # Risk reduction distribution table
 reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
@@ -120,9 +120,9 @@ export(burden_total, here("output", "RDS", "2019", "HIA_1000replicate.rds"))
 ##############################################################
 # Total of prevented burden of each disease per sex for each simulation
 set.seed(123)
-burden_sex_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_sex_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
-                                 prop_relapse, duration_recovery,vsl, 
+                                 prop_relapse, dep_recovery,vsl, 
                                  group ="sex", 
                                  N = 1000)
 
@@ -137,9 +137,9 @@ export(burden_sex_total, here("output", "RDS", "2019", "HIA_per_sex_1000replicat
 ##############################################################
 # Total of prevented burden of each disease per age for each simulation
 set.seed(123)
-burden_age_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_age_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                      dis_vec, 
-                                     prop_relapse, duration_recovery, vsl,
+                                     prop_relapse, dep_recovery, vsl,
                                      group = "age_grp10", 
                                      N = 1000)
 
@@ -280,9 +280,9 @@ reduc_mortality_risk <- data.frame()
 for (i in 1:N) {
 
   HIA_mortality_replicate <- calc_HIA_replicate(replicate_list,
-                                                incidence_distrib_table, dep_duration_table, reduction_risk_distrib_table, dw_distrib_table,
+                                                incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
                                                 "mort",
-                                                prop_relapse, duration_recovery, vsl)
+                                                prop_relapse, dep_recovery, vsl)
 
   reduc_mortality_risk_replicate <- HIA_mortality_replicate[["mort"]] %>% 
     as_survey_design(ids = ident_ind, weights = pond_indc) %>% 

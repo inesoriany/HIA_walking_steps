@@ -43,8 +43,8 @@ incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_dist
 # Risk reduction distribution table
 reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
 
-# Duration of depression distribution table
-dep_duration_distrib_table <- import(here("data_clean", "Diseases", "dep_duration_distrib_table.xlsx"))
+# Duration of diseases distribution table
+duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
 # Disability weights distribution table
 dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx"))
@@ -101,9 +101,9 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123) 
-BEST_burden_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+BEST_burden_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
-                                 prop_relapse, duration_recovery,vsl, 
+                                 prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
                                  N = 1000)
 
@@ -117,9 +117,9 @@ export(BEST_burden_total, here("output", "RDS", "7000 steps", "HIA_7000steps_100
 ##############################################################
 # Total of prevented burden of each disease per sex for each simulation
 set.seed(123)
-BEST_burden_sex_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+BEST_burden_sex_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
-                                 prop_relapse, duration_recovery,vsl, 
+                                 prop_relapse, dep_recovery,vsl, 
                                  group ="sex", 
                                  N = 1000)
 
@@ -134,9 +134,9 @@ export(BEST_burden_sex_total, here("output", "RDS", "7000 steps", "HIA_sex_7000_
 ##############################################################
 # Total of prevented burden of each disease per age for each simulation
 set.seed(123)
-BEST_burden_age_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+BEST_burden_age_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                      dis_vec, 
-                                     prop_relapse, duration_recovery, vsl, 
+                                     prop_relapse, dep_recovery, vsl, 
                                      group = "age_grp10", 
                                      N = 1000)
 

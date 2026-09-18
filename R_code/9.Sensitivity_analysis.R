@@ -39,8 +39,8 @@ incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_dist
 # Risk reduction distribution table
 reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
 
-# Depression duration distribution table
-dep_distrib_table <- import(here("data_clean", "Diseases", "dep_duration_distrib_table.xlsx"))
+# Disease duration distribution table
+duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
 # Disability weights distribution table
 dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx"))
@@ -165,12 +165,12 @@ alt_burden_total <- HIA_burden_total(
   data_list = alt_replicate_list,
   function_calc_HIA = calc_alt_HIA,
   incidence_distrib_table = incidence_distrib_table,
-  dep_duration_table = dep_distrib_table,
+  duration_table = duration_distrib_table,
   reduction_risk_distrib_table = alt_rr_distrib_table,
   dw_distrib_table = dw_distrib_table,
   dis_vec = alt_dis_vec,
   prop_relapse = prop_relapse,
-  duration_recovery = duration_recovery,
+  dep_recovery = dep_recovery,
   vsl = vsl,
   group = NULL,
   N = 1000
@@ -196,12 +196,12 @@ baseline_burden_total <- HIA_burden_total(
   data_list = baseline_replicate_list,
   function_calc_HIA = calc_alt_HIA,
   incidence_distrib_table = incidence_distrib_table,
-  dep_duration_table = dep_distrib_table,
+  duration_table = duration_distrib_table,
   reduction_risk_distrib_table = alt_rr_distrib_table,
   dw_distrib_table = dw_distrib_table,
   dis_vec = alt_dis_vec,
   prop_relapse = prop_relapse,
-  duration_recovery = duration_recovery,
+  dep_recovery = dep_recovery,
   vsl = vsl,
   group = NULL,
   N = 1000
@@ -319,9 +319,9 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-speed_burden_total <- HIA_burden_total(speed_replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+speed_burden_total <- HIA_burden_total(speed_replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
-                                 prop_relapse, duration_recovery, vsl, 
+                                 prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
                                  N = 1000)
  
@@ -415,9 +415,9 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-age_burden_total <- HIA_burden_total(age_replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+age_burden_total <- HIA_burden_total(age_replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
-                                 prop_relapse, duration_recovery, vsl, 
+                                 prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
                                  N = 1000)
  

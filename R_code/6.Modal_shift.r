@@ -42,8 +42,8 @@ emp_walkers <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 # Incidence distribution table
 incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
-# Depression duration distribution table
-dep_distrib_table <- import(here("data_clean", "Diseases", "dep_duration_distrib_table.xlsx"))
+# Diseases duration distribution table
+duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
 # Risk reduction distribution table
 reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
@@ -143,8 +143,8 @@ for (i in 1:N) {
   
   burden_run <- HIA_burden_total(short_trip_list, 
                 calc_HIA_replicate,
-                incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
-                dis_vec, prop_relapse, duration_recovery, vsl, NULL, 1, FALSE) %>%
+                incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
+                dis_vec, prop_relapse, dep_recovery, vsl, NULL, 1, FALSE) %>%
     mutate(run = i)
   
   MODAL_burden_total <- bind_rows(MODAL_burden_total, burden_run)
