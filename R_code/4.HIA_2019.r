@@ -45,7 +45,7 @@ emp_long <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
 # Depression duration distribution table
-dep_distrib_table <- import(here("data_clean", "Diseases", "dep_duration_distrib_table.xlsx"))
+duration_distrib_table <- import(here("data_clean", "Diseases", "dep_duration_distrib_table.xlsx"))
 
 # Risk reduction distribution table
 reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
@@ -104,9 +104,9 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-burden_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, dep_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
-                                 prop_relapse, duration_recovery, vsl, 
+                                 prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
                                  N = 1000)
  

@@ -58,7 +58,7 @@ colors_area <- c(urban = "#1b9e77",
   prop_relapse <- 0.49
 
   # Duration of recovery
-  duration_recovery <- 5      # years
+  dep_recovery <- 5      # years
 
 
 ## MEDICAL COSTS ----
