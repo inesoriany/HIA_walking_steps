@@ -354,14 +354,20 @@ daly = function(data, duration_table , dis, prop_relapse, dep_recovery) {
       mutate(duration = map_dbl(duration_values, ~ if (length(.x) > 0) sample(.x, 1) else NA_real_)) %>%
       select(-duration_values)
 
-  if (dis == "dep") {
+  if (dis == "mort") {
     data <- data %>% 
-      mutate(daly = cases * dw * prop_relapse * pmin(years_remaining, duration) / 
-                    (dep_recovery + duration) * years_remaining)
+      mutate(daly = cases * years_remaining)
     
   } else {
+    if (dis == "dep") {
+      data <- data %>% 
+        mutate(daly = cases * dw * prop_relapse * pmin(years_remaining, duration) / 
+                      (dep_recovery + duration) * years_remaining)
+      
+    } else {
     data <- data %>%
       mutate(daly = duration * dw * cases)
+  }
   }
   return(data) 
 }
