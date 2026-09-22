@@ -172,10 +172,10 @@ burden_total <- import(here("output", "RDS", "2019", "HIA_1000replicate.rds"))
 
   # Total for morbidity
   burden_morbidity <- burden_per_disease %>%
-    filter(disease != "mort") %>% 
+    filter(disease != c("mort", "dep")) %>% 
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Morbidity") %>%
+    mutate(disease = "Chronic diseases") %>%
     select(disease, everything()) 
   
   
@@ -200,10 +200,10 @@ burden_total <- import(here("output", "RDS", "2019", "HIA_1000replicate.rds"))
 
   # Total for morbidity
   Rubin_burden_morbidity <- Rubin_burden_per_disease %>%
-    filter(disease != "mort") %>% 
+    filter(disease != c("mort", "dep")) %>% 
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Morbidity") %>%
+    mutate(disease = "Chronic diseases") %>%
     select(disease, everything()) 
   
   # Total for all diseases
@@ -263,6 +263,15 @@ burden_per_age <- HIA_burden_IC(burden_age_total, dis_vec, outcome_vec, calc_rep
 # --------------------------------------
 Rubin_burden_per_age <- HIA_burden_IC(burden_age_total, dis_vec, outcome_vec, calc_IC_Rubin)
 
+
+
+# Export: Tables of HIA outcomes
+  export(burden, here("output", "Tables", "2019", "HIA_per_disease.xlsx"))
+  export(Rubin_burden, here("output", "Tables", "2019", "HIA_per_disease_Rubin.xlsx"))
+  export(burden_per_sex, here("output", "Tables", "2019", "HIA_per_sex.xlsx"))
+  export(Rubin_burden_per_sex, here("output", "Tables", "2019", "HIA_per_sex_Rubin.xlsx"))
+  export(burden_per_age, here("output", "Tables", "2019", "HIA_per_age.xlsx"))
+  export(Rubin_burden_per_age, here("output", "Tables", "2019", "HIA_per_age_Rubin.xlsx"))
 
 
 ################################################################################################################################
