@@ -524,7 +524,7 @@ calc_replicate_IC = function(data, outcome){
     sam = rnorm(n=200, mean = as.numeric(data[i,outcome]), sd = as.numeric(data[i,se_name]) ) # Generation of samples : uncertainty estimation
     vec = c(vec, sam)
   }
-  IC = quantile(vec, probs = c(0.025, 0.5, 0.975))
+  IC = quantile(vec, probs = c(0.025, 0.5, 0.975))          # Median and 95% uncertainty interval
   return(IC)  
 }
 
