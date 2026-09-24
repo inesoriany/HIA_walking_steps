@@ -33,7 +33,7 @@ ind_kish <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_nove
 household <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "tcm_men_public_V3.csv"))
 
 # Trip data
-trip <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "k_deploc_public_V4.csv" ))
+trip <- import(here("data", "emp_2019_donnees_individuelles_anonymisees_novembre2024", "5. k_deploc_public_V4.csv" ))
 
 
 
@@ -77,9 +77,7 @@ trip <- trip %>%
          mdisttot_fin,                               # Trip length
          mtempsmap,                                  # Walking duration
          mtp,                                        # Main mean of transportation
-         densitecom_ori,                             # Departure commune density  
-         densitecom_des,                             # Arrival commune density
-         tuu2017_ori) %>%
+         co2_depl) %>%                               # CO2 emissions (déplacement)
   mutate(ident_ind = as.character(ident_ind),
          ident_dep = as.character(ident_dep))
 
@@ -146,9 +144,7 @@ car_trip <- trip %>%
          ident_dep,
          pond_jour,
          nbkm_car,
-         densitecom_ori,
-         densitecom_des,
-         tuu2017_ori) %>% 
+         co2_depl) %>% 
   
 # Add individual characteristics 
   left_join(ind, by = "ident_ind") %>% 
