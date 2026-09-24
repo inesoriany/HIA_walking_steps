@@ -420,8 +420,8 @@ walking_trip_long <- walking_trip %>%
 
 # Total walking distance had those car trips been walked per trip
 car_trip <- emp_car_trip  %>% 
-  mutate(nbkm_car_jour = nbkm_car * pond_jour / (pond_indc * 7))
-
+  mutate(nbkm_car_jour = nbkm_car * pond_jour / (pond_indc * 7))  %>% 
+  mutate(nbkm_intermodal_walk = intermodal_walk_time * walk_speed / 60)
 
 # Create drives dataset combing diseases incidence and walking exposure for each individual
 car_trip <- walk_dataset(car_trip, dis_mid_10, insee, morbi_vec, 

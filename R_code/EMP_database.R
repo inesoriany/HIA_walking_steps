@@ -144,11 +144,13 @@ car_trip <- trip %>%
          ident_dep,
          pond_jour,
          nbkm_car,
+         mtempsmap,
          co2_depl) %>% 
+    mutate(intermodal_walk_time = if_else(is.na(mtempsmap), 0, mtempsmap))  %>% 
   
 # Add individual characteristics 
   left_join(ind, by = "ident_ind") %>% 
-  left_join(ind_kish, by = "ident_ind")
+  left_join(ind_kish, by = "ident_ind") 
 
 
 
