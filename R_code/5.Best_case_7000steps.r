@@ -169,10 +169,10 @@ BEST_burden_total <- import(here("output", "RDS", "7000 steps", "HIA_7000steps_1
 
   # Total for morbidity
   BEST_burden_morbidity <- BEST_burden_per_disease %>%
-    filter(disease != "mort") %>% 
+    filter(disease != c("mort", "dep")) %>% 
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Morbidity") %>%
+    mutate(disease = "Chronic diseases") %>%
     select(disease, everything()) 
   
   
@@ -197,10 +197,10 @@ BEST_burden_total <- import(here("output", "RDS", "7000 steps", "HIA_7000steps_1
 
   # Total for morbidity
   BEST_Rubin_burden_morbidity <- BEST_Rubin_burden_per_disease %>%
-    filter(disease != "mort") %>% 
+    filter(disease != c("mort", "dep")) %>% 
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Morbidity") %>%
+    mutate(disease = "Chronic diseases") %>%
     select(disease, everything()) 
   
   # Total for all diseases

@@ -254,6 +254,7 @@ PRACT_burden_total <- import(here("output", "RDS", "Best practice", "HIA_best_pr
 
 # Prevented diseases per area type
 set.seed(123)
+
 PRACT_burden_per_area <- HIA_burden_IC(PRACT_burden_total, dis_vec, outcome_vec, calc_replicate_IC)
 
 
@@ -372,10 +373,10 @@ burden_per_area <- HIA_burden_IC(burden_2019_total, dis_vec, outcome_vec, calc_r
 
 # Total for morbidity
 burden_morbidity <- burden_per_area %>%
-  filter(disease != "mort") %>%
+  filter(disease != c("mort", "dep")) %>%
   summarise(across(where(is.numeric),
                    ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
-  mutate(disease = "Morbidity",
+  mutate(disease = "Chronic diseases",
          area_type = "All") %>%
   select(disease, area_type, everything())
 
