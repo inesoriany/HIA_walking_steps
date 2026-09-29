@@ -497,12 +497,12 @@ mean_step_jour <- indiv_walkers %>%
     # Total walk including intermodal
     mean_step_people <- indiv_walkers %>% 
     group_by(sex , age_grp10) %>% 
-    summarise(mean_step = survey_mean(step_commute_jour + baseline_step, na.rm = TRUE, vartype = "ci"))
+    summarise(mean_step = survey_mean(step_commute_jour, na.rm = TRUE, vartype = "ci"))
 
     # Main walk
     main_mean_step <- indiv_walkers  %>% 
         group_by(sex, age_grp10)  %>% 
-        summarise(mean_step = survey_mean(nbkm_main_walk_jour/step_length + baseline_step, na.rm = TRUE, vartype = "ci"))
+        summarise(mean_step = survey_mean(nbkm_main_walk_jour/step_length, na.rm = TRUE, vartype = "ci"))
 
 
 plot_mean_steps_walkers <- 
@@ -580,7 +580,7 @@ regTermTest(anova_area_step, ~ area_type)
 emp_short_drivers <- emp_car_trips %>% 
   filter(!is.na(pond_jour), nbkm_car > 0) %>% 
   group_by(ident_ind, sex, age_grp10) %>%           # emp_car_trip is trip-level data, so count each individual once by ident_ind
-  summarise(short_trip = any(nbkm_car <= 2),
+  summarise(short_trip = any(nbkm_car_jour <= 2),
             pond_indc = first(pond_indc),
             .groups = "drop") %>% 
   as_survey_design(ids = ident_ind,
