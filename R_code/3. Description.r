@@ -239,12 +239,12 @@ km_total_2019_IC * 1e-9
 
 ## Total walked distance per day in 2019
 km_total_day <- svytotal(~nbkm_tot_walking, jour_walkers)/7                   # Total km per day
-km_total_day_IC <- as.numeric(confint(km_total_day))/7
+km_total_day_IC <- as.numeric(confint(km_total_day))
 km_total_day *1e-6
 km_total_day_IC * 1e-6
 
 
-intermodal_km_total_day <- (svytotal(~nbkm_intermodal_walk, jour_walkers))                          # Total km per day
+intermodal_km_total_day <- svytotal(~nbkm_intermodal_walk, jour_walkers)/7                          # Total km per day
 intermodal_km_total_day_IC <- as.numeric(confint(intermodal_km_total_day))
 intermodal_km_total_day
 intermodal_km_total_day_IC 
@@ -268,22 +268,28 @@ day <- emp_walkers  %>%
   km_female <- day  %>% 
     filter(sex == "Female") %>% 
     mutate(sex = sex) %>%
-    summarise(tot_km = sum(km_pond, na.rm = TRUE))
+    summarise(tot_km = sum(km_pond, na.rm = TRUE),
+              tot_pond_indc = sum(pond_indc, na.rm = T))  %>% 
+    mutate(mean_km = tot_km / tot_pond_indc)
+
   # Men
   km_male <- day  %>% 
     filter(sex == "Male") %>% 
     mutate(sex = sex) %>%
-    summarise(tot_km = sum(km_pond, na.rm = TRUE))
+    summarise(tot_km = sum(km_pond, na.rm = TRUE),
+              tot_pond_indc = sum(pond_indc, na.rm = T))  %>% 
+    mutate(mean_km = tot_km / tot_pond_indc)
 
   # Proportion of distances walked by each sex
-  prop_sex <- bind_rows(km_female, km_male) %>% 
+  prop_sex_emp_method <- bind_rows(km_female, km_male) %>% 
     mutate(proportion = tot_km / sum(tot_km))
 
 
 # Proportion of total distance walked by each sex (individual methodology)
 prop_sex <-  indiv_walkers  %>% 
   group_by (sex) %>% 
-  summarise(tot_km = survey_total(nbkm_tot_walking_jour, na.rm = TRUE))  %>% 
+  summarise(tot_km = survey_total(nbkm_tot_walking_jour, na.rm = TRUE),
+            mean_km = survey_mean(nbkm_tot_walking_jour, na.rm = TRUE))  %>% 
   mutate(proportion = tot_km / sum(tot_km))
 
 
@@ -306,7 +312,7 @@ mean_distance_jour <- indiv_walkers %>%
 
 ## EMP METHODOLOGY
 day <- emp_walkers  %>% 
-    mutate(km_pond = nbkm_tot_walking_jour * pond_jour/7, 
+    mutate(km_pond = nbkm_tot_walking * pond_jour/7, 
           km_main_pond = nbkm_main_walk * pond_jour/7,
           km_inter_pond = nbkm_intermodal_walk * pond_jour/7)
 
@@ -425,6 +431,42 @@ mean_distance_area <- indiv_walkers %>%
   mutate(area_type = factor(area_type, levels = c("urban", "periurban", "rural"))) 
 
 
+
+## EMP METHODOLOGY
+# Total walked by sex (EMP methodology)
+  # Urban
+  km_urban <- day  %>% 
+    filter(area_type == "urban") %>% 
+    summarise(tot_km = sum(km_pond, na.rm = TRUE),
+              tot_pond_indc = sum(pond_indc, na.rm = T))  %>% 
+    mutate(mean_km = tot_km / tot_pond_indc)  %>% 
+    mutate(area_type = "urban")
+
+  # Periurban
+  km_periurban <- day  %>% 
+    filter(area_type == "periurban") %>%
+    summarise(tot_km = sum(km_pond, na.rm = TRUE),
+              tot_pond_indc = sum(pond_indc, na.rm = T))  %>% 
+    mutate(mean_km = tot_km / tot_pond_indc)  %>% 
+    mutate(area_type = "periurban")
+
+
+  # Rural
+  km_rural <- day  %>% 
+    filter(area_type == "rural") %>% 
+    summarise(tot_km = sum(km_pond, na.rm = TRUE),
+              tot_pond_indc = sum(pond_indc, na.rm = T))  %>% 
+    mutate(mean_km = tot_km / tot_pond_indc) %>% 
+    mutate(area_type = "rural")
+
+
+  # Proportion of distances walked by each sex
+  prop_area_emp_method <- bind_rows(km_urban, km_periurban, km_rural) %>%
+    mutate(mean_step = mean_km / step_length)  %>% 
+    mutate(proportion = tot_km / sum(tot_km)) 
+
+
+
 plot_mean_km_area <- ggplot(mean_distance_area, aes(x = area_type, y = mean_km,
                                                    ymin = mean_km_low, ymax = mean_km_upp,
                                                    fill = area_type)) +
@@ -475,8 +517,8 @@ step_total_2019_IC * 1e-9
 
 
 ## Total steps per day 
-step_total_day <- as.numeric(svytotal(~step_commute, jour_walkers))                                     # Total steps per day
-step_total_day_IC <- as.numeric(confint(svytotal(~step_commute, jour_walkers)))                         # Confidence interval
+step_total_day <- as.numeric(svytotal(~step_commute, jour_walkers))/7                                     # Total steps per day
+step_total_day_IC <- as.numeric(confint(svytotal(~step_commute, jour_walkers))/7)                         # Confidence interval
 
 step_total_day * 1e-9 # billion steps
 step_total_day_IC * 1e-9
@@ -715,8 +757,10 @@ plot_mean_km_drivers_2km
     ggsave(here("output", "Plots", "Description", "Diseases", "morbi_incidence.png"), plot = combined_plot_incidence)
 
 # WALKING
-    # Sex proportion
+    # Sex/area proportion
     export(prop_sex, here("output", "Tables", "Description", "Walk", "sex_proportion.xlsx"))
+    export(prop_sex_emp_method, here("output", "Tables", "Description", "Walk", "sex_proportion_EMP_method.xlsx"))
+    export(prop_area_emp_method, here("output", "Tables", "Description", "Walk", "area_proportion_EMP_method.xlsx"))
     # Mean walk
     ggsave(here("output", "Plots", "Description", "Walk", "plot_mean_km_walkers.png"), plot = plot_mean_km_walkers)
     ggsave(here("output", "Plots", "Description", "Steps", "plot_mean_steps_walkers.png"), plot = plot_mean_steps_walkers)

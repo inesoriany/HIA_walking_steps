@@ -260,7 +260,7 @@ PRACT_burden_per_area <- HIA_burden_IC(PRACT_burden_total, dis_vec, outcome_vec,
 
 # Total for morbidity
 PRACT_burden_morbidity <- PRACT_burden_per_area %>%
-  filter(disease != c("mort", "dep")) %>%
+  filter(!disease %in% c("mort", "dep")) %>%
   summarise(across(where(is.numeric),
                    ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
   mutate(disease = "Chronic diseases",
@@ -373,7 +373,7 @@ burden_per_area <- HIA_burden_IC(burden_2019_total, dis_vec, outcome_vec, calc_r
 
 # Total for morbidity
 burden_morbidity <- burden_per_area %>%
-  filter(disease != c("mort", "dep")) %>%
+  filter(!disease %in% c("mort", "dep")) %>%
   summarise(across(where(is.numeric),
                    ~ sum(.x, na.rm = TRUE)), .groups = "drop") %>%
   mutate(disease = "Chronic diseases",
