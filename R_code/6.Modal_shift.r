@@ -84,9 +84,18 @@ outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 ################################################################################################################################
 # Adjust CO2 emissions excluding intermodal walk
 emp_car_trip <- emp_car_trip  %>% 
-  mutate(co2_adjusted = (nbkm_car - *(co2_depl / nbkm_car)) %>%
+  mutate(co2_adjusted = ((nbkm_car - nbkm_intermodal_walk) * (co2_depl / nbkm_car)))
 
 
+# Total CO2 emissions due to car for each individual 
+tot_car_co2 <- emp_car_trip %>% 
+  distinct(ident_ind, ident_dep, .keep_all = TRUE) %>% 
+  group_by(ident_ind) %>% 
+  summarise(co2_all_car = sum(co2_adjusted, na.rm = TRUE), .groups = "drop")
+
+
+emp_car_trip <- emp_car_trip %>% 
+  left_join(tot_car_co2, by = "ident_ind")
 
 
 ################################################################################################################################
@@ -94,7 +103,9 @@ emp_car_trip <- emp_car_trip  %>%
 ################################################################################################################################
 # Initialization
 emp_short_trip <- emp_car_trip %>% 
-    filter(!is.na(nbkm_car) & nbkm_car <= dist) 
+  filter(!is.na(nbkm_car_jour) & nbkm_car_jour <= dist) %>% 
+  mutate(co2_diminution = co2_all_car - co2_adjusted,
+         co2_prop_reduction = 1 - co2_adjusted / co2_all_car)
 
 
 # Conversion of short car trips to steps
@@ -190,10 +201,10 @@ MODAL_burden_total <- import(here("output", "RDS", "Modal shift", "HIA_modal_shi
 
   # Total for morbidity
   MODAL_burden_morbidity <- MODAL_burden_per_disease %>%
-    filter(disease != "mort") %>% 
+    filter(disease != c("mort", "dep")) %>% 
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Morbidity") %>%
+    mutate(disease = "Chronic diseases") %>%
     select(disease, everything()) 
   
   
@@ -218,10 +229,10 @@ MODAL_burden_total <- import(here("output", "RDS", "Modal shift", "HIA_modal_shi
 
   # Total for morbidity
   MODAL_Rubin_burden_morbidity <- MODAL_Rubin_burden_per_disease %>%
-    filter(disease != "mort") %>% 
+    filter(disease != c("mort", "dep")) %>% 
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Morbidity") %>%
+    mutate(disease = "Chronic diseases") %>%
     select(disease, everything()) 
   
   # Total for all diseases
@@ -276,7 +287,7 @@ plot_MODAL_cases_prev <-
 
   # 2019 baseline
   geom_bar(data = burden_2019 %>%  
-           filter(!disease %in% c("All", "Morbidity"))  %>% 
+           filter(!disease %in% c("All", "Chronic diseases"))  %>% 
            mutate(disease = factor(disease, levels = c("mort", "cvd", "cancer", "diab2", "dem", "dep"))),
            mapping = aes(x = disease, y = tot_cases, fill = disease, alpha = "2019 baseline"),
            width = 0.7,
@@ -284,7 +295,7 @@ plot_MODAL_cases_prev <-
            stat = "identity") +
   
   geom_errorbar(data = burden_2019 %>%  
-                filter(!disease %in% c("All", "Morbidity")),
+                filter(!disease %in% c("All", "Chronic diseases")),
                 mapping = aes(x = disease, ymin = tot_cases_low, ymax = tot_cases_up, alpha = "2019 baseline"),
                 position = position_dodge(0.7),
                 width = 0.25) +
@@ -293,7 +304,7 @@ plot_MODAL_cases_prev <-
   
   # Modal shift
   geom_bar(data = MODAL_burden %>%  
-           filter(!disease %in% c("All", "Morbidity")) %>% 
+           filter(!disease %in% c("All", "Chronic diseases")) %>% 
            mutate(disease = factor(disease, levels = c("mort", "cvd", "cancer", "diab2", "dem", "dep"))), 
            mapping = aes(x = disease, y = tot_cases, fill = disease, alpha = "Modal shift scenario"),
            width = 0.7,
@@ -302,7 +313,7 @@ plot_MODAL_cases_prev <-
   scale_alpha_manual(values = c("2019 baseline" = 1, "Modal shift scenario" = 0.4), guide = "none") +
   
   geom_errorbar(data = MODAL_burden %>%  
-                filter(!disease %in% c("All", "Morbidity")),
+                filter(!disease %in% c("All", "Chronic diseases")),
                 mapping = aes(x = disease, ymin = tot_cases_low, ymax = tot_cases_up, alpha = "Modal shift scenario"),
                 position = position_dodge(0.7),
                 width = 0.25) +
@@ -320,51 +331,111 @@ plot_MODAL_cases_prev
 ################################################################################################################################
 #                                            7. DISTANCE SHIFTED & CO2 EMISSIONS                                               #
 ################################################################################################################################
-
 # Total km walked with IC and CO2 emissions prevented with IC per year
 set.seed(123)
 
 N <- 1000
+tot_km_list <- vector("list", N)
 
-tot_km_CO2 <- data.frame()
-
-tot_km_drivers <- data.frame()                                                      # 1 dataframe per scenario
-for(i in 1:N) {
+for (i in 1:N) {
   print(i)
 
-  tot_sample <- emp_short_driver %>%  
-  filter(!is.na(pond_jour)) %>%                                                     # Distances shifted for a year for 1 scenario
-  distinct(ident_ind, .keep_all = TRUE)  %>% 
-  ungroup() %>%
-  slice_sample(prop = perc) %>% 
-  as_survey_design(ids= ident_ind, weights = pond_jour) %>% 
-  summarise(tot_km = survey_total(nbkm_car, na.rm = T)*365.25/7)
-      
-  tot_km_drivers <- bind_rows(tot_km_drivers, tot_sample)
+  tot_sample <- emp_short_driver %>%
+    filter(!is.na(pond_jour) & !is.na(co2_depl)) %>%
+    distinct(ident_ind, .keep_all = TRUE) %>%
+    ungroup() %>%
+    slice_sample(prop = perc, replace = TRUE) %>%
+    as_survey_design(ids = ident_ind, weights = pond_jour) %>%
+    summarise(
+      tot_km             = survey_total(nbkm_car, na.rm = TRUE) * 365.25 / 7,
+      tot_co2_shift      = survey_total(co2_adjusted, na.rm = TRUE) * 365.25 / 7,
+      mean_co2_shift     = survey_mean(co2_adjusted, na.rm = TRUE),
+      tot_co2_diminution = survey_total(co2_diminution, na.rm = TRUE) * 365.25 / 7,
+      mean_co2_reduction = survey_mean(co2_prop_reduction, na.rm = TRUE)
+    )
+
+  tot_km_list[[i]] <- tot_sample
 }
+
+tot_km_drivers <- bind_rows(tot_km_list)
+
 
 
 set.seed(123)
+# Total km shifted
 IC_Mkm <- calc_replicate_IC(tot_km_drivers, "tot_km") / 1e6                                       # in million km
-tot_Mkm_IC <- paste0(round(IC_Mkm["50%"], 3), " (", round(IC_Mkm["2.5%"], 3), " - ", round(IC_Mkm["97.5%"], 3), ")")
+tot_Mkm_IC <- data.frame(
+  measure = "Total distance shifted (Mkm)",
+  value = paste0(round(IC_Mkm["50%"], 3), " (", round(IC_Mkm["2.5%"], 3), " - ", round(IC_Mkm["97.5%"], 3), ")"))
     
 IC_Mkm_Rubin <- calc_IC_Rubin (tot_km_drivers, "tot_km") / 1e6                                    # Rubin's rule
-tot_Mkm_IC_Rubin <- paste0(round(IC_Mkm_Rubin[2], 3), " (", round(IC_Mkm_Rubin[1], 3), " - ", round(IC_Mkm_Rubin[3], 3), ")")
+tot_Mkm_IC_Rubin <- data.frame(
+  measure = "Total distance shifted (Mkm, Rubin)",
+  value = paste0(round(IC_Mkm_Rubin[2], 3), " (", round(IC_Mkm_Rubin[1], 3), " - ", round(IC_Mkm_Rubin[3], 3), ")"))
+
+
+# Total CO2 emissions prevented
+IC_kt_co2_prev <- calc_replicate_IC(tot_km_drivers, "tot_co2_shift") *1e-9                                                             # CO2 emissions (in kt CO2)
+tot_kt_co2_prev_IC <- data.frame(
+  measure = "CO2 emissions prevented (kt CO2)",
+  value = paste0(round(IC_kt_co2_prev["50%"], 3), " (", round(IC_kt_co2_prev["2.5%"], 3), " - ", round(IC_kt_co2_prev["97.5%"], 3), ")"))
     
+IC_kt_co2_prev_Rubin <- calc_replicate_IC(tot_km_drivers, "tot_co2_shift") * 1e-9                                                      # Rubin's rule
+tot_kt_co2_prev_IC_Rubin <- data.frame(
+  measure = "CO2 emissions prevented (kt CO2, Rubin)",
+  value = paste0(round(IC_kt_co2_prev_Rubin[2], 3), " (", round(IC_kt_co2_prev_Rubin[1], 3), " - ", round(IC_kt_co2_prev_Rubin[3], 3), ")"))
+
+
+# Mean CO2 emissions prevented
+mean_IC_kt_co2_prev <- calc_replicate_IC(tot_km_drivers, "mean_co2_shift") *1e-9                                                             # CO2 emissions (in kt CO2)
+mean_kt_co2_prev_IC <- data.frame(
+  measure = "Mean CO2 emissions prevented (kt CO2)",
+  value = paste0(round(IC_kt_co2_prev["50%"], 3), " (", round(IC_kt_co2_prev["2.5%"], 3), " - ", round(IC_kt_co2_prev["97.5%"], 3), ")"))
     
-IC_kt <- IC_Mkm * 1e6 * CO2_emit *1e-9                                                             # CO2 emissions (in kt CO2)
-tot_kt_IC <- paste0(round(IC_kt["50%"], 3), " (", round(IC_kt["2.5%"], 3), " - ", round(IC_kt["97.5%"], 3), ")")
+mean_IC_kt_co2_prev_Rubin <- calc_replicate_IC(tot_km_drivers, "mean_co2_shift") * 1e-9                                                      # Rubin's rule
+mean_kt_co2_prev_IC_Rubin <- data.frame(
+  measure = "Mean CO2 emissions prevented (kt CO2, Rubin)",
+  value = paste0(round(IC_kt_co2_prev_Rubin[2], 3), " (", round(IC_kt_co2_prev_Rubin[1], 3), " - ", round(IC_kt_co2_prev_Rubin[3], 3), ")"))
+
+
+# Total diminution of CO2 emissions
+IC_kt_co2_dim <- calc_replicate_IC(tot_km_drivers, "tot_co2_diminution") *1e-9                                                             # CO2 emissions (in kt CO2)
+tot_kt_co2_dim_IC <- data.frame(
+  measure = "Total CO2 emissions diminution (kt CO2)",
+  value = paste0(round(IC_kt_co2_dim["50%"], 3), " (", round(IC_kt_co2_dim["2.5%"], 3), " - ", round(IC_kt_co2_dim["97.5%"], 3), ")"))
     
-IC_kt_Rubin <- IC_Mkm_Rubin * 1e6 * CO2_emit * 1e-9                                                # Rubin's rule
-tot_kt_IC_Rubin <- paste0(round(IC_kt_Rubin[2], 3), " (", round(IC_kt_Rubin[1], 3), " - ", round(IC_kt_Rubin[3], 3), ")")
+IC_kt_co2_dim_Rubin <- calc_replicate_IC(tot_km_drivers, "tot_co2_diminution") * 1e-9                                                      # Rubin's rule
+tot_kt_co2_dim_IC_Rubin <- data.frame(
+  measure = "Total CO2 emissions diminution (kt CO2, Rubin)",
+  value = paste0(round(IC_kt_co2_dim_Rubin[2], 3), " (", round(IC_kt_co2_dim_Rubin[1], 3), " - ", round(IC_kt_co2_dim_Rubin[3], 3), ")"))
+
+
+# Mean reduction of CO2 emissions
+mean_IC_kt_co2_reduc <- calc_replicate_IC(tot_km_drivers, "mean_co2_reduction")                                                           # CO2 emissions (in kt CO2)
+mean_kt_co2_reduc_IC <- data.frame(
+  measure = "Mean CO2 emissions reduction (kt CO2)",
+  value = paste0(round(mean_IC_kt_co2_reduc["50%"], 3), " (", round(mean_IC_kt_co2_reduc["2.5%"], 3), " - ", round(mean_IC_kt_co2_reduc["97.5%"], 3), ")"))
     
-tot_km_CO2 <- bind_rows(tot_km_CO2, data.frame(
-  distance = dist,
-  percentage = paste0(perc*100, "%"),
-  total_millions_km = tot_Mkm_IC,
-  Rubin_total_millions_km = tot_Mkm_IC_Rubin,
-  CO2_emissions_kt = tot_kt_IC,
-  Rubin_CO2_emissions_kt = tot_kt_IC_Rubin))
+mean_IC_kt_co2_reduc_Rubin <- calc_replicate_IC(tot_km_drivers, "mean_co2_reduction")                                                # Rubin's rule
+mean_kt_co2_reduc_IC_Rubin <- data.frame(
+  measure = "Mean CO2 emissions reduction (kt CO2, Rubin)",
+  value = paste0(round(mean_IC_kt_co2_reduc_Rubin[2], 3), " (", round(mean_IC_kt_co2_reduc_Rubin[1], 3), " - ", round(mean_IC_kt_co2_reduc_Rubin[3], 3), ")"))
+
+
+
+
+tot_km_CO2 <- bind_rows(
+  tot_Mkm_IC,
+  tot_Mkm_IC_Rubin,
+  tot_kt_co2_prev_IC,
+  tot_kt_co2_prev_IC_Rubin,
+  mean_kt_co2_prev_IC,
+  mean_kt_co2_prev_IC_Rubin,
+  tot_kt_co2_dim_IC,
+  tot_kt_co2_dim_IC_Rubin,
+  mean_kt_co2_reduc_IC,
+  mean_kt_co2_reduc_IC_Rubin
+)
 
 
 
@@ -379,7 +450,7 @@ tot_km_CO2 <- bind_rows(tot_km_CO2, data.frame(
 ##############################################################
 # Total and mean distance driven of short car trips (< 2 km) per year (in km)
 short_km_driven <- emp_car_trip  %>% 
-  filter(!is.na(nbkm_car) & nbkm_car <= dist,
+  filter(!is.na(nbkm_car_jour) & nbkm_car_jour <= dist,
           !is.na(pond_jour))  %>%
   as_survey_design(ids = ident_ind, weights = pond_jour) %>% 
   summarise(tot_km = survey_total(nbkm_car, na.rm = T) * 365.25 / 7, 
@@ -419,4 +490,4 @@ nb_short_drivers
     export(MODAL_burden_add, here("output", "Tables", "Modal shift", "HIA_modal_shift_added_1000replicate.xlsx"))
 
   # Total km walked with IC and CO2 emissions prevented with IC
-    export(tot_km_CO2, here("output", "Tables", "Modal shift", "modalshift_tot_km_CO2_emit.xlsx"))  
+    export(tot_km_CO2, here("output", "Tables", "Modal shift", "modalshift_km_CO2_emit.xlsx"))  

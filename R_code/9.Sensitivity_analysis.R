@@ -247,10 +247,10 @@ DRF_burden_per_disease <- ALT_burden_per_disease %>%
 
 # Total for morbidity
   DRF_burden_morbidity <- DRF_burden_per_disease %>%
-    filter(disease != "mort") %>% 
+    filter(disease != c("mort", "dep")) %>% 
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Morbidity") %>%
+    mutate(disease = "Chronic diseases") %>%
     select(disease, everything()) 
   
   
@@ -295,9 +295,9 @@ dis_vec <- c("mort", "cvd", "diab2", "dem", "dep")
 ################################################################################################################################
 emp_walk_speed <- emp_long  %>% 
   mutate(nbkm_intermodal_walk = intermodal_walk_time * walk_speed / 60,
-         nbkm_tot_walking = nbkm_main_walk + nbkm_intermodal_walk,
-         step_commute = nbkm_tot_walking / step_length,
-         step = pmin(12000, round(step_commute / 100) * 100 + baseline_step))
+         nbkm_tot_walking_jour = nbkm_main_walk_jour + nbkm_intermodal_walk,
+         step_commute_jour = nbkm_tot_walking_jour / step_length,
+         step = pmin(12000, round(step_commute_jour / 100) * 100 + baseline_step))
 
 
 # EMP Dataset per disease
@@ -354,10 +354,10 @@ speed_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_
 
   # Total for morbidity
   speed_burden_morbidity <- speed_burden_per_disease %>%
-    filter(disease != "mort") %>% 
+    filter(disease != c("mort", "dep")) %>% 
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Morbidity") %>%
+    mutate(disease = "Chronic diseases") %>%
     select(disease, everything()) 
   
   
@@ -392,7 +392,7 @@ export(speed_burden, here("output", "Tables", "Sensitivity analyses", "HIA_speed
 ################################################################################################################################
 
 emp_age <- emp_long  %>% 
-  mutate(step = pmin(12000, round(step_commute / 100) * 100 + baseline_step))  %>% 
+  mutate(step = pmin(12000, round(step_commute_jour / 100) * 100 + baseline_step))  %>% 
   filter(age < 75)       # age limit of 75 years above which physical activity doesn’t decrease the mortality risk
 
 
@@ -450,10 +450,10 @@ age_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_ag
 
   # Total for morbidity
   age_burden_morbidity <- age_burden_per_disease %>%
-    filter(disease != "mort") %>% 
+    filter(disease != c("mort", "dep")) %>% 
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Morbidity") %>%
+    mutate(disease = "Chronic diseases") %>%
     select(disease, everything()) 
   
   
@@ -489,14 +489,14 @@ export(age_burden, here("output", "Tables", "Sensitivity analyses", "HIA_age_sen
 
 # Main analysis
 HIA_main <- import(here("output", "Tables", "2019", "HIA_per_disease.xlsx"))  %>% 
-  filter(disease != "Morbidity")  %>% 
+  filter(disease != "Chronic diseases")  %>% 
   mutate(analysis = "main") %>% 
   select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up) 
 
 
 # Alternative DRF
 HIA_DRF <- import(here("output", "Tables", "Sensitivity analyses", "HIA_DRF_sensitivity_1000replicate.xlsx")) %>% 
-  filter(disease != "Morbidity") %>% 
+  filter(disease != "Chronic diseases") %>% 
   mutate(analysis = "sc1") %>% 
   select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up) %>% 
   left_join(HIA_main %>% select(disease, tot_daly_ref = tot_daly), by = "disease") %>% 
