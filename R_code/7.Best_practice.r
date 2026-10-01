@@ -13,10 +13,12 @@ pacman :: p_load(
   here,         # Localization of files 
   dplyr,        # Data management
   purrr,        # Loop
+  survey,       # Survey management
   srvyr,        # Survey
   tidyr,        # Table - Data organization, extraction
   tidyverse,    # Data manipulation and visualization
-  ggplot2       # Plotting
+  ggplot2,      # Plotting
+  scales        # Plot format
 )
 
 
@@ -529,24 +531,24 @@ plot_PRACT_cases_prev
 ################################################################################################################################
 # Nombre de km walked si les personnes ne diminuent pas
 jour_walkers_target <- emp_target_walk %>% 
-  filter(pond_jour != "NA") %>% 
+  filter(disease == "mort", !is.na(pond_jour)) %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_jour,
                    strata = c(sex, age_grp10),
                    nest = TRUE)
 
-step_total_day <- svytotal(~step, jour_walkers_target)                   # Total steps per day
+step_total_day <- as.numeric(svytotal(~step, jour_walkers_target))/7     # Total steps per day
 step_total_day 
 step_total_day * step_length                                             # Total km per day
 
 # Nombre de km si les personnes avec diminution
 jour_walkers_target_diminution <- emp_target_walk_with_diminution %>% 
-  filter(pond_jour != "NA") %>% 
+  filter(disease == "mort", !is.na(pond_jour)) %>% 
   as_survey_design(ids = ident_ind,
                    weights = pond_jour,
                    strata = c(sex, age_grp10),
                    nest = TRUE)
-step_total_day_diminution <- svytotal(~step, jour_walkers_target_diminution)   
+step_total_day_diminution <- as.numeric(svytotal(~step, jour_walkers_target_diminution))/7
 step_total_day_diminution
 step_total_day_diminution * step_length
 

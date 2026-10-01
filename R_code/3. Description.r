@@ -722,6 +722,18 @@ mean_short_trips <- emp_car_trips %>%
                    weights = pond_indc) %>% 
   summarise(day_mean = survey_mean(nbkm_car_jour, na.rm = TRUE, vartype = "ci"))
 
+  ## EMP METHODOLOGY
+  day_car <- emp_car_trips  %>% 
+    mutate(km_pond = nbkm_car * pond_jour/7)
+
+  mean_short_trips_emp_method <- day_car %>% 
+  filter(!is.na(pond_indc), nbkm_car_jour > 0, nbkm_car_jour <= 2)  %>%
+  summarise(tot_km = sum(km_pond, na.rm = TRUE),
+          tot_pond_indc = sum(pond_indc, na.rm = TRUE),
+          mean_km = tot_km / tot_pond_indc)
+
+
+
 
 # Mean distance driven (km) in the past day among those reporting short car trips <2km according to sex and age
 mean_drivers_2km <- emp_car_trips %>% 

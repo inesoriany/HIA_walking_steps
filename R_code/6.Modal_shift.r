@@ -105,7 +105,7 @@ emp_car_trip <- emp_car_trip %>%
 emp_short_trip <- emp_car_trip %>% 
   filter(!is.na(nbkm_car_jour) & nbkm_car_jour <= dist) %>% 
   mutate(co2_diminution = co2_all_car - co2_adjusted,
-         co2_prop_reduction = 1 - co2_adjusted / co2_all_car)
+         co2_prop_reduction = - co2_adjusted / co2_all_car)
 
 
 # Conversion of short car trips to steps
@@ -348,10 +348,10 @@ for (i in 1:N) {
     as_survey_design(ids = ident_ind, weights = pond_jour) %>%
     summarise(
       tot_km             = survey_total(nbkm_car, na.rm = TRUE) * 365.25 / 7,
-      tot_co2_shift      = survey_total(co2_adjusted, na.rm = TRUE) * 365.25 / 7,
-      mean_co2_shift     = survey_mean(co2_adjusted, na.rm = TRUE),
-      tot_co2_diminution = survey_total(co2_diminution, na.rm = TRUE) * 365.25 / 7,
-      mean_co2_reduction = survey_mean(co2_prop_reduction, na.rm = TRUE)
+      tot_co2_shift      = survey_total(co2_adjusted, na.rm = TRUE) * 365.25 / 7,      # Total of CO2 avoided
+      mean_co2_shift     = survey_mean(co2_adjusted, na.rm = TRUE),                    # Mean CO2 avoided
+      tot_co2_diminution = survey_total(co2_diminution, na.rm = TRUE) * 365.25 / 7,    # Total of reduced CO2 emitted
+      mean_co2_reduction = survey_mean(co2_prop_reduction, na.rm = TRUE)               # Proportion of reduction
     )
 
   tot_km_list[[i]] <- tot_sample
@@ -387,41 +387,41 @@ tot_kt_co2_prev_IC_Rubin <- data.frame(
 
 
 # Mean CO2 emissions prevented
-mean_IC_kt_co2_prev <- calc_replicate_IC(tot_km_drivers, "mean_co2_shift") *1e-9                                                             # CO2 emissions (in kt CO2)
+mean_IC_kt_co2_prev <- calc_replicate_IC(tot_km_drivers, "mean_co2_shift")                                                          # CO2 emissions (in kt CO2)
 mean_kt_co2_prev_IC <- data.frame(
-  measure = "Mean CO2 emissions prevented (kt CO2)",
+  measure = "Mean CO2 emissions prevented (gCO2)",
   value = paste0(round(IC_kt_co2_prev["50%"], 3), " (", round(IC_kt_co2_prev["2.5%"], 3), " - ", round(IC_kt_co2_prev["97.5%"], 3), ")"))
     
-mean_IC_kt_co2_prev_Rubin <- calc_replicate_IC(tot_km_drivers, "mean_co2_shift") * 1e-9                                                      # Rubin's rule
+mean_IC_kt_co2_prev_Rubin <- calc_replicate_IC(tot_km_drivers, "mean_co2_shift")                                                    # Rubin's rule
 mean_kt_co2_prev_IC_Rubin <- data.frame(
-  measure = "Mean CO2 emissions prevented (kt CO2, Rubin)",
+  measure = "Mean CO2 emissions prevented (gCO2, Rubin)",
   value = paste0(round(IC_kt_co2_prev_Rubin[2], 3), " (", round(IC_kt_co2_prev_Rubin[1], 3), " - ", round(IC_kt_co2_prev_Rubin[3], 3), ")"))
 
 
 # Total diminution of CO2 emissions
 IC_kt_co2_dim <- calc_replicate_IC(tot_km_drivers, "tot_co2_diminution") *1e-9                                                             # CO2 emissions (in kt CO2)
 tot_kt_co2_dim_IC <- data.frame(
-  measure = "Total CO2 emissions diminution (kt CO2)",
+  measure = "Total reduced CO2 emissions emitted for short car trips (kt CO2)",
   value = paste0(round(IC_kt_co2_dim["50%"], 3), " (", round(IC_kt_co2_dim["2.5%"], 3), " - ", round(IC_kt_co2_dim["97.5%"], 3), ")"))
     
 IC_kt_co2_dim_Rubin <- calc_replicate_IC(tot_km_drivers, "tot_co2_diminution") * 1e-9                                                      # Rubin's rule
 tot_kt_co2_dim_IC_Rubin <- data.frame(
-  measure = "Total CO2 emissions diminution (kt CO2, Rubin)",
+  measure = "Total reduced CO2 emissions emitted for short car trips (kt CO2, Rubin)",
   value = paste0(round(IC_kt_co2_dim_Rubin[2], 3), " (", round(IC_kt_co2_dim_Rubin[1], 3), " - ", round(IC_kt_co2_dim_Rubin[3], 3), ")"))
 
 
 # Mean reduction of CO2 emissions
-mean_IC_kt_co2_reduc <- calc_replicate_IC(tot_km_drivers, "mean_co2_reduction")                                                           # CO2 emissions (in kt CO2)
+mean_IC_kt_co2_reduc <- calc_replicate_IC(tot_km_drivers, "mean_co2_reduction") * 100                                                           # CO2 emissions (in kt CO2)
 mean_kt_co2_reduc_IC <- data.frame(
-  measure = "Mean CO2 emissions reduction (kt CO2)",
+  measure = "Mean CO2 emissions reduction (%)",
   value = paste0(round(mean_IC_kt_co2_reduc["50%"], 3), " (", round(mean_IC_kt_co2_reduc["2.5%"], 3), " - ", round(mean_IC_kt_co2_reduc["97.5%"], 3), ")"))
     
-mean_IC_kt_co2_reduc_Rubin <- calc_replicate_IC(tot_km_drivers, "mean_co2_reduction")                                                # Rubin's rule
+mean_IC_kt_co2_reduc_Rubin <- calc_replicate_IC(tot_km_drivers, "mean_co2_reduction") * 100                                                # Rubin's rule
 mean_kt_co2_reduc_IC_Rubin <- data.frame(
-  measure = "Mean CO2 emissions reduction (kt CO2, Rubin)",
+  measure = "Mean CO2 emissions reduction (%, Rubin)",
   value = paste0(round(mean_IC_kt_co2_reduc_Rubin[2], 3), " (", round(mean_IC_kt_co2_reduc_Rubin[1], 3), " - ", round(mean_IC_kt_co2_reduc_Rubin[3], 3), ")"))
 
-
+  # Interprétation: un conducteur moyen, tiré au hasard dans la population pondérée, réduit ses émissions de CO₂ de 20 % par rapport à ses émissions initiales.
 
 
 tot_km_CO2 <- bind_rows(
@@ -434,8 +434,7 @@ tot_km_CO2 <- bind_rows(
   tot_kt_co2_dim_IC,
   tot_kt_co2_dim_IC_Rubin,
   mean_kt_co2_reduc_IC,
-  mean_kt_co2_reduc_IC_Rubin
-)
+  mean_kt_co2_reduc_IC_Rubin)
 
 
 
@@ -448,28 +447,30 @@ tot_km_CO2 <- bind_rows(
 ##############################################################
 #                       DISTANCE DRIVEN                      #
 ##############################################################
-# Total and mean distance driven of short car trips (< 2 km) per year (in km)
-short_km_driven <- emp_car_trip  %>% 
-  filter(!is.na(nbkm_car_jour) & nbkm_car_jour <= dist,
-          !is.na(pond_jour))  %>%
-  as_survey_design(ids = ident_ind, weights = pond_jour) %>% 
-  summarise(tot_km = survey_total(nbkm_car, na.rm = T) * 365.25 / 7, 
-            tot_mean = survey_mean(nbkm_car, na.rm = T))  
-
-
-
-##############################################################
-#                            DRIVERS                         #
-##############################################################
-# Calculate number of unique drivers (weighted) by summing the weight per unique `ident_ind`.
-# Some individuals may have multiple trip rows; we take one row per `ident_ind` and use their `pond_indc`.
+# Calculate number of unique drivers (weighted) before summarising trip distances.
 short_drivers <- emp_short_driver %>%
+  ungroup() %>%
   distinct(ident_ind, .keep_all = TRUE)
 
 nb_short_drivers <- tibble(
   nb_respondents = nrow(short_drivers),
   total = sum(short_drivers[["pond_indc"]], na.rm = TRUE))
 
+# Total and mean distance driven of short car trips (< 2 km) per year (in km)
+short_km_driven <- emp_car_trip  %>% 
+  filter(disease == "mort",
+          !is.na(nbkm_car_jour) & nbkm_car_jour <= dist,
+          !is.na(pond_jour))  %>%
+  as_survey_design(ids = ident_ind, weights = pond_jour) %>% 
+  summarise(tot_km = survey_total(nbkm_car, na.rm = T) * 365.25 / 7)  %>% 
+  mutate(mean_km = tot_km / nb_short_drivers$total)
+
+
+
+##############################################################
+#                            DRIVERS                         #
+##############################################################
+# Number of unique drivers with at least one short trip
 nb_short_drivers
 
 
