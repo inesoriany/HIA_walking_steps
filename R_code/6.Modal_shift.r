@@ -348,8 +348,10 @@ for (i in 1:N) {
     as_survey_design(ids = ident_ind, weights = pond_jour) %>%
     summarise(
       tot_km             = survey_total(nbkm_car, na.rm = TRUE) * 365.25 / 7,
+      tot_co2_emit       = survey_total(co2_all_car, na.rm = TRUE) * 365.25 / 7,       # Total of CO2 emitted (without modal shift)
+      mean_co2_emit      = survey_mean(co2_all_car, na.rm = TRUE) * 365.25 / 7,        # Mean CO2 emitted (without modal shift)
       tot_co2_shift      = survey_total(co2_adjusted, na.rm = TRUE) * 365.25 / 7,      # Total of CO2 avoided
-      mean_co2_shift     = survey_mean(co2_adjusted, na.rm = TRUE),                    # Mean CO2 avoided
+      mean_co2_shift     = survey_mean(co2_adjusted, na.rm = TRUE) * 365.25/7,         # Mean CO2 avoided
       tot_co2_diminution = survey_total(co2_diminution, na.rm = TRUE) * 365.25 / 7,    # Total of reduced CO2 emitted
       mean_co2_reduction = survey_mean(co2_prop_reduction, na.rm = TRUE)               # Proportion of reduction
     )
@@ -367,43 +369,79 @@ IC_Mkm <- calc_replicate_IC(tot_km_drivers, "tot_km") / 1e6                     
 tot_Mkm_IC <- data.frame(
   measure = "Total distance shifted (Mkm)",
   value = paste0(round(IC_Mkm["50%"], 3), " (", round(IC_Mkm["2.5%"], 3), " - ", round(IC_Mkm["97.5%"], 3), ")"))
-    
+
+set.seed(123)
 IC_Mkm_Rubin <- calc_IC_Rubin (tot_km_drivers, "tot_km") / 1e6                                    # Rubin's rule
 tot_Mkm_IC_Rubin <- data.frame(
   measure = "Total distance shifted (Mkm, Rubin)",
   value = paste0(round(IC_Mkm_Rubin[2], 3), " (", round(IC_Mkm_Rubin[1], 3), " - ", round(IC_Mkm_Rubin[3], 3), ")"))
 
 
+# Total CO2 emissions emitted (without modal shift)
+set.seed(123)
+IC_kt_co2_emit <- calc_replicate_IC(tot_km_drivers, "tot_co2_emit") *1e-9                                                             # CO2 emissions (in kt CO2)
+tot_kt_co2_emit_IC <- data.frame(
+  measure = "CO2 emissions emitted in 2019 by shifted drivers (kt CO2)",
+  value = paste0(round(IC_kt_co2_emit["50%"], 3), " (", round(IC_kt_co2_emit["2.5%"], 3), " - ", round(IC_kt_co2_emit["97.5%"], 3), ")"))
+
+set.seed(123)
+IC_kt_co2_emit_Rubin <- calc_replicate_IC(tot_km_drivers, "tot_co2_emit") * 1e-9                                                      # Rubin's rule
+tot_kt_co2_emit_IC_Rubin <- data.frame(
+  measure = "CO2 emissions emitted in 2019 by shifted drivers (kt CO2, Rubin)",
+  value = paste0(round(IC_kt_co2_emit_Rubin[2], 3), " (", round(IC_kt_co2_emit_Rubin[1], 3), " - ", round(IC_kt_co2_emit_Rubin[3], 3), ")"))
+
+
+# Mean CO2 emissions emitted (without modal shift)
+set.seed(123)
+mean_IC_kt_co2_emit <- calc_replicate_IC(tot_km_drivers, "mean_co2_emit")
+mean_kt_co2_emit_IC <- data.frame(
+  measure = "Mean CO2 emissions emitted in 2019 by shifted drivers (gCO2)",
+  value = paste0(round(mean_IC_kt_co2_emit["50%"], 3), " (", round(mean_IC_kt_co2_emit["2.5%"], 3), " - ", round(mean_IC_kt_co2_emit["97.5%"], 3), ")"))
+
+set.seed(123)
+mean_IC_kt_co2_emit_Rubin <- calc_replicate_IC(tot_km_drivers, "mean_co2_emit")                                                    # Rubin's rule
+mean_kt_co2_emit_IC_Rubin <- data.frame(
+  measure = "Mean CO2 emissions emitted in 2019 by shifted drivers (gCO2, Rubin)",
+  value = paste0(round(mean_IC_kt_co2_emit_Rubin[2], 3), " (", round(mean_IC_kt_co2_emit_Rubin[1], 3), " - ", round(mean_IC_kt_co2_emit_Rubin[3], 3), ")"))
+
+
+
 # Total CO2 emissions prevented
+set.seed(123)
 IC_kt_co2_prev <- calc_replicate_IC(tot_km_drivers, "tot_co2_shift") *1e-9                                                             # CO2 emissions (in kt CO2)
 tot_kt_co2_prev_IC <- data.frame(
   measure = "CO2 emissions prevented (kt CO2)",
   value = paste0(round(IC_kt_co2_prev["50%"], 3), " (", round(IC_kt_co2_prev["2.5%"], 3), " - ", round(IC_kt_co2_prev["97.5%"], 3), ")"))
-    
+
+set.seed(123)
 IC_kt_co2_prev_Rubin <- calc_replicate_IC(tot_km_drivers, "tot_co2_shift") * 1e-9                                                      # Rubin's rule
 tot_kt_co2_prev_IC_Rubin <- data.frame(
   measure = "CO2 emissions prevented (kt CO2, Rubin)",
   value = paste0(round(IC_kt_co2_prev_Rubin[2], 3), " (", round(IC_kt_co2_prev_Rubin[1], 3), " - ", round(IC_kt_co2_prev_Rubin[3], 3), ")"))
 
 
-# Mean CO2 emissions prevented
-mean_IC_kt_co2_prev <- calc_replicate_IC(tot_km_drivers, "mean_co2_shift")                                                          # CO2 emissions (in kt CO2)
+# Mean CO2 emissions prevented per year
+set.seed(123)
+mean_IC_kt_co2_prev <- calc_replicate_IC(tot_km_drivers, "mean_co2_shift")                                                         
 mean_kt_co2_prev_IC <- data.frame(
   measure = "Mean CO2 emissions prevented (gCO2)",
-  value = paste0(round(IC_kt_co2_prev["50%"], 3), " (", round(IC_kt_co2_prev["2.5%"], 3), " - ", round(IC_kt_co2_prev["97.5%"], 3), ")"))
-    
+  value = paste0(round(mean_IC_kt_co2_prev["50%"], 3), " (", round(mean_IC_kt_co2_prev["2.5%"], 3), " - ", round(mean_IC_kt_co2_prev["97.5%"], 3), ")"))
+
+set.seed(123)
 mean_IC_kt_co2_prev_Rubin <- calc_replicate_IC(tot_km_drivers, "mean_co2_shift")                                                    # Rubin's rule
 mean_kt_co2_prev_IC_Rubin <- data.frame(
   measure = "Mean CO2 emissions prevented (gCO2, Rubin)",
-  value = paste0(round(IC_kt_co2_prev_Rubin[2], 3), " (", round(IC_kt_co2_prev_Rubin[1], 3), " - ", round(IC_kt_co2_prev_Rubin[3], 3), ")"))
+  value = paste0(round(mean_IC_kt_co2_prev_Rubin[2], 3), " (", round(mean_IC_kt_co2_prev_Rubin[1], 3), " - ", round(mean_IC_kt_co2_prev_Rubin[3], 3), ")"))
 
 
 # Total diminution of CO2 emissions
+set.seed(123)
 IC_kt_co2_dim <- calc_replicate_IC(tot_km_drivers, "tot_co2_diminution") *1e-9                                                             # CO2 emissions (in kt CO2)
 tot_kt_co2_dim_IC <- data.frame(
   measure = "Total reduced CO2 emissions emitted for short car trips (kt CO2)",
   value = paste0(round(IC_kt_co2_dim["50%"], 3), " (", round(IC_kt_co2_dim["2.5%"], 3), " - ", round(IC_kt_co2_dim["97.5%"], 3), ")"))
-    
+
+set.seed(123)
 IC_kt_co2_dim_Rubin <- calc_replicate_IC(tot_km_drivers, "tot_co2_diminution") * 1e-9                                                      # Rubin's rule
 tot_kt_co2_dim_IC_Rubin <- data.frame(
   measure = "Total reduced CO2 emissions emitted for short car trips (kt CO2, Rubin)",
@@ -411,11 +449,13 @@ tot_kt_co2_dim_IC_Rubin <- data.frame(
 
 
 # Mean reduction of CO2 emissions
+set.seed(123)
 mean_IC_kt_co2_reduc <- calc_replicate_IC(tot_km_drivers, "mean_co2_reduction") * 100                                                           # CO2 emissions (in kt CO2)
 mean_kt_co2_reduc_IC <- data.frame(
   measure = "Mean CO2 emissions reduction (%)",
   value = paste0(round(mean_IC_kt_co2_reduc["50%"], 3), " (", round(mean_IC_kt_co2_reduc["2.5%"], 3), " - ", round(mean_IC_kt_co2_reduc["97.5%"], 3), ")"))
-    
+
+set.seed(123)
 mean_IC_kt_co2_reduc_Rubin <- calc_replicate_IC(tot_km_drivers, "mean_co2_reduction") * 100                                                # Rubin's rule
 mean_kt_co2_reduc_IC_Rubin <- data.frame(
   measure = "Mean CO2 emissions reduction (%, Rubin)",
@@ -427,6 +467,10 @@ mean_kt_co2_reduc_IC_Rubin <- data.frame(
 tot_km_CO2 <- bind_rows(
   tot_Mkm_IC,
   tot_Mkm_IC_Rubin,
+  tot_kt_co2_emit_IC,
+  tot_kt_co2_emit_IC_Rubin,
+  mean_kt_co2_emit_IC,
+  mean_kt_co2_emit_IC_Rubin,
   tot_kt_co2_prev_IC,
   tot_kt_co2_prev_IC_Rubin,
   mean_kt_co2_prev_IC,
