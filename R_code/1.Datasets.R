@@ -21,7 +21,7 @@
 ################################################################################################################################
 #                                                    1. LOAD PACKAGES                                                          #
 ################################################################################################################################
-pacman :: p_load(
+pacman :: p_load( 
   rio,          # Data importation
   here,         # Localization of files 
   dplyr,        # Data manipulation
@@ -44,15 +44,19 @@ emp_walk_trip <- import(here("data", "emp_dataset_walk_trip.xlsx"))
 emp_car_trip <- import(here("data", "emp_dataset_car_trip.xlsx")) 
 
 
-# Disease incidence and prevalence
+# Diseases incidences and prevalences
+GBD_dis <- import(here("data", "GBD_diseases.xlsx"))
+
+
+# Diseases incidences and prevalences stratified by age and sex
  # Central values
-  dis_table_mid <- import(here("data", "GBD_diseases.xlsx"), sheet = "Central")
+  dis_table_mid <- import(here("data", "GBD_diseases_age_sex.xlsx"), sheet = "Central")
   
   # IC95 lower
-  dis_table_low <- import(here("data", "GBD_diseases.xlsx"), sheet = "Lower")
+  dis_table_low <- import(here("data", "GBD_diseases_age_sex.xlsx"), sheet = "Lower")
   
   # IC95 upper
-  dis_table_up <- import(here("data", "GBD_diseases.xlsx"), sheet = "Upper") 
+  dis_table_up <- import(here("data", "GBD_diseases_age_sex.xlsx"), sheet = "Upper") 
 
 
 
@@ -144,37 +148,13 @@ dis_long_table <- dis_table %>%
 ##############################################################
 # Generate incidence/prevalence normal distributions
 set.seed(123)
-dis_distrib_table <- dis_long_table %>%
-  rowwise() %>%
-  mutate(cases_distrib = list(
-    generate_RR_distrib(mid, low, up, 1000)))
-
-
-# Sort the incidence/prevalence in ascending order
-dis_distrib_table <- dis_distrib_table %>% 
-  rowwise() %>% 
-  mutate(cases_distrib = list(sort(unlist(cases_distrib)))) %>%
-  ungroup()
-
-# Separate the cases_distrib column into multiple columns
-dis_distrib_table <- dis_distrib_table  %>% 
-  unnest_wider(cases_distrib, names_sep = "_") %>% 
-  pivot_longer(
-    cols = starts_with("cases_distrib_"), 
-    names_to = "simulation_id",                     # column name for the simulation ID
-    values_to = "simulated_cases")  %>%         # column name for the simulated incidence values
-  mutate(simulation_id = as.numeric(str_remove(simulation_id, "cases_distrib_")))      # simulation ID as a numeric value
+dis_distrib_table <- table_distrib(dis_long_table, 1000, mid, low, up, "cases")
 
 
 # Keep incidence only
 incidence_distrib_table <- dis_distrib_table %>%
   filter(measure == "incidence")  %>% 
   rename(simulated_incidence = simulated_cases)
-
-
-# Calculate incidence rate
-incidence_distrib_table <- incidence_distrib_table %>%
-  mutate(rate = simulated_incidence / pop_age_grp10)
 
 
 # Keep prevalence only
@@ -192,16 +172,10 @@ prevalence_distrib_table <- dis_distrib_table %>%
 ##############################################################
 #                REDUCTION RISKS DISTRIBUTIONS               #
 ##############################################################
-# Baseline RR
-rr_baseline <- rr_distrib_table %>%
-  filter(step == baseline_step) %>%
-  select(disease, simulation_id, rr2000 = rr_interpolated)
-
-
 # Compute reduction risk
+rr2000 <- 1
 reduc_distrib_table <- rr_distrib_table %>%
-  left_join(rr_baseline, by = c("disease", "simulation_id")) %>%
-  mutate(reduction_risk = (rr2000 - rr_interpolated) / rr2000)
+  mutate(reduction_risk = rr2000/rr_interpolated - 1)
 
 
 
@@ -214,40 +188,28 @@ reduc_distrib_table <- rr_distrib_table %>%
 ##############################################################
 # Generate DW normal distributions
 set.seed(123)
-dw_distrib_table <- dw_table %>%
-  rowwise() %>%
-  mutate(dw_distrib = list(
-    generate_RR_distrib(dw_mid, dw_low, dw_up, 1000)))
-
-
-
-# Sort the DW distributions in ascending order
-dw_distrib_table <- dw_distrib_table %>% 
-  rowwise() %>% 
-  mutate(dw_distrib = list(sort(unlist(dw_distrib)))) %>%
-  ungroup()
-
-
-# Separate the dw_distrib column into multiple columns
-dw_distrib_table <- dw_distrib_table  %>% 
-  unnest_wider(dw_distrib, names_sep = "_") %>% 
-  pivot_longer(
-    cols = starts_with("dw_distrib_"), 
-    names_to = "simulation_id",                     # column name for the simulation ID
-    values_to = "simulated_dw"                      # column name for the simulated RR values
-  ) %>% 
-  mutate(simulation_id = as.numeric(str_remove(simulation_id, "dw_distrib_")))      # simulation ID as a numeric value
+dw_distrib_table <- table_distrib(dw_table, 1000, dw_mid, dw_low, dw_up, "dw")
 
 
 
 ################################################################################################################################
 #                                                      7. DISEASE DURATION                                                     #
 ################################################################################################################################
-# Disease duration distribution table
-duration_distrib_table <- incidence_distrib_table %>%
-  left_join(prevalence_distrib_table, by = c("age_grp10", "sex", "disease","simulation_id")) %>%
+# Generate PREVALENCE normal distributions
+set.seed(123)
+general_prevalence_distrib_table <- table_distrib(GBD_dis, 1000, prev_mid, prev_low, prev_up, "prevalence")
+
+
+# Generate INCIDENCE normal distributions
+set.seed(123)
+general_incidence_distrib_table <- table_distrib(GBD_dis, 1000, incid_mid, incid_low, incid_up, "incidence")
+
+
+# Duration
+duration_distrib_table <- general_incidence_distrib_table %>%
+  left_join(general_prevalence_distrib_table, by = c("disease","simulation_id")) %>%
   mutate(simulated_duration = simulated_prevalence / simulated_incidence)  %>% 
-  select(age_grp10, sex, disease, simulation_id, simulated_incidence, simulated_prevalence, simulated_duration)
+  select(disease, simulation_id, simulated_incidence, simulated_prevalence, simulated_duration)
 
 
 
@@ -261,14 +223,14 @@ duration_distrib_table <- incidence_distrib_table %>%
 # Incidence distribution table
   export(incidence_distrib_table, here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
+# Prevalencedistribution table
+  export(prevalence_distrib_table, here("data_clean", "Diseases", "prevalence_distrib_table.xlsx"))
 
 # Reduction risks distribution table
   export(reduc_distrib_table, here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
 
-
 # Disability weights distribution table
   export(dw_distrib_table, here("data_clean", "Diseases", "dw_distrib_table.xlsx"))
-
 
 # Disease duration distribution table
   export(duration_distrib_table, here("data_clean", "Diseases", "duration_distrib_table.xlsx"))

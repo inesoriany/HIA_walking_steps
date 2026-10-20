@@ -17,6 +17,53 @@ age10_categ <- function(age_grp) {
   paste0(floor(age_min / 10) * 10, "-", floor(age_min / 10) * 10 + 9)
 }
 
+##############################################################
+#                   NORMAL DISTRIBUTIONS                     #
+##############################################################
+
+# FUNCTION generate_RR : Generate random RR (dw) values in a normal distribution based on existing RR and their IC (Monte-Carlo)
+#set.seed()
+generate_RR_distrib = function (RR, low, up, N) {          # N : number of random values
+
+  lRR <- log(RR)                                            # Conversion in log scale
+  l_low <- log(low)
+  l_up <- log(up)
+  
+  sd1 <- (lRR - l_low) / qnorm(1-0.05/2)
+  sd2 <- (l_up - lRR) / qnorm(1-0.05/2) 
+  sd <- mean( c(sd1, sd2))                                  # Estimation of standard deviation assuming symmetrical confidence intervals
+  
+  distr_RR <- exp(rnorm(N, lRR, sd))                        # Generation of log-normal distribution (random samples)
+                               
+  distr_RR[distr_RR<0]=0                                    # just need to truncat values
+  
+  return(distr_RR)                                          # Return simulated RR value
+}
+
+
+
+# FUNCTION generate_table_distrib : Generate a table with random RR (dw) values in a normal distribution based on existing RR and their IC (Monte-Carlo)
+# set.seed()
+table_distrib = function (data, N, mid, low, up, name) {                         # N : number of random values
+  # Generate DW normal distributions
+  distrib_table <- data %>%
+    rowwise() %>%
+    mutate(distrib = list(sort(generate_RR_distrib({{ mid }}, {{ low }}, {{ up }}, N)))) %>%    # Sort the distributions in ascending order
+    ungroup() %>%
+    unnest_wider(distrib, names_sep = "_") %>%
+    pivot_longer(
+      cols            = starts_with("distrib_"),
+      names_to        = "simulation_id",
+      names_prefix    = "distrib_",
+      names_transform = list(simulation_id = as.numeric),
+      values_to       = paste0("simulated_", name)
+    )
+
+return(distrib_table)
+}
+
+
+
 
 ##############################################################
 #                      WALK DATASET                          #
@@ -149,25 +196,6 @@ interpolate_rr <- function(df, disease, metric) {
 
 
 
-# FUNCTION generate_RR : Generate random RR (dw) values in a normal distribution based on existing RR and their IC (Monte-Carlo)
-#set.seed()
-generate_RR_distrib = function (RR, low, up, N) {          # N : number of random values
-  lRR <- log(RR)                                            # Conversion in log scale
-  l_low <- log(low)
-  l_up <- log(up)
-  
-  sd1 <- (lRR - l_low) / qnorm(1-0.05/2)
-  sd2 <- (l_up - lRR) / qnorm(1-0.05/2) 
-  sd <- mean( c(sd1, sd2))                                  # Estimation of standard deviation assuming symmetrical confidence intervals
-  
-  distr_RR <- exp(rnorm(N, lRR, sd))                        # Generation of log-normal distribution (random samples)
-                               
-  distr_RR[distr_RR<0]=0                                    # just need to truncat values
-  
-  return(distr_RR)                                          # Return simulated RR value
-}
-
-
 # FUNCTION graph_sim_DRF : Graphical representation of the n possible DRF from normal distributions
 graph_sim_DRF = function (dis, data) {
   graph_drf_sim_dis <- ggplot(data %>% 
@@ -231,27 +259,29 @@ graph_DRF <- function(dis, data, rr_mean, rr_lci, rr_uci) {
 #                    DISEASE INCIDENCE                       #
 ##############################################################
 
-# FUNCTION incidence_replicate : Randomly associate incidence to individuals
+# FUNCTION incid_prev_replicate : Randomly associate incidence and prevalence to individuals
   # set.seed()
-incidence_replicate = function(data_list, incidence_distrib_table, dis_vec) {
+incid_prev_replicate = function(data_list, incid_prev_distrib_table, dis_vec,
+                                distribution_column, rate_column) {
   
   for (dis in dis_vec) {
     dis_data <- data_list[[dis]]
     
     if (dis == "mort") {
-      dis_data[[dis]] <- dis_data 
+      dis_data[[rate_column]] <- if (rate_column == "incid_rate") dis_data$rate else 0
+      data_list[[dis]] <- dis_data
 
     } else {
 
-      # Randomly associate incidence rate for each individual based on age_grp10 and sex
-      rates_age_sex <- incidence_distrib_table %>%
+      # Randomly associate a rate for each individual based on age_grp10 and sex
+      rates_age_sex <- incid_prev_distrib_table %>%
         filter(disease == dis) %>%
         group_by(age_grp10, sex) %>%
-        summarise(rates = list(rate), .groups = "drop")
+        summarise(rates = list(.data[[distribution_column]]), .groups = "drop")
 
       dis_data <- dis_data %>%
           left_join(rates_age_sex, by = c("age_grp10", "sex")) %>%
-          mutate(rate = map_dbl(rates, ~ if (length(.x) > 0) sample(.x, 1) else NA_real_)) %>%
+          mutate(!!rate_column := map_dbl(rates, ~ if (length(.x) > 0) sample(.x, 1) else NA_real_)) %>%
           select(-rates)
       
       data_list[[dis]] <- dis_data
@@ -305,8 +335,12 @@ reduction_risk_replicate <- function(data_list, reduction_risk_distrib_table, di
 
 # FUNCTION reduc_incidence : Calculate the reduced disease incidence (number of prevented new cases)
 reduc_incidence = function(data) {
+ if (!"prev_rate" %in% names(data)) {
+   data$prev_rate <- 0
+ }
+
  data <- data %>% 
-   mutate(cases = reduction_risk * rate)
+   mutate(cases = pond_indc * (1 - prev_rate) * reduction_risk * incid_rate)
   
   return(data)
 }
@@ -344,13 +378,13 @@ daly = function(data, duration_table , dis, prop_relapse, dep_recovery) {
 
 
     # Randomly associate depression duration for each individual and compute DALY
-    duration_age_sex <- duration_table %>%
+    duration_dis <- duration_table %>%
       filter(disease == dis) %>%
-      group_by(age_grp10, sex) %>%
+      group_by(disease) %>%
       summarise(duration_values = list(simulated_duration), .groups = "drop")
 
     data <- data %>%
-      left_join(duration_age_sex, by = c("age_grp10", "sex")) %>%
+      left_join(duration_dis, by = c("disease")) %>%
       mutate(duration = map_dbl(duration_values, ~ if (length(.x) > 0) sample(.x, 1) else NA_real_)) %>%
       select(-duration_values)
 
@@ -392,23 +426,37 @@ medic_costs = function(data, dis) {
 ##############################################################
 # FUNCTION calc_HIA_replicate : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for 1 run
   # set.seed()
-calc_HIA_replicate = function(data_list, incidence_distrib_table, duration_table, reduction_risk_distrib_table, dw_distrib_table, dis_vec, 
+calc_HIA_replicate = function(data_list, incidence_distrib_table, prevalence_distrib_table, duration_table, reduction_risk_distrib_table, dw_distrib_table, 
+                              dis_vec, 
                               prop_relapse, dep_recovery, vsl) {
   
 
   # 1. Disease incidence
   if (!is.null(incidence_distrib_table)) {
-    data_list <- incidence_replicate(data_list = data_list,
-                                    incidence_distrib_table = incidence_distrib_table,
-                                    dis_vec = dis_vec)
+    data_list <- incid_prev_replicate(data_list = data_list,
+                                      incid_prev_distrib_table = incidence_distrib_table,
+                                      dis_vec = dis_vec,
+                                      distribution_column = "simulated_incidence",
+                                      rate_column = "incid_rate")
   }
   
-  # 2. Disease reduction risk 
+
+  # 2. Disease prevalence
+  if (!is.null(prevalence_distrib_table)) {
+    data_list <- incid_prev_replicate(data_list = data_list,
+                                      incid_prev_distrib_table = prevalence_distrib_table,
+                                      dis_vec = dis_vec,
+                                      distribution_column = "simulated_prevalence",
+                                      rate_column = "prev_rate")
+  }
+  
+
+  # 3. Disease reduction risk 
   data_list <- reduction_risk_replicate(data_list = data_list,
                                         reduction_risk_distrib_table = reduction_risk_distrib_table,
                                         dis_vec = dis_vec)
   
- # 3. Disability weights
+ # 4. Disability weights
   data_list <- value_associate(data_list = data_list,
                                distrib_table = dw_distrib_table,
                                dis_vec = dis_vec,
@@ -441,31 +489,24 @@ calc_HIA_replicate = function(data_list, incidence_distrib_table, duration_table
 #                        HIA OUTCOMES                        #
 ##############################################################
 # FUNCTION burden_prevented_replicate : Prevented cases, DALY and saved medical costs
-burden_prevented_replicate = function(data_list, dis_vec, group) {
-  
-burden_run <- data.frame()
+burden_prevented_replicate <- function(data_list, dis_vec, group) {
 
+  burden_run <- data.frame()
   for (dis in dis_vec) {
-    dis_data <- data_list[[dis]]
-    dis_burden_replicate <- list() 
-    
-      # Survey design
-      surv_dis_replicate <- dis_data %>% 
-        as_survey_design(ids = ident_ind, weights = pond_indc)
-      
-      # Burden for 1 disease
-      dis_burden_replicate <- surv_dis_replicate %>% 
-        group_by(across(all_of(group))) %>%
-        summarise(
-          tot_cases = survey_total(cases, na.rm = TRUE),
-          tot_daly = survey_total(daly, na.rm = TRUE),
-          tot_medic_costs = survey_total(medic_costs, na.rm = TRUE),
-          tot_soc_costs = survey_total(soc_costs, na.rm = TRUE)) %>% 
-        mutate(disease = dis)
-    
-    burden_run <- bind_rows(burden_run, dis_burden_replicate)         # Results for all diseases for 1 run
+    dis_burden_replicate <- data_list[[dis]] %>%
+      group_by(across(all_of(group))) %>%
+      summarise(
+        tot_cases       = sum(cases, na.rm = TRUE),
+        tot_daly        = sum(daly, na.rm = TRUE),
+        tot_medic_costs = sum(medic_costs, na.rm = TRUE),
+        tot_soc_costs   = sum(soc_costs, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      mutate(disease = dis)
+
+    burden_run <- bind_rows(burden_run, dis_burden_replicate)
+
   }
-  
   return(burden_run)
 }
 
@@ -474,7 +515,8 @@ burden_run <- data.frame()
   # set.seed()
 HIA_burden_total = function(data_list, function_calc_HIA, incidence_distrib_table, duration_table, reduction_risk_distrib_table, dw_distrib_table, 
                             dis_vec, 
-                            prop_relapse, dep_recovery, vsl, group, N, show_progress = TRUE) {
+                            prop_relapse, dep_recovery, vsl, group, N, show_progress = TRUE,
+                            prevalence_distrib_table = NULL) {
   
   burden_total <- data.frame()
   burden_total_list <- list()
@@ -491,7 +533,21 @@ HIA_burden_total = function(data_list, function_calc_HIA, incidence_distrib_tabl
   }
   
   for (i in 1:N) {
-    data_list_replicate <- function_calc_HIA(data_list, incidence_distrib_table, duration_table, reduction_risk_distrib_table, dw_distrib_table, dis_vec, prop_relapse, dep_recovery, vsl)
+    calc_args <- list(
+      data_list = data_list,
+      incidence_distrib_table = incidence_distrib_table,
+      duration_table = duration_table,
+      reduction_risk_distrib_table = reduction_risk_distrib_table,
+      dw_distrib_table = dw_distrib_table,
+      dis_vec = dis_vec,
+      prop_relapse = prop_relapse,
+      dep_recovery = dep_recovery,
+      vsl = vsl
+    )
+    if ("prevalence_distrib_table" %in% names(formals(function_calc_HIA))) {
+      calc_args$prevalence_distrib_table <- prevalence_distrib_table
+    }
+    data_list_replicate <- do.call(function_calc_HIA, calc_args)
     burden_total_list[[i]] <- burden_prevented_replicate(data_list_replicate, dis_vec, group)  %>% 
       mutate(simulation_id = i)
     
@@ -514,18 +570,14 @@ HIA_burden_total = function(data_list, function_calc_HIA, incidence_distrib_tabl
 #                        MONTE-CARLO                         #
 ##############################################################
 
-# FUNCTION calc_replicate_IC : Calculate interval of confidence by combining replications obtained with generated RR samples to generate a posterior distribution for each outcome
-#set.seed()
+# FUNCTION calc_replicate_IC : Calculate empirical intervals from replicate outcomes
 calc_replicate_IC = function(data, outcome){
-  vec = c()
-  se_name = paste0(outcome, "_se")
-  
-  for (i in 1:nrow(data)){
-    sam = rnorm(n=200, mean = as.numeric(data[i,outcome]), sd = as.numeric(data[i,se_name]) ) # Generation of samples : uncertainty estimation
-    vec = c(vec, sam)
-  }
-  IC = quantile(vec, probs = c(0.025, 0.5, 0.975))          # Median and 95% uncertainty interval
-  return(IC)  
+
+  values <- data[[outcome]]
+
+  values <- values[is.finite(values)]
+
+  quantile(values, probs = c(0.025, 0.5, 0.975))
 }
 
 

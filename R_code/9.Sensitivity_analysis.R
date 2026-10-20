@@ -4,7 +4,7 @@
 
 # Modified parameters - files outputted :
   # Scenario 1 - Former DRF
-  # Scenario 2 - Walking speed 5.3 km/h
+  # Scenario 2 - Change of baseline
   # Scenario 3 - Age limit < 75 years
   
 
@@ -59,7 +59,7 @@ source(here("R_code", "Functions.R"))
 source(here("R_code", "Parameters.R"))
 
 # Diseases considered
-alt_dis_vec <- c("mort", "bc", "cc", "cvd", "diab2", "dem", "dep")
+dis_vec <- c("mort", "cancer", "cvd", "diab2", "dem", "dep")
 
 # Outcome considered
 outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
@@ -73,7 +73,15 @@ outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 ################################################################################################################################
 
 ################################################################################################################################
-#                                                3. RELATIVE RISKS DISTRIBUTION                                                #
+#                                                      1. PARAMETERS                                                           #
+################################################################################################################################
+
+# Diseases considered
+alt_dis_vec <- c("mort", "bc", "cc", "cvd", "diab2", "dem", "dep")
+
+
+################################################################################################################################
+#                                                2. RELATIVE RISKS DISTRIBUTION                                                #
 ################################################################################################################################
 rr_women <- data.frame()
 rr_men <- data.frame()
@@ -122,7 +130,7 @@ alt_rr_distrib_table <- alt_rr_distrib  %>%
 
 
 ################################################################################################################################
-#                                                    4. DATA PREPARATION                                                       #
+#                                                    3. DATA PREPARATION                                                       #
 ################################################################################################################################
 
 # Initialization
@@ -152,7 +160,7 @@ for (dis in alt_dis_vec) {
 
 
 ################################################################################################################################
-#                                                 5. HEALTH IMPACT ASSESSMENT                                                  #
+#                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
 ################################################################################################################################
 
 ##############################################################
@@ -183,7 +191,7 @@ export(alt_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_DRF_
 
 
 ################################################################################################################################
-#                                            6. HEALTH IMPACT ASSESSMENT - baseline                                            #
+#                                            5. HEALTH IMPACT ASSESSMENT - baseline                                            #
 ################################################################################################################################
 
 ##############################################################
@@ -214,7 +222,7 @@ export(baseline_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA
 
 
 ################################################################################################################################
-#                         7. IC and MEDIAN - TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                        #
+#                         6. IC and MEDIAN - TOTAL BURDEN: PREVENTED CASES, DALY, MEDICAL, SOCIAL COSTS                        #
 ################################################################################################################################
 
 # Import data
@@ -265,7 +273,7 @@ DRF_burden_per_disease <- ALT_burden_per_disease %>%
   DRF_burden <- bind_rows(DRF_burden_per_disease, DRF_burden_morbidity, DRF_burden_global)
 
 ################################################################################################################################
-#                                                      8. EXPORT DATA                                                          #
+#                                                      7. EXPORT DATA                                                          #
 ################################################################################################################################
 export(DRF_burden, here("output", "Tables", "Sensitivity analyses", "HIA_DRF_sensitivity_1000replicate.xlsx"))
 
@@ -275,7 +283,7 @@ export(DRF_burden, here("output", "Tables", "Sensitivity analyses", "HIA_DRF_sen
 
 ################################################################################################################################
 ################################################################################################################################
-#                                                        WALKING SPEED                                                         #
+#                                           CHANGE OF BASELINE (include leisure walk)                                          #
 ################################################################################################################################
 ################################################################################################################################
 
@@ -283,28 +291,25 @@ export(DRF_burden, here("output", "Tables", "Sensitivity analyses", "HIA_DRF_sen
 #                                                      1. PARAMETERS                                                           #
 ################################################################################################################################
 
-# Change of walking speed (Compendium, 2011)
-walk_speed <- 5.3  # km/h
+# Baseline
+baseline_step <- 2000 + 
 
 # Diseases considered
-dis_vec <- c("mort", "cvd", "diab2", "dem", "dep")
+dis_vec <- c("mort", "cancer", "cvd", "diab2", "dem", "dep")
 
 
 ################################################################################################################################
 #                                                    2. DATA PREPARATION                                                       #
 ################################################################################################################################
-emp_walk_speed <- emp_long  %>% 
-  mutate(nbkm_intermodal_walk = intermodal_walk_time * walk_speed / 60,
-         nbkm_tot_walking_jour = nbkm_main_walk_jour + nbkm_intermodal_walk,
-         step_commute_jour = nbkm_tot_walking_jour / step_length,
-         step = pmin(12000, round(step_commute_jour / 100) * 100 + baseline_step))
+emp_walk_baseline <- emp_long  %>% 
+  mutate(step = pmin(12000, round(step_commute_jour / 100) * 100 + baseline_step))
 
 
 # EMP Dataset per disease
-speed_replicate_list <- list() 
+baseline_replicate_list <- list() 
 
 for (dis in dis_vec) {
-  speed_replicate_list[[dis]] <- emp_walk_speed %>% 
+  baseline_replicate_list[[dis]] <- emp_walk_baseline %>% 
     filter(disease == dis)
 }
 
@@ -388,7 +393,14 @@ export(speed_burden, here("output", "Tables", "Sensitivity analyses", "HIA_speed
 ################################################################################################################################
 
 ################################################################################################################################
-#                                                    1. DATA PREPARATION                                                       #
+#                                                        1. PARAMETERS                                                         #
+################################################################################################################################
+
+# Diseases considered
+dis_vec <- c("mort", "cancer", "cvd", "diab2", "dem", "dep")
+
+################################################################################################################################
+#                                                    2. DATA PREPARATION                                                       #
 ################################################################################################################################
 
 emp_age <- emp_long  %>% 

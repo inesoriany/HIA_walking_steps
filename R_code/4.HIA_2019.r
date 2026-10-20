@@ -44,6 +44,9 @@ emp_long <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 # Incidence distribution table
 incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
+# Prevalence distribution table
+prevalence_distrib_table <- import(here("data_clean", "Diseases", "prevalence_distrib_table.xlsx"))
+
 # Disease duration distribution table
 duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
@@ -108,7 +111,8 @@ burden_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_d
                                  dis_vec, 
                                  prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
-                                 N = 1000)
+                                 N = 1000,
+                                 prevalence_distrib_table = prevalence_distrib_table)
  
 
 # Export : Table of HIA outcomes per simulation
@@ -124,7 +128,8 @@ burden_sex_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, inciden
                                  dis_vec, 
                                  prop_relapse, dep_recovery,vsl, 
                                  group ="sex", 
-                                 N = 1000)
+                                 N = 1000,
+                                 prevalence_distrib_table = prevalence_distrib_table)
 
 
 # Export : Table of HIA outcomes per simulation
@@ -141,12 +146,13 @@ burden_age_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, inciden
                                      dis_vec, 
                                      prop_relapse, dep_recovery, vsl,
                                      group = "age_grp10", 
-                                     N = 1000)
+                                     N = 1000,
+                                     prevalence_distrib_table = prevalence_distrib_table)
 
 # Export : Table of HIA outcomes per simulation
 export(burden_age_total, here("output", "RDS", "2019", "HIA_per_age_1000replicate.rds"))
 
-
+# Tester avec une prévalence unique pour toustes pour voir qu'il y a une réduction de 10%
 
 
 ################################################################################################################################
