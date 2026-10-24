@@ -425,12 +425,11 @@ medic_costs = function(data, dis) {
 #                        CALCULATE HIA                       #
 ##############################################################
 # FUNCTION calc_HIA_replicate : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for 1 run
-  # set.seed()
-calc_HIA_replicate = function(data_list, incidence_distrib_table, prevalence_distrib_table, duration_table, reduction_risk_distrib_table, dw_distrib_table, 
-                              dis_vec, 
-                              prop_relapse, dep_recovery, vsl) {
-  
-
+calc_HIA_replicate <- function(data_list, incidence_distrib_table, prevalence_distrib_table, duration_table,
+                               reduction_risk_distrib_table, dw_distrib_table,
+                               dis_vec,
+                               prop_relapse, dep_recovery, vsl) {
+ 
   # 1. Disease incidence
   if (!is.null(incidence_distrib_table)) {
     data_list <- incid_prev_replicate(data_list = data_list,
@@ -439,8 +438,7 @@ calc_HIA_replicate = function(data_list, incidence_distrib_table, prevalence_dis
                                       distribution_column = "simulated_incidence",
                                       rate_column = "incid_rate")
   }
-  
-
+ 
   # 2. Disease prevalence
   if (!is.null(prevalence_distrib_table)) {
     data_list <- incid_prev_replicate(data_list = data_list,
@@ -449,51 +447,49 @@ calc_HIA_replicate = function(data_list, incidence_distrib_table, prevalence_dis
                                       distribution_column = "simulated_prevalence",
                                       rate_column = "prev_rate")
   }
-  
-
-  # 3. Disease reduction risk 
+ 
+  # 3. Disease reduction risk
   data_list <- reduction_risk_replicate(data_list = data_list,
                                         reduction_risk_distrib_table = reduction_risk_distrib_table,
                                         dis_vec = dis_vec)
-  
- # 4. Disability weights
+ 
+  # 4. Disability weights
   data_list <- value_associate(data_list = data_list,
                                distrib_table = dw_distrib_table,
                                dis_vec = dis_vec,
                                variable = "dw")
-  
+ 
   for (dis in dis_vec) {
-    
+ 
     dis_data <- data_list[[dis]]
-
-    # 4. Cases prevented
+ 
+    # 5. Cases prevented
     dis_data <- reduc_incidence(dis_data)
-    
-    # 5. DALY
+ 
+    # 6. DALY
     dis_data <- daly(dis_data, duration_table, dis, prop_relapse, dep_recovery)
-    
-    # 6. Economic impact
+ 
+    # 7. Economic impact
     dis_data <- medic_costs(dis_data, dis)
-    
+ 
     dis_data <- dis_data %>%
       mutate(soc_costs = daly * vsl)
-    
+ 
     data_list[[dis]] <- dis_data
   }
-  
+ 
   return(data_list)
 }
-
-
+ 
+ 
 ##############################################################
 #                        HIA OUTCOMES                        #
 ##############################################################
 # FUNCTION burden_prevented_replicate : Prevented cases, DALY and saved medical costs
 burden_prevented_replicate <- function(data_list, dis_vec, group) {
-
-  burden_run <- data.frame()
-  for (dis in dis_vec) {
-    dis_burden_replicate <- data_list[[dis]] %>%
+ 
+  burden_list <- lapply(dis_vec, function(dis) {
+    data_list[[dis]] %>%
       group_by(across(all_of(group))) %>%
       summarise(
         tot_cases       = sum(cases, na.rm = TRUE),
@@ -503,24 +499,25 @@ burden_prevented_replicate <- function(data_list, dis_vec, group) {
         .groups = "drop"
       ) %>%
       mutate(disease = dis)
-
-    burden_run <- bind_rows(burden_run, dis_burden_replicate)
-
-  }
-  return(burden_run)
+  })
+ 
+  bind_rows(burden_list)
 }
-
-
-# FUNCTION HIA_burden_total : HIA calculations and Total of prevented cases, DALY and saved medical costs for N simulations
-  # set.seed()
-HIA_burden_total = function(data_list, function_calc_HIA, incidence_distrib_table, duration_table, reduction_risk_distrib_table, dw_distrib_table, 
-                            dis_vec, 
-                            prop_relapse, dep_recovery, vsl, group, N, show_progress = TRUE,
-                            prevalence_distrib_table = NULL) {
-  
-  burden_total <- data.frame()
-  burden_total_list <- list()
-  
+ 
+ 
+# FUNCTION HIA_burden_total : HIA calculations and total of prevented cases, DALY and saved medical costs for N simulations
+# `seed`: optional integer; if supplied, set once before the loop for reproducibility.
+HIA_burden_total <- function(data_list, function_calc_HIA, incidence_distrib_table,
+                             prevalence_distrib_table = NULL, duration_table,
+                             reduction_risk_distrib_table, dw_distrib_table,
+                             dis_vec,
+                             prop_relapse, dep_recovery, vsl, group, N,
+                             show_progress = TRUE, seed = NULL) {
+ 
+  if (!is.null(seed)) set.seed(seed)
+ 
+  burden_total_list <- vector("list", N)
+ 
   # Progress bar setup
   progress_bar <- NULL
   if (show_progress && interactive() && N > 0) {
@@ -531,32 +528,36 @@ HIA_burden_total = function(data_list, function_calc_HIA, incidence_distrib_tabl
       width = 60
     )
   }
-  
-  for (i in 1:N) {
-    calc_args <- list(
-      data_list = data_list,
-      incidence_distrib_table = incidence_distrib_table,
-      duration_table = duration_table,
-      reduction_risk_distrib_table = reduction_risk_distrib_table,
-      dw_distrib_table = dw_distrib_table,
-      dis_vec = dis_vec,
-      prop_relapse = prop_relapse,
-      dep_recovery = dep_recovery,
-      vsl = vsl
-    )
-    if ("prevalence_distrib_table" %in% names(formals(function_calc_HIA))) {
-      calc_args$prevalence_distrib_table <- prevalence_distrib_table
-    }
+ 
+  # Arguments common to every calc function
+  base_args <- list(
+    data_list = data_list,
+    incidence_distrib_table = incidence_distrib_table,
+    duration_table = duration_table,
+    reduction_risk_distrib_table = reduction_risk_distrib_table,
+    dw_distrib_table = dw_distrib_table,
+    dis_vec = dis_vec,
+    prop_relapse = prop_relapse,
+    dep_recovery = dep_recovery,
+    vsl = vsl
+  )
+ 
+  # Only pass prevalence_distrib_table if the calc function accepts it
+  calc_args <- base_args
+  if ("prevalence_distrib_table" %in% names(formals(function_calc_HIA))) {
+    calc_args$prevalence_distrib_table <- prevalence_distrib_table
+  }
+ 
+  for (i in seq_len(N)) {
     data_list_replicate <- do.call(function_calc_HIA, calc_args)
-    burden_total_list[[i]] <- burden_prevented_replicate(data_list_replicate, dis_vec, group)  %>% 
+ 
+    burden_total_list[[i]] <- burden_prevented_replicate(data_list_replicate, dis_vec, group) %>%
       mutate(simulation_id = i)
-    
-    # Update progress bar
+ 
     if (!is.null(progress_bar)) progress_bar$tick()
   }
-  burden_total <- bind_rows(burden_total_list)
-
-  return(burden_total)
+ 
+  bind_rows(burden_total_list)
 }
 
 

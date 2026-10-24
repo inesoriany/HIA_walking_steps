@@ -104,7 +104,8 @@ dis_mid_10 <- dis_table_mid %>%
   mutate(age_grp10 = age10_categ(age_grp)) %>%
   group_by(age_grp10, sex) %>%
   summarise(pop_age_grp10 = sum(pop_age_grp, na.rm = TRUE),
-            across(ends_with(c("_incidence", "_prevalence")), \(x) sum(x, na.rm = TRUE)),
+            across(ends_with("_incidence"), \(x) if (all(is.na(x))) 0 else weighted.mean(x, pop_age_grp, na.rm = TRUE)),
+            across(ends_with("_prevalence"), \(x) if (all(is.na(x))) 0 else weighted.mean(x, pop_age_grp, na.rm = TRUE)),
             .groups = "drop") %>%
   rename_with(~ str_replace(.x, "_incidence$", "_incidence_mid"), ends_with("_incidence")) %>%
   rename_with(~ str_replace(.x, "_prevalence$", "_prevalence_mid"), ends_with("_prevalence"))
@@ -113,7 +114,8 @@ dis_low_10 <- dis_table_low %>%
   mutate(age_grp10 = age10_categ(age_grp)) %>%
   group_by(age_grp10, sex) %>%
   summarise(pop_age_grp10 = sum(pop_age_grp, na.rm = TRUE),
-            across(ends_with(c("_incidence", "_prevalence")), \(x) sum(x, na.rm = TRUE)),
+            across(ends_with("_incidence"), \(x) if (all(is.na(x))) 0 else weighted.mean(x, pop_age_grp, na.rm = TRUE)),
+            across(ends_with("_prevalence"), \(x) if (all(is.na(x))) 0 else weighted.mean(x, pop_age_grp, na.rm = TRUE)),
             .groups = "drop") %>%
   rename_with(~ str_replace(.x, "_incidence$", "_incidence_low"), ends_with("_incidence")) %>%
   rename_with(~ str_replace(.x, "_prevalence$", "_prevalence_low"), ends_with("_prevalence"))
@@ -122,7 +124,8 @@ dis_up_10 <- dis_table_up %>%
   mutate(age_grp10 = age10_categ(age_grp)) %>%
   group_by(age_grp10, sex) %>%
   summarise(pop_age_grp10 = sum(pop_age_grp, na.rm = TRUE),
-            across(ends_with(c("_incidence", "_prevalence")), \(x) sum(x, na.rm = TRUE)),
+            across(ends_with("_incidence"), \(x) if (all(is.na(x))) 0 else weighted.mean(x, pop_age_grp, na.rm = TRUE)),
+            across(ends_with("_prevalence"), \(x) if (all(is.na(x))) 0 else weighted.mean(x, pop_age_grp, na.rm = TRUE)),
             .groups = "drop") %>%
   rename_with(~ str_replace(.x, "_incidence$", "_incidence_up"), ends_with("_incidence")) %>%
   rename_with(~ str_replace(.x, "_prevalence$", "_prevalence_up"), ends_with("_prevalence"))

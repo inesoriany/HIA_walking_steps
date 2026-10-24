@@ -107,12 +107,11 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-burden_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
-                                 N = 1000,
-                                 prevalence_distrib_table = prevalence_distrib_table)
+                                 N = 1000)
  
 
 # Export : Table of HIA outcomes per simulation
@@ -124,17 +123,15 @@ export(burden_total, here("output", "RDS", "2019", "HIA_1000replicate.rds"))
 ##############################################################
 # Total of prevented burden of each disease per sex for each simulation
 set.seed(123)
-burden_sex_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_sex_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table,  duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, dep_recovery,vsl, 
                                  group ="sex", 
-                                 N = 1000,
-                                 prevalence_distrib_table = prevalence_distrib_table)
+                                 N = 1000)
 
 
 # Export : Table of HIA outcomes per simulation
 export(burden_sex_total, here("output", "RDS", "2019", "HIA_per_sex_1000replicate.rds"))
-
 
 
 ##############################################################
@@ -196,33 +193,6 @@ burden_total <- import(here("output", "RDS", "2019", "HIA_1000replicate.rds"))
   burden <- bind_rows(burden_per_disease, burden_morbidity, burden_global)
   
 
-  
-  
-# --------------------------------------
-# RUBIN'S RULE
-# --------------------------------------
-  # Per disease
-  Rubin_burden_per_disease <- HIA_burden_IC(burden_total, dis_vec, outcome_vec, calc_IC_Rubin) 
-
-  # Total for morbidity
-  Rubin_burden_morbidity <- Rubin_burden_per_disease %>%
-    filter(disease != c("mort", "dep")) %>% 
-    summarise(across(where(is.numeric), 
-                     ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Chronic diseases") %>%
-    select(disease, everything()) 
-  
-  # Total for all diseases
-  Rubin_burden_global <- Rubin_burden_per_disease %>%
-    summarise(across(where(is.numeric), 
-                     ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "All") %>%
-    select(disease, everything()) 
-  
-  # Gather results
-  Rubin_burden <- bind_rows(Rubin_burden_per_disease,Rubin_burden_morbidity, Rubin_burden_global)
-
-
 
 
 ##############################################################
@@ -241,10 +211,6 @@ set.seed(123)
 burden_per_sex <- HIA_burden_IC(burden_sex_total, dis_vec, outcome_vec, calc_replicate_IC)
 
 
-# --------------------------------------
-# RUBIN'S RULE
-# --------------------------------------
-Rubin_burden_per_sex <- HIA_burden_IC(burden_sex_total, dis_vec, outcome_vec, calc_IC_Rubin)
 
 
 
@@ -264,20 +230,12 @@ set.seed(123)
 burden_per_age <- HIA_burden_IC(burden_age_total, dis_vec, outcome_vec, calc_replicate_IC)
 
 
-# --------------------------------------
-# RUBIN'S RULE
-# --------------------------------------
-Rubin_burden_per_age <- HIA_burden_IC(burden_age_total, dis_vec, outcome_vec, calc_IC_Rubin)
-
 
 
 # Export: Tables of HIA outcomes
   export(burden, here("output", "Tables", "2019", "HIA_per_disease.xlsx"))
-  export(Rubin_burden, here("output", "Tables", "2019", "HIA_per_disease_Rubin.xlsx"))
   export(burden_per_sex, here("output", "Tables", "2019", "HIA_per_sex.xlsx"))
-  export(Rubin_burden_per_sex, here("output", "Tables", "2019", "HIA_per_sex_Rubin.xlsx"))
   export(burden_per_age, here("output", "Tables", "2019", "HIA_per_age.xlsx"))
-  export(Rubin_burden_per_age, here("output", "Tables", "2019", "HIA_per_age_Rubin.xlsx"))
 
 
 ################################################################################################################################
@@ -294,10 +252,18 @@ reduc_mortality_risk <- data.frame()
 
 for (i in 1:N) {
 
-  HIA_mortality_replicate <- calc_HIA_replicate(replicate_list,
-                                                incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
-                                                "mort",
-                                                prop_relapse, dep_recovery, vsl)
+  HIA_mortality_replicate <- calc_HIA_replicate(
+    data_list = replicate_list,
+    incidence_distrib_table = incidence_distrib_table,
+    prevalence_distrib_table = prevalence_distrib_table,
+    duration_table = duration_distrib_table,
+    reduction_risk_distrib_table = reduction_risk_distrib_table,
+    dw_distrib_table = dw_distrib_table,
+    dis_vec = "mort",
+    prop_relapse = prop_relapse,
+    dep_recovery = dep_recovery,
+    vsl = vsl
+  )
 
   reduc_mortality_risk_replicate <- HIA_mortality_replicate[["mort"]] %>% 
     as_survey_design(ids = ident_ind, weights = pond_indc) %>% 
