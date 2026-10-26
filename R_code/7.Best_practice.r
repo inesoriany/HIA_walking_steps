@@ -259,7 +259,6 @@ PRACT_burden_total <- import(here("output", "RDS", "Best practice", "HIA_best_pr
 
 # Prevented diseases per area type
 set.seed(123)
-
 PRACT_burden_per_area <- HIA_burden_IC(PRACT_burden_total, dis_vec, outcome_vec, calc_replicate_IC)
 
 
