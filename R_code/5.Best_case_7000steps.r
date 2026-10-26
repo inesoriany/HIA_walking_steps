@@ -40,6 +40,9 @@ emp_long <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 # Incidence distribution table
 incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
+# Prevalence distribution table
+prevalence_distrib_table <- import(here("data_clean", "Diseases", "prevalence_distrib_table.xlsx"))
+
 # Risk reduction distribution table
 reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
 
@@ -101,7 +104,7 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123) 
-BEST_burden_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+BEST_burden_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
@@ -117,7 +120,7 @@ export(BEST_burden_total, here("output", "RDS", "7000 steps", "HIA_7000steps_100
 ##############################################################
 # Total of prevented burden of each disease per sex for each simulation
 set.seed(123)
-BEST_burden_sex_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+BEST_burden_sex_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, dep_recovery,vsl, 
                                  group ="sex", 
@@ -134,7 +137,7 @@ export(BEST_burden_sex_total, here("output", "RDS", "7000 steps", "HIA_sex_7000_
 ##############################################################
 # Total of prevented burden of each disease per age for each simulation
 set.seed(123)
-BEST_burden_age_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+BEST_burden_age_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                      dis_vec, 
                                      prop_relapse, dep_recovery, vsl, 
                                      group = "age_grp10", 
@@ -187,31 +190,6 @@ BEST_burden_total <- import(here("output", "RDS", "7000 steps", "HIA_7000steps_1
   BEST_burden <- bind_rows(BEST_burden_per_disease, BEST_burden_morbidity, BEST_burden_global)
   
 
-  
-  
-# --------------------------------------
-# RUBIN'S RULE
-# --------------------------------------
-  # Per disease
-  BEST_Rubin_burden_per_disease <- HIA_burden_IC(BEST_burden_total, dis_vec, outcome_vec, calc_IC_Rubin) 
-
-  # Total for morbidity
-  BEST_Rubin_burden_morbidity <- BEST_Rubin_burden_per_disease %>%
-    filter(disease != c("mort", "dep")) %>% 
-    summarise(across(where(is.numeric), 
-                     ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Chronic diseases") %>%
-    select(disease, everything()) 
-  
-  # Total for all diseases
-  BEST_Rubin_burden_global <- BEST_Rubin_burden_per_disease %>%
-    summarise(across(where(is.numeric), 
-                     ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "All") %>%
-    select(disease, everything()) 
-  
-  # Gather results
- BEST_Rubin_burden <- bind_rows(BEST_Rubin_burden_per_disease, BEST_Rubin_burden_morbidity, BEST_Rubin_burden_global)
 
 
 
@@ -258,11 +236,6 @@ set.seed(123)
 BEST_burden_per_sex <- HIA_burden_IC(BEST_burden_sex_total, dis_vec, outcome_vec, calc_replicate_IC)
 
 
-# --------------------------------------
-# RUBIN'S RULE
-# --------------------------------------
-BEST_Rubin_burden_per_sex <- HIA_burden_IC(BEST_burden_sex_total, dis_vec, outcome_vec, calc_IC_Rubin)
-
 
 
 
@@ -282,10 +255,6 @@ set.seed(123)
 BEST_burden_per_age <- HIA_burden_IC(BEST_burden_age_total, dis_vec, outcome_vec, calc_replicate_IC)
 
 
-# --------------------------------------
-# RUBIN'S RULE
-# --------------------------------------
-BEST_Rubin_burden_per_age <- HIA_burden_IC(BEST_burden_age_total, dis_vec, outcome_vec, calc_IC_Rubin)
 
 
 
@@ -379,10 +348,7 @@ plot_prop_above_7000
 
 # HIA of best case scenario
   export(BEST_burden, here("output", "Tables", "7000 steps", "HIA_7000steps_1000replicate.xlsx"))
-  export(BEST_Rubin_burden, here("output", "Tables", "7000 steps", "HIA_Rubin_7000steps_1000replicate.xlsx"))
   export(BEST_burden_per_sex, here("output", "Tables", "7000 steps", "HIA_sex_7000steps_1000replicate.xlsx"))
-  export(BEST_Rubin_burden_per_sex, here("output", "Tables", "7000 steps", "HIA_sex_Rubin_7000steps_1000replicate.xlsx"))
   export(BEST_burden_per_age, here("output", "Tables", "7000 steps", "HIA_age_7000steps_1000replicate.xlsx"))
-  export(BEST_Rubin_burden_per_age, here("output", "Tables", "7000 steps", "HIA_age_Rubin_7000steps_1000replicate.xlsx"))
   export(BEST_burden_add, here("output", "Tables", "7000 steps", "HIA_added_7000steps_1000replicate.xlsx"))
   export(prop_above_7000, here("output", "Tables", "7000 steps", "prop_above_7000steps.xlsx"))

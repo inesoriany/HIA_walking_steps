@@ -123,7 +123,7 @@ export(burden_total, here("output", "RDS", "2019", "HIA_1000replicate.rds"))
 ##############################################################
 # Total of prevented burden of each disease per sex for each simulation
 set.seed(123)
-burden_sex_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table,  duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_sex_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, dep_recovery,vsl, 
                                  group ="sex", 
@@ -139,7 +139,7 @@ export(burden_sex_total, here("output", "RDS", "2019", "HIA_per_sex_1000replicat
 ##############################################################
 # Total of prevented burden of each disease per age for each simulation
 set.seed(123)
-burden_age_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_age_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                      dis_vec, 
                                      prop_relapse, dep_recovery, vsl,
                                      group = "age_grp10", 
