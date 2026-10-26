@@ -42,6 +42,9 @@ emp_walkers <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 # Incidence distribution table
 incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
+# Prevalence distribution table
+prevalence_distrib_table <- import(here("data_clean", "Diseases", "prevalence_distrib_table.xlsx"))
+
 # Diseases duration distribution table
 duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
@@ -163,7 +166,7 @@ for (i in 1:N) {
   
   burden_run <- HIA_burden_total(short_trip_list, 
                 calc_HIA_replicate,
-                incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
+                incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
                 dis_vec, prop_relapse, dep_recovery, vsl, NULL, 1, FALSE) %>%
     mutate(run = i)
   
@@ -219,31 +222,6 @@ MODAL_burden_total <- import(here("output", "RDS", "Modal shift", "HIA_modal_shi
   MODAL_burden <- bind_rows(MODAL_burden_per_disease, MODAL_burden_morbidity, MODAL_burden_global)
   
 
-
-  
-# --------------------------------------
-# RUBIN'S RULE
-# --------------------------------------
-  # Per disease
-  MODAL_Rubin_burden_per_disease <- HIA_burden_IC(MODAL_burden_total, dis_vec, outcome_vec, calc_IC_Rubin) 
-
-  # Total for morbidity
-  MODAL_Rubin_burden_morbidity <- MODAL_Rubin_burden_per_disease %>%
-    filter(disease != c("mort", "dep")) %>% 
-    summarise(across(where(is.numeric), 
-                     ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "Chronic diseases") %>%
-    select(disease, everything()) 
-  
-  # Total for all diseases
-  MODAL_Rubin_burden_global <- MODAL_Rubin_burden_per_disease %>%
-    summarise(across(where(is.numeric), 
-                     ~ sum(.x, na.rm = TRUE) )) %>%
-    mutate(disease = "All") %>%
-    select(disease, everything()) 
-  
-  # Gather results
-  MODAL_Rubin_burden <- bind_rows(MODAL_Rubin_burden_per_disease, MODAL_Rubin_burden_morbidity, MODAL_Rubin_burden_global)
 
 
 
@@ -531,7 +509,6 @@ nb_short_drivers
 ## Tables
   # HIA of modal shift
     export(MODAL_burden, here("output", "Tables", "Modal shift", "HIA_modal_shift_1000replicate.xlsx"))
-    export(MODAL_Rubin_burden, here("output", "Tables", "Modal shift", "HIA_modal_shift_Rubin_1000replicate.xlsx"))
     export(MODAL_burden_add, here("output", "Tables", "Modal shift", "HIA_modal_shift_added_1000replicate.xlsx"))
 
   # Total km walked with IC and CO2 emissions prevented with IC

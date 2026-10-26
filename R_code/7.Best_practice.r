@@ -38,6 +38,9 @@ emp_walk_trips <- import(here("data_clean", "EMP_walking_trips.xlsx"))
 # Incidence distribution table
 incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
+# Prevalence distribution table
+prevalence_distrib_table <- import(here("data_clean", "Diseases", "prevalence_distrib_table.xlsx"))
+
 # Diseases duration distribution table
 duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
@@ -224,7 +227,7 @@ for (dis in dis_vec) {
 set.seed(123)
 PRACT_burden_total <- HIA_burden_total(PRACT_list,
                                        calc_HIA_replicate,
-                                       incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
+                                       incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
                                        dis_vec,
                                        prop_relapse, dep_recovery, vsl,
                                        group = "area_type",
@@ -340,7 +343,7 @@ for (dis in dis_vec) {
 set.seed(123)
 burden_2019_total <- HIA_burden_total(emp_2019_list,
                                       calc_HIA_replicate,
-                                      incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
+                                      incidence_distrib_table, prevalence_distrib_table,duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
                                       dis_vec,
                                       prop_relapse, dep_recovery, vsl,
                                       group = "area_type",

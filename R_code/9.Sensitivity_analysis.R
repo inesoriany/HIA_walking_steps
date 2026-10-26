@@ -36,11 +36,18 @@ emp_long <- import(here("data_clean", "EMP_dis_walkers.xlsx"))
 # Incidence distribution table
 incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_distrib_table.xlsx"))
 
+# Prevalence distribution table
+prevalence_distrib_table <- import(here("data_clean", "Diseases", "prevalence_distrib_table.xlsx"))
+
 # Risk reduction distribution table
 reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
 
 # Disease duration distribution table
 duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
+
+# RR by step, simulated dose-response relationships
+rr_distrib_table <- import(here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
+
 
 # Disability weights distribution table
 dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx"))
@@ -173,6 +180,7 @@ alt_burden_total <- HIA_burden_total(
   data_list = alt_replicate_list,
   function_calc_HIA = calc_alt_HIA,
   incidence_distrib_table = incidence_distrib_table,
+  prevalence_distrib_table = prevalence_distrib_table,
   duration_table = duration_distrib_table,
   reduction_risk_distrib_table = alt_rr_distrib_table,
   dw_distrib_table = dw_distrib_table,
@@ -204,6 +212,7 @@ baseline_burden_total <- HIA_burden_total(
   data_list = baseline_replicate_list,
   function_calc_HIA = calc_alt_HIA,
   incidence_distrib_table = incidence_distrib_table,
+  prevalence_distrib_table = prevalence_distrib_table,
   duration_table = duration_distrib_table,
   reduction_risk_distrib_table = alt_rr_distrib_table,
   dw_distrib_table = dw_distrib_table,
@@ -291,15 +300,33 @@ export(DRF_burden, here("output", "Tables", "Sensitivity analyses", "HIA_DRF_sen
 #                                                      1. PARAMETERS                                                           #
 ################################################################################################################################
 
-# Baseline
-baseline_step <- 2000 + 
+# Baseline (including leisure walk)
+baseline_step <- 2000 + 1200 / step_length
 
 # Diseases considered
 dis_vec <- c("mort", "cancer", "cvd", "diab2", "dem", "dep")
 
 
+
 ################################################################################################################################
-#                                                    2. DATA PREPARATION                                                       #
+#                                                  2. REDUCTION RISKS DATASET                                                  #
+################################################################################################################################
+##############################################################
+#                REDUCTION RISKS DISTRIBUTIONS               #
+##############################################################
+# Compute reduction risk
+rr_baseline_step <- rr_distrib_table  %>% 
+  filter(step == baseline_step) %>%
+  select(disease, sex, rr_interpolated = rr2000)
+
+
+reduc_distrib_table <- rr_distrib_table %>%
+  mutate(reduction_risk = rr2000/rr_interpolated - 1)
+
+
+
+################################################################################################################################
+#                                                    3. DATA PREPARATION                                                       #
 ################################################################################################################################
 emp_walk_baseline <- emp_long  %>% 
   mutate(step = pmin(12000, round(step_commute_jour / 100) * 100 + baseline_step))

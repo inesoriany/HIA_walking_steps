@@ -128,7 +128,7 @@ BEST_burden_sex_total <- HIA_burden_total(BEST_replicate_list, calc_HIA_replicat
 
 
 # Export : Table of HIA outcomes per simulation
-export(BEST_burden_sex_total, here("output", "RDS", "7000 steps", "HIA_sex_7000_steps_1000replicate.rds"))
+export(BEST_burden_sex_total, here("output", "RDS", "7000 steps", "HIA_sex_7000steps_1000replicate.rds"))
 
 
 
