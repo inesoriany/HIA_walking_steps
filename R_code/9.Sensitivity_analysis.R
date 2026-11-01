@@ -90,6 +90,7 @@ alt_dis_vec <- c("mort", "bc", "cc", "cvd", "diab2", "dem", "dep")
 ################################################################################################################################
 #                                                2. RELATIVE RISKS DISTRIBUTION                                                #
 ################################################################################################################################
+
 rr_women <- data.frame()
 rr_men <- data.frame()
 alt_rr_distrib <- data.frame()
@@ -141,12 +142,12 @@ alt_rr_distrib_table <- alt_rr_distrib  %>%
 ################################################################################################################################
 
 # Initialization
-emp_walk <- emp_long %>% 
-  mutate(week_time = 7*(nbkm_tot_walking + baseline_step*step_length)*60/walk_speed)  %>%       # baseline at 2000 steps 
-  left_join(alt_rr_distrib_table  %>% select(disease, sex, ref)  %>% distinct(disease, sex, .keep_all = TRUE),, by = c("disease" , "sex"))
+emp_alt_walk <- emp_long %>% 
+  mutate(week_time = pond_jour*(nbkm_tot_walking + baseline_step*step_length)*60/(walk_speed*pond_indc))  %>%       # baseline at 2000 steps 
+  left_join(alt_rr_distrib_table  %>% select(disease, sex, ref)  %>% distinct(disease, sex, .keep_all = TRUE), by = c("disease" , "sex"))
 
-emp_baseline <- emp_long %>% 
-  mutate(week_time = 7*(baseline_step*step_length)*60/walk_speed)  %>% 
+emp_alt_baseline <- emp_long %>% 
+  mutate(week_time = pond_jour*(baseline_step*step_length)*60/(walk_speed*pond_indc))  %>% 
   left_join(alt_rr_distrib_table  %>% select(disease, sex, ref)  %>% distinct(disease, sex, .keep_all = TRUE), by = c("disease" , "sex"))
 
 
@@ -154,13 +155,13 @@ emp_baseline <- emp_long %>%
 # EMP Dataset per disease
 alt_replicate_list <- list() 
 for (dis in alt_dis_vec) {
-  alt_replicate_list[[dis]] <- emp_walk %>% 
+  alt_replicate_list[[dis]] <- emp_alt_walk %>% 
     filter(disease == dis)
 }
 
-baseline_replicate_list <- list() 
+alt_baseline_replicate_list <- list() 
 for (dis in alt_dis_vec) {
-  baseline_replicate_list[[dis]] <- emp_baseline %>% 
+  alt_baseline_replicate_list[[dis]] <- emp_alt_baseline %>% 
     filter(disease == dis)
 }
 
@@ -177,7 +178,7 @@ for (dis in alt_dis_vec) {
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
 alt_burden_total <- HIA_burden_total(
-  data_list = alt_replicate_list,
+  data_list = alt_replicate_list, 
   function_calc_HIA = calc_alt_HIA,
   incidence_distrib_table = incidence_distrib_table,
   prevalence_distrib_table = prevalence_distrib_table,
@@ -208,8 +209,8 @@ export(alt_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_DRF_
 
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-baseline_burden_total <- HIA_burden_total(
-  data_list = baseline_replicate_list,
+alt_base_burden_total <- HIA_burden_total(
+  data_list = alt_baseline_replicate_list,
   function_calc_HIA = calc_alt_HIA,
   incidence_distrib_table = incidence_distrib_table,
   prevalence_distrib_table = prevalence_distrib_table,
@@ -226,7 +227,7 @@ baseline_burden_total <- HIA_burden_total(
  
 
 # Export : Table of HIA outcomes per simulation
-export(baseline_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_DRF_baseline_sensitivity_1000replicate.rds"))
+export(alt_base_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_DRF_baseline_sensitivity_1000replicate.rds"))
 
 
 
@@ -236,7 +237,7 @@ export(baseline_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA
 
 # Import data
 alt_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_DRF_sensitivity_1000replicate.rds"))
-baseline_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_DRF_baseline_sensitivity_1000replicate.rds"))
+alt_base_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_DRF_baseline_sensitivity_1000replicate.rds"))
 
 
 ##############################################################
@@ -249,17 +250,17 @@ ALT_burden_per_disease <- HIA_burden_IC(alt_burden_total, alt_dis_vec, outcome_v
 
 # Baseline burden
 set.seed(123)
-BASE_burden_per_disease <- HIA_burden_IC(baseline_burden_total, alt_dis_vec, outcome_vec, calc_replicate_IC)
+ALT_BASE_burden_per_disease <- HIA_burden_IC(alt_base_burden_total, alt_dis_vec, outcome_vec, calc_replicate_IC)
 
 
 # Additional gains of the modal shift scenario
 DRF_burden_per_disease <- ALT_burden_per_disease %>% 
-    mutate(tot_cases = tot_cases - BASE_burden_per_disease[["tot_cases"]],
-           tot_cases_low = tot_cases_low - BASE_burden_per_disease[["tot_cases_low"]], 
-           tot_cases_up = tot_cases_up - BASE_burden_per_disease[["tot_cases_up"]],
-           tot_daly = tot_daly - BASE_burden_per_disease[["tot_daly"]],
-           tot_daly_low = tot_daly_low - BASE_burden_per_disease[["tot_daly_low"]],
-           tot_daly_up = tot_daly_up - BASE_burden_per_disease[["tot_daly_up"]])  %>% 
+    mutate(tot_cases = tot_cases - ALT_BASE_burden_per_disease[["tot_cases"]],
+           tot_cases_low = tot_cases_low - ALT_BASE_burden_per_disease[["tot_cases_low"]], 
+           tot_cases_up = tot_cases_up - ALT_BASE_burden_per_disease[["tot_cases_up"]],
+           tot_daly = tot_daly - ALT_BASE_burden_per_disease[["tot_daly"]],
+           tot_daly_low = tot_daly_low - ALT_BASE_burden_per_disease[["tot_daly_low"]],
+           tot_daly_up = tot_daly_up - ALT_BASE_burden_per_disease[["tot_daly_up"]])  %>% 
     select(disease, tot_cases, tot_cases_low, tot_cases_up, tot_daly, tot_daly_low, tot_daly_up)
 
 # Total for morbidity
@@ -301,7 +302,7 @@ export(DRF_burden, here("output", "Tables", "Sensitivity analyses", "HIA_DRF_sen
 ################################################################################################################################
 
 # Baseline (including leisure walk)
-baseline_step <- 2000 + 1200 / step_length
+baseline_step <- 2000 + 1200 / step_length      # 1200m per day of leisure walk (ADEME, Rapport "Mobilité à pied et bilan socio-économique de la marche", Sept. 2025)
 
 # Diseases considered
 dis_vec <- c("mort", "cancer", "cvd", "diab2", "dem", "dep")
@@ -314,14 +315,11 @@ dis_vec <- c("mort", "cancer", "cvd", "diab2", "dem", "dep")
 ##############################################################
 #                REDUCTION RISKS DISTRIBUTIONS               #
 ##############################################################
-# Compute reduction risk
-rr_baseline_step <- rr_distrib_table  %>% 
-  filter(step == baseline_step) %>%
-  select(disease, sex, rr_interpolated = rr2000)
-
-
-reduc_distrib_table <- rr_distrib_table %>%
-  mutate(reduction_risk = rr2000/rr_interpolated - 1)
+# Baseline RR and reduction calculations
+rr_distrib_table <- rr_distrib_table  %>% 
+  left_join(rr_baseline_step, by = c("disease", "sex")) %>% 
+  mutate(rr_baseline = rr_distrib_table$rr_interpolated[rr_distrib_table$step == baseline_step]) %>% 
+  mutate(reduction_risk = rr_baseline/rr_interpolated - 1)
 
 
 
@@ -351,7 +349,7 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-speed_burden_total <- HIA_burden_total(speed_replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+baseline_burden_total <- HIA_burden_total(baseline_replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
@@ -359,7 +357,7 @@ speed_burden_total <- HIA_burden_total(speed_replicate_list, calc_HIA_replicate,
  
 
 # Export : Table of HIA outcomes per simulation
-export(speed_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_speed_sensitivity_1000replicate.rds"))
+export(baseline_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_baseline_sensitivity_1000replicate.rds"))
 
 
 
@@ -372,7 +370,7 @@ export(speed_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_sp
 ##############################################################
 
 # Import data
-speed_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_speed_sensitivity_1000replicate.rds"))
+baseline_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_baseline_sensitivity_1000replicate.rds"))
 
 
 # --------------------------------------
@@ -381,11 +379,11 @@ speed_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_
 # IC95 and median 
   # Per disease
   set.seed(123)
-  speed_burden_per_disease <- HIA_burden_IC(speed_burden_total, dis_vec, outcome_vec, calc_replicate_IC) 
+  baseline_burden_per_disease <- HIA_burden_IC(baseline_burden_total, dis_vec, outcome_vec, calc_replicate_IC) 
 
 
   # Total for morbidity
-  speed_burden_morbidity <- speed_burden_per_disease %>%
+  baseline_burden_morbidity <- baseline_burden_per_disease %>%
     filter(disease != c("mort", "dep")) %>% 
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
@@ -394,21 +392,21 @@ speed_burden_total <- import(here("output", "RDS", "Sensitivity analyses", "HIA_
   
   
   # Total for all diseases
-  speed_burden_global <- speed_burden_per_disease %>%
+  baseline_burden_global <- baseline_burden_per_disease %>%
     summarise(across(where(is.numeric), 
                      ~ sum(.x, na.rm = TRUE) )) %>%
     mutate(disease = "All") %>%
     select(disease, everything()) 
   
   # Gather results
-  speed_burden <- bind_rows(speed_burden_per_disease, speed_burden_morbidity, speed_burden_global)
+  baseline_burden <- bind_rows(baseline_burden_per_disease, baseline_burden_morbidity, baseline_burden_global)
 
 
 
 ################################################################################################################################
 #                                                      5. EXPORT DATA                                                          #
 ################################################################################################################################
-export(speed_burden, here("output", "Tables", "Sensitivity analyses", "HIA_speed_sensitivity_1000replicate.xlsx")) 
+export(baseline_burden, here("output", "Tables", "Sensitivity analyses", "HIA_baseline_sensitivity_1000replicate.xlsx")) 
 
 
 

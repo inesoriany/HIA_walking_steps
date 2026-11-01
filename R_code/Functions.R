@@ -263,30 +263,28 @@ graph_DRF <- function(dis, data, rr_mean, rr_lci, rr_uci) {
   # set.seed()
 incid_prev_replicate = function(data_list, incid_prev_distrib_table, dis_vec,
                                 distribution_column, rate_column) {
-  
-  for (dis in dis_vec) {
-    dis_data <- data_list[[dis]]
-    
-    if (dis == "mort") {
-      dis_data[[rate_column]] <- if (rate_column == "incid_rate") dis_data$rate else 0
-      data_list[[dis]] <- dis_data
 
+  non_mortality_dis <- setdiff(dis_vec, "mort")
+  if (length(non_mortality_dis) > 0) {
+    data_list <- value_associate(
+      data_list = data_list,
+      distrib_table = incid_prev_distrib_table,
+      dis_vec = non_mortality_dis,
+      variable = rate_column,
+      output_variable = rate_column,
+      group_vars = c("age_grp10", "sex"),
+      source_column = distribution_column
+    )
+  }
+
+  if ("mort" %in% dis_vec) {
+    data_list[["mort"]][[rate_column]] <- if (rate_column == "incid_rate") {
+      data_list[["mort"]]$rate
     } else {
-
-      # Randomly associate a rate for each individual based on age_grp10 and sex
-      rates_age_sex <- incid_prev_distrib_table %>%
-        filter(disease == dis) %>%
-        group_by(age_grp10, sex) %>%
-        summarise(rates = list(.data[[distribution_column]]), .groups = "drop")
-
-      dis_data <- dis_data %>%
-          left_join(rates_age_sex, by = c("age_grp10", "sex")) %>%
-          mutate(!!rate_column := map_dbl(rates, ~ if (length(.x) > 0) sample(.x, 1) else NA_real_)) %>%
-          select(-rates)
-      
-      data_list[[dis]] <- dis_data
+      0
     }
   }
+
   return(data_list)
 }
 
@@ -299,23 +297,18 @@ incid_prev_replicate = function(data_list, incid_prev_distrib_table, dis_vec,
   # set.seed()
 reduction_risk_replicate <- function(data_list, reduction_risk_distrib_table, dis_vec) {
 
+  data_list <- value_associate(
+    data_list = data_list,
+    distrib_table = reduction_risk_distrib_table,
+    dis_vec = dis_vec,
+    variable = "reduction_risk",
+    group_vars = "step",
+    source_column = "reduction_risk"
+  )
+
   for (dis in dis_vec) {
     dis_data <- data_list[[dis]]
 
-      # Randomly associate incidence rate for each individual based on step
-      reduction_risk_step <- reduction_risk_distrib_table %>%
-        filter(disease == dis) %>%
-        group_by(step) %>%
-        summarise( reduction_risk_values = list(reduction_risk), .groups = "drop")
-
-      dis_data <- dis_data %>%
-        left_join(reduction_risk_step, by = c("step")) %>%
-        mutate(reduction_risk = map_dbl(reduction_risk_values, ~ if(length(.x) > 0)sample(.x, 1)
-          else
-          NA_real_)) %>%
-        select(-reduction_risk_values)
-      
-  
       if (dis == "mort") {
         dis_data <- dis_data %>%
           mutate(reduction_risk = if_else(reduction_risk > (1-0.45), (1-0.45), reduction_risk))    # Cap mortality reduction to 45%
@@ -352,16 +345,34 @@ reduc_incidence = function(data) {
 ##############################################################
 # FUNCTION value_associate : Randomly associate values to individuals
   # set.seed()
-value_associate = function(data_list, distrib_table, dis_vec, variable) {
+value_associate = function(data_list, distrib_table, dis_vec, variable,
+                           output_variable = variable, group_vars = character(),
+                           source_column = paste0("simulated_", variable)) {
   
   for (dis in dis_vec) {
-    
-    dis_val <- distrib_table %>%
-      filter(disease == dis) %>%
-      pull(paste0("simulated_", variable))
-    
-    data_list[[dis]] <- data_list[[dis]] %>%
-      mutate(!!sym(variable) := sample(dis_val, size = n(), replace = TRUE))
+
+    dis_distrib <- distrib_table %>%
+      filter(disease == dis)
+
+    if (length(group_vars) > 0) {
+      values_by_group <- dis_distrib %>%
+        group_by(across(all_of(group_vars))) %>%
+        summarise(values = list(.data[[source_column]]), .groups = "drop")
+
+      data_list[[dis]] <- data_list[[dis]] %>%
+        left_join(values_by_group, by = group_vars) %>%
+        mutate(!!output_variable := map_dbl(
+          values,
+          ~ if (length(.x) > 0) .x[sample.int(length(.x), 1)] else NA_real_
+        )) %>%
+        select(-values)
+    } else {
+      dis_val <- dis_distrib %>%
+        pull(all_of(source_column))
+
+      data_list[[dis]] <- data_list[[dis]] %>%
+        mutate(!!sym(output_variable) := sample(dis_val, size = n(), replace = TRUE))
+    }
   }
   return(data_list)
 }
@@ -508,13 +519,12 @@ burden_prevented_replicate <- function(data_list, dis_vec, group) {
 # FUNCTION HIA_burden_total : HIA calculations and total of prevented cases, DALY and saved medical costs for N simulations
 # `seed`: optional integer; if supplied, set once before the loop for reproducibility.
 HIA_burden_total <- function(data_list, function_calc_HIA, incidence_distrib_table,
-                             prevalence_distrib_table = NULL, duration_table,
+                             prevalence_distrib_table, duration_table,
                              reduction_risk_distrib_table, dw_distrib_table,
                              dis_vec,
                              prop_relapse, dep_recovery, vsl, group, N,
-                             show_progress = TRUE, seed = NULL) {
+                             show_progress = TRUE) {
  
-  if (!is.null(seed)) set.seed(seed)
  
   burden_total_list <- vector("list", N)
  
@@ -534,19 +544,24 @@ HIA_burden_total <- function(data_list, function_calc_HIA, incidence_distrib_tab
     data_list = data_list,
     incidence_distrib_table = incidence_distrib_table,
     duration_table = duration_table,
-    reduction_risk_distrib_table = reduction_risk_distrib_table,
     dw_distrib_table = dw_distrib_table,
     dis_vec = dis_vec,
     prop_relapse = prop_relapse,
     dep_recovery = dep_recovery,
     vsl = vsl
   )
- 
-  # Only pass prevalence_distrib_table if the calc function accepts it
+
   calc_args <- base_args
-  if ("prevalence_distrib_table" %in% names(formals(function_calc_HIA))) {
+  calc_formals <- names(formals(function_calc_HIA))
+  if ("prevalence_distrib_table" %in% calc_formals) {
     calc_args$prevalence_distrib_table <- prevalence_distrib_table
   }
+  if ("reduction_risk_distrib_table" %in% calc_formals) {
+    calc_args$reduction_risk_distrib_table <- reduction_risk_distrib_table
+  } else if ("rr_distrib_table" %in% calc_formals) {
+    calc_args$rr_distrib_table <- reduction_risk_distrib_table
+  }
+  
  
   for (i in seq_len(N)) {
     data_list_replicate <- do.call(function_calc_HIA, calc_args)
@@ -664,7 +679,7 @@ calc_IC_Rubin = function(data, outcome){
             row[[paste0(out, "_up")]] <- round(IC[3], 3)
           }
           
-          HIA_burden <- dplyr::bind_rows(HIA_burden, row)
+          HIA_burden <- bind_rows(HIA_burden, row)
         }
       }
     }
@@ -762,23 +777,44 @@ dis_setting = function (dis) {
 
 # FUNCTION calc_HIA_replicate : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for 1 run
   # set.seed()
-calc_alt_HIA <- function(data_list, incidence_distrib_table, duration_table, rr_distrib_table, dw_distrib_table, 
+calc_alt_HIA <- function(data_list, incidence_distrib_table, prevalence_distrib_table, duration_table, reduction_risk_distrib_table, dw_distrib_table, 
                           dis_vec,
                           prop_relapse, dep_recovery, vsl) {
   
   # 1. Disease incidence
   if (!is.null(incidence_distrib_table)) {
-    data_list <- incidence_replicate(data_list = data_list,
-                                     incidence_distrib_table = incidence_distrib_table,
-                                     dis_vec = dis_vec)}
+    data_list <- incid_prev_replicate(data_list = data_list,
+                                     incid_prev_distrib_table = incidence_distrib_table,
+                                     dis_vec = dis_vec,
+                                     distribution_column = "simulated_incidence",
+                                     rate_column = "incid_rate")}
   
-  # 2. Relative risks
+  # 2. Disease prevalence
+  if (!is.null(prevalence_distrib_table)) {
+    data_list <- incid_prev_replicate(data_list = data_list,
+                                      incid_prev_distrib_table = prevalence_distrib_table,
+                                      dis_vec = dis_vec,
+                                      distribution_column = "simulated_prevalence",
+                                      rate_column = "prev_rate")
+  }
+  # 3. Relative risks
+  rr_distrib_by_sex <- reduction_risk_distrib_table %>%
+    filter(disease %in% dis_vec) %>%
+    group_by(disease, sex) %>%
+    summarise(values = list(simulated_rr), .groups = "drop") %>%
+    mutate(simulated_rr = map_dbl(
+      values,
+      ~ if (length(.x) > 0) .x[sample.int(length(.x), 1)] else NA_real_
+    )) %>%
+    select(-values)
+
   data_list <- value_associate(data_list = data_list,
-                               distrib_table = rr_distrib_table,
+                               distrib_table = rr_distrib_by_sex,
                                dis_vec = dis_vec,
-                               variable = "rr")
+                               variable = "rr",
+                               group_vars = "sex")
   
-  # 3. Disability weights
+  # 4. Disability weights
   data_list <- value_associate(data_list = data_list,
                                distrib_table = dw_distrib_table,
                                dis_vec = dis_vec,
@@ -789,25 +825,29 @@ calc_alt_HIA <- function(data_list, incidence_distrib_table, duration_table, rr_
     
     dis_data <- data_list[[dis]]
     
-    # 4. Disease reduction risk
+    # 5. Disease reduction risk
     dis_data <- dis_data %>%
-      mutate(reduction_risk = 1 - exp(log(rr) * week_time / ref))
+      mutate(reduction_risk = (1 - rr) * (week_time / ref))
     
     # Cap mortality reduction to 45%
     if (dis == "mort") {
       dis_data <- dis_data %>%
         mutate(reduction_risk = if_else(reduction_risk > (1 - 0.45), 1 - 0.45, reduction_risk))}
+    else {
+      dis_data <- dis_data %>%
+        mutate(reduction_risk = if_else(reduction_risk > 0.40, 0.40, reduction_risk))
+    }
     
-    # 5. Cases prevented
-    dis_data <- reduc_incidence(dis_data) %>%
-      mutate(cases = ifelse(cases > 0.40, 0.40, cases))
+    
+    # 6. Cases prevented
+    dis_data <- reduc_incidence(dis_data)
     
 
-    # 6. DALY
+    # 7. DALY
     dis_data <- daly(dis_data, duration_table, dis, prop_relapse, dep_recovery)
 
     
-    # 7. Economic impact
+    # 8. Economic impact
     dis_data <- medic_costs(dis_data, dis)
     
     dis_data <- dis_data %>%
