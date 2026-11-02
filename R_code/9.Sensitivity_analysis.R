@@ -73,6 +73,33 @@ outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 
 
 
+
+################################################################################################################################
+################################################################################################################################
+#                                                    MAIN ANALYSIS - 2019                                                      #
+################################################################################################################################
+################################################################################################################################
+
+################################################################################################################################
+#                                                    1. DATA PREPARATION                                                       #
+################################################################################################################################
+
+# Initialization
+emp_long <- emp_long %>% 
+  # Round the number of steps to the nearest hundred and baseline at 2000 steps
+  mutate(step = pmin(12000, round(step_commute_jour / 100) * 100 + baseline_step))
+
+
+
+# EMP Dataset per disease
+replicate_list <- list() 
+
+for (dis in dis_vec) {
+  replicate_list[[dis]] <- emp_long %>% 
+    filter(disease == dis)
+}
+
+
 ################################################################################################################################
 ################################################################################################################################
 #                                                       ALTERNATIVE DRF                                                        #
@@ -302,7 +329,8 @@ export(DRF_burden, here("output", "Tables", "Sensitivity analyses", "HIA_DRF_sen
 ################################################################################################################################
 
 # Baseline (including leisure walk)
-baseline_step <- 2000 + 1200 / step_length      # 1200m per day of leisure walk (ADEME, Rapport "Mobilité à pied et bilan socio-économique de la marche", Sept. 2025)
+new_baseline_step <- round((2000 + 1.2 / step_length)/100) *100     # 1200m per day of leisure walk (ADEME, Rapport "Mobilité à pied et bilan socio-économique de la marche", Sept. 2025)
+
 
 # Diseases considered
 dis_vec <- c("mort", "cancer", "cvd", "diab2", "dem", "dep")
@@ -316,9 +344,13 @@ dis_vec <- c("mort", "cancer", "cvd", "diab2", "dem", "dep")
 #                REDUCTION RISKS DISTRIBUTIONS               #
 ##############################################################
 # Baseline RR and reduction calculations
-rr_distrib_table <- rr_distrib_table  %>% 
-  left_join(rr_baseline_step, by = c("disease", "sex")) %>% 
-  mutate(rr_baseline = rr_distrib_table$rr_interpolated[rr_distrib_table$step == baseline_step]) %>% 
+rr_baseline_step <- rr_distrib_table %>% 
+  filter(step == new_baseline_step)  %>% 
+  select(simulation_id, disease, rr_interpolated) %>% 
+  rename(rr_baseline = rr_interpolated)
+
+reduction_risk_baseline_distrib_table <- rr_distrib_table  %>% 
+  left_join(rr_baseline_step, by = c("disease", "simulation_id")) %>% 
   mutate(reduction_risk = rr_baseline/rr_interpolated - 1)
 
 
@@ -327,7 +359,7 @@ rr_distrib_table <- rr_distrib_table  %>%
 #                                                    3. DATA PREPARATION                                                       #
 ################################################################################################################################
 emp_walk_baseline <- emp_long  %>% 
-  mutate(step = pmin(12000, round(step_commute_jour / 100) * 100 + baseline_step))
+  mutate(step = pmin(12000, round(step_commute_jour / 100) * 100 + new_baseline_step))
 
 
 # EMP Dataset per disease
@@ -349,7 +381,7 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-baseline_burden_total <- HIA_burden_total(baseline_replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+baseline_burden_total <- HIA_burden_total(baseline_replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_baseline_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
@@ -452,7 +484,7 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-age_burden_total <- HIA_burden_total(age_replicate_list, calc_HIA_replicate, incidence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+age_burden_total <- HIA_burden_total(age_replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
@@ -541,8 +573,8 @@ HIA_DRF <- import(here("output", "Tables", "Sensitivity analyses", "HIA_DRF_sens
   select(-tot_daly_ref)
 
 
-# Walking speed 5.3 km/h
-HIA_speed <- import(here("output", "Tables", "Sensitivity analyses", "HIA_speed_sensitivity_1000replicate.xlsx")) %>% 
+# Change of baseline (include leisure walk)
+HIA_baseline <- import(here("output", "Tables", "Sensitivity analyses", "HIA_baseline_sensitivity_1000replicate.xlsx")) %>% 
   filter(disease == "All")  %>% 
   mutate(analysis = "sc2") %>% 
   select(analysis, disease, tot_daly, tot_daly_low, tot_daly_up) %>% 
@@ -572,8 +604,69 @@ HIA_main <- HIA_main %>%
 ################################################################################################################################
 #                                                    2. DATA PREPARATION                                                       #
 ################################################################################################################################
-SENSI_data <- bind_rows(HIA_main, HIA_DRF, HIA_speed, HIA_age)  %>% 
+
+# ---------------------
+# ABSOLUTE VALUES
+# ---------------------
+SENSI_data <- bind_rows(HIA_main, HIA_DRF, HIA_baseline, HIA_age)  %>% 
   mutate(outcome = "tot_daly") %>%
+  mutate(disease = factor(disease, levels = c("dep", "dem", "diab2", "cancer", "cc", "bc", "cvd", "mort", "All")))
+
+
+# ---------------------
+# FOR 100 000 STEPS 
+# ---------------------
+  # Survey design
+  main_design <- replicate_list[["mort"]] %>% 
+  filter(!is.na(pond_jour)) %>% 
+  as_survey_design(ids = ident_ind,
+                   weights = pond_jour,
+                   strata = c(sex, age_grp10),
+                   nest = TRUE)
+  
+  baseline_design <- baseline_replicate_list[["mort"]] %>% 
+  filter(!is.na(pond_jour)) %>% 
+  as_survey_design(ids = ident_ind,
+                   weights = pond_jour,
+                   strata = c(sex, age_grp10),
+                   nest = TRUE)
+  
+  age_design <- age_replicate_list[["mort"]] %>% 
+  filter(!is.na(pond_jour)) %>% 
+  as_survey_design(ids = ident_ind,
+                   weights = pond_jour,
+                   strata = c(sex, age_grp10),
+                   nest = TRUE)
+
+  # Total steps per day
+  main_alt_step_day <- as.numeric(svytotal(~step, main_design)) /7
+  baseline_step_day <- as.numeric(svytotal(~step, baseline_design)) /7
+  age_step_day <- as.numeric(svytotal(~step, age_design)) /7
+
+
+  # Results DALY/100000 steps
+  HIA_main_100000steps <- HIA_main %>% 
+    mutate(tot_daly = tot_daly * 100000 / main_alt_step_day,
+           tot_daly_low = tot_daly_low * 100000 / main_alt_step_day,
+           tot_daly_up = tot_daly_up * 100000 / main_alt_step_day)
+  
+  HIA_DRF_100000steps <- HIA_DRF  %>% 
+    mutate(tot_daly = tot_daly * 100000 / main_alt_step_day,
+           tot_daly_low = tot_daly_low * 100000 / main_alt_step_day,
+           tot_daly_up = tot_daly_up * 100000 / main_alt_step_day)
+  
+  HIA_baseline_100000steps <- HIA_baseline  %>% 
+    mutate(tot_daly = tot_daly * 100000 / baseline_step_day,
+           tot_daly_low = tot_daly_low * 100000 / baseline_step_day,
+           tot_daly_up = tot_daly_up * 100000 / baseline_step_day)
+  
+  HIA_age_100000steps <- HIA_age  %>% 
+    mutate(tot_daly = tot_daly * 100000 / age_step_day,
+           tot_daly_low = tot_daly_low * 100000 / age_step_day,
+           tot_daly_up = tot_daly_up * 100000 / age_step_day)
+
+  SENSI_data_100000steps <- bind_rows(HIA_main_100000steps, HIA_DRF_100000steps, HIA_baseline_100000steps, HIA_age_100000steps)  %>% 
+  mutate(outcome = "tot_daly_100000steps") %>%
   mutate(disease = factor(disease, levels = c("dep", "dem", "diab2", "cancer", "cc", "bc", "cvd", "mort", "All")))
 
 
@@ -582,15 +675,18 @@ SENSI_data <- bind_rows(HIA_main, HIA_DRF, HIA_speed, HIA_age)  %>%
 #                                                     3. VISUALIZATION                                                         #
 ################################################################################################################################
 
-# Plot : Sensitivity analysis of the number health events prevented under different assumptions
-
 labels_analysis <- c(
   "main" = "Main Analysis",
   "sc1"  = "Alternative DRF",
-  "sc2" = "Walking speed 5.3 km/h",
+  "sc2" = "Change of baseline (include leisure walk)",
   "sc3" = "Age limit < 75 years"
 )
 
+
+# ---------------------
+# ABSOLUTE VALUES
+# ---------------------
+# Plot : Sensitivity analysis of the number health events prevented under different assumptions
 
 plot_sensi <- ggplot(SENSI_data) +
   geom_point(aes(x = tot_daly,
@@ -655,8 +751,81 @@ plot_sensi
 
 
 
+# ---------------------
+# FOR 100 000 STEPS 
+# ---------------------
+# Plot : Sensitivity analysis of the number health events prevented under different assumptions
+plot_sensi_100000steps <- ggplot(SENSI_data_100000steps) +
+  geom_point(aes(x = tot_daly,
+                 y = disease,
+                 color = factor(disease)),
+             size = 5,
+             shape = 18) +
+  geom_segment(aes(x = tot_daly_low,
+                   xend = tot_daly_up,
+                   y = disease,
+                   yend = disease,
+                   color = factor(disease),
+                   group = disease),
+               linewidth = 0.6) +
+  facet_grid(
+    rows = vars(analysis),
+    cols = vars(outcome),
+    labeller = labeller(
+      analysis = labels_analysis,
+      outcome = c("tot_daly_100000steps" = "Prevented DALYs per 100,000 steps")
+    ),
+    scales = "free_y",
+    space = "free"
+  ) +
+  scale_color_manual(
+    values = colors_disease,
+    labels = names_disease
+  ) +
+  labs(
+    title = ,
+    y = NULL,
+    x = NULL,
+    color = "Disease"
+  ) +
+  theme(
+    strip.text.y = element_text(angle = 0, hjust = 0, size = 10),
+    strip.text.x = element_text(angle = 0, hjust = 0.5, size = 10),
+    axis.text.x = element_text(angle = 30, hjust = 1, size = 7),
+    axis.text.y = element_text(angle = 0, hjust = 1, size = 8),
+    axis.ticks.y = element_blank(),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank(),
+    panel.spacing.y = unit(0.6, "lines")
+  ) +
+  scale_y_discrete(labels = names_disease) +
+  scale_x_continuous(
+    labels=scales::label_comma(),
+    breaks=function(x) {
+      top <- ceiling(x[2]/20000)*20000
+      br <- seq(0, top, by=20000)
+      sort(unique(c(br,1)))}
+  ) +
+  coord_cartesian(xlim = c(0, 0.6)) +
+  geom_vline(data=data.frame(outcome=c("tot_daly_100000steps"),
+                             xintercept=c(5000)),
+             aes(xintercept=xintercept),
+             linetype="dashed", color="black", linewidth=0.3) +
+  guides(color=guide_legend(title=NULL))
+
+plot_sensi_100000steps
+
+
+
+
+
+
 ################################################################################################################################
-#                                                        2. EXPORT                                                             #
+#                                                        4. EXPORT                                                             #
 ################################################################################################################################
-ggsave(here("output", "Plots", "Sensitivity analyses", "plot_sensitivity.png"), plot = plot_sensi)
+ggsave(here("output", "Plots", "Sensitivity analyses", "plot_sensitivity.png"),
+       plot = plot_sensi, width = 12, height = 8, units = "in")
+ggsave(here("output", "Plots", "Sensitivity analyses", "plot_sensitivity_100000steps.png"),
+       plot = plot_sensi_100000steps, width = 12, height = 8, units = "in")
 export(SENSI_data, here("output", "Tables", "Sensitivity analyses", "sensitivity_analysis.xlsx"))
+export(SENSI_data_100000steps, here("output", "Tables", "Sensitivity analyses", "sensitivity_analysis_100000steps.xlsx"))
