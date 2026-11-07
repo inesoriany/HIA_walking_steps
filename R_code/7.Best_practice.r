@@ -44,8 +44,8 @@ prevalence_distrib_table <- import(here("data_clean", "Diseases", "prevalence_di
 # Diseases duration distribution table
 duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
-# Risk reduction distribution table
-reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
+# Relative risk distribution table
+rr_distrib_table <- import(here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
 
 # Disability weights distribution table
 dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx"))
@@ -225,13 +225,14 @@ for (dis in dis_vec) {
 
 # Total of prevented burden of each disease per area type for each simulation 
 set.seed(123)
-PRACT_burden_total <- HIA_burden_total(PRACT_list,
+PRACT_burden_total <- HIA_burden_total(scenario = "intervention",
+                                        PRACT_list,
                                        calc_HIA_replicate,
-                                       incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
+                                       incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, rr_distrib_table, dw_distrib_table,
                                        dis_vec,
                                        prop_relapse, dep_recovery, vsl,
                                        group = "area_type",
-                                       N = 1000)
+                                       N = 1)
 
 
 # Export : Table of HIA outcomes per simulation

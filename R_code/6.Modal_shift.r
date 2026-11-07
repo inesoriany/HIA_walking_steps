@@ -48,8 +48,8 @@ prevalence_distrib_table <- import(here("data_clean", "Diseases", "prevalence_di
 # Diseases duration distribution table
 duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
-# Risk reduction distribution table
-reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
+# Relative risk distribution table
+rr_distrib_table <- import(here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
 
 # Disability weights distribution table
 dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx"))
@@ -77,7 +77,7 @@ outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
 
 # Modal shift scenario
   # Driven distance shifted to walked (km)
-  dist <- 2 
+  max_trip_distance_km <- 2 
 
   # Percentage of drivers shifted to walking
   perc <- 0.5
@@ -106,7 +106,7 @@ emp_car_trip <- emp_car_trip %>%
 ################################################################################################################################
 # Initialization
 emp_short_trip <- emp_car_trip %>% 
-  filter(!is.na(nbkm_car_jour) & nbkm_car_jour <= dist) %>% 
+  filter(!is.na(nbkm_car_jour) & nbkm_car_jour <= max_trip_distance_km) %>% 
   mutate(co2_diminution = co2_all_car - co2_adjusted,
          co2_prop_reduction = - co2_adjusted / co2_all_car)
 
@@ -131,6 +131,8 @@ emp_short_driver <- emp_short_trip %>%
 ################################################################################################################################
 #                                              4. HEALTH IMPACT ASSESSMENT                                                     #
 ################################################################################################################################
+
+# C EST L INCREMENTAL EFFECT
 set.seed(123)
 
 N <- 1000
@@ -152,7 +154,8 @@ for (i in 1:N) {
   emp_walk_drive_sample <- emp_walkers  %>% 
       left_join(emp_driver_sample  %>% select(ident_ind, disease, step_shift, short_car), by = c("ident_ind", "disease"))  %>% 
       replace_na(list(step_shift = 0))  %>%
-      mutate(step_total = step_commute_jour + step_shift,
+      mutate(step_2019 = pmin(12000, round(step_commute_jour/ 100) * 100 + baseline_step),
+             step_total = step_commute_jour + step_shift,
              step = pmin(12000, round(step_total / 100) * 100 + baseline_step))     # Round the number of steps to the nearest hundred and baseline at 2000
 
   short_trip_list <- list()
@@ -164,9 +167,10 @@ for (i in 1:N) {
     short_trip_list[[dis]] <- emp_dis_sample
   }
   
-  burden_run <- HIA_burden_total(short_trip_list, 
+  burden_run <- HIA_burden_total(scenario = "intervention", 
+                short_trip_list, 
                 calc_HIA_replicate,
-                incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
+                incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, rr_distrib_table, dw_distrib_table,
                 dis_vec, prop_relapse, dep_recovery, vsl, NULL, 1, FALSE) %>%
     mutate(run = i)
   
@@ -481,7 +485,7 @@ nb_short_drivers <- tibble(
 # Total and mean distance driven of short car trips (< 2 km) per year (in km)
 short_km_driven <- emp_car_trip  %>% 
   filter(disease == "mort",
-          !is.na(nbkm_car_jour) & nbkm_car_jour <= dist,
+          !is.na(nbkm_car_jour) & nbkm_car_jour <= max_trip_distance_km,
           !is.na(pond_jour))  %>%
   as_survey_design(ids = ident_ind, weights = pond_jour) %>% 
   summarise(tot_km = survey_total(nbkm_car, na.rm = T) * 365.25 / 7)  %>% 
