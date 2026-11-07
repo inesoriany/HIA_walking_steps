@@ -64,9 +64,6 @@ GBD_dis <- import(here("data", "GBD_diseases.xlsx"))
 insee <- import(here("data", "INSEE_2019.RDS"))
 
 
-# RR by step, simulated dose-response relationships
-rr_distrib_table <- import(here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
-
 
 # Disability weights
 dw_table <- import(here("data", "dw_table.xlsx"))
@@ -168,22 +165,9 @@ prevalence_distrib_table <- dis_distrib_table %>%
 
 
 
-################################################################################################################################
-#                                                  5. REDUCTION RISKS DATASET                                                  #
-################################################################################################################################
-
-##############################################################
-#                REDUCTION RISKS DISTRIBUTIONS               #
-##############################################################
-# Compute reduction risk
-rr2000 <- 1
-reduc_distrib_table <- rr_distrib_table %>%
-  mutate(reduction_risk = rr2000/rr_interpolated - 1)
-
-
 
 ################################################################################################################################
-#                                                6. DISABILITY WEIGHTS DATASET                                                 #
+#                                                5. DISABILITY WEIGHTS DATASET                                                 #
 ################################################################################################################################
 
 ##############################################################
@@ -196,7 +180,7 @@ dw_distrib_table <- table_distrib(dw_table, 1000, dw_mid, dw_low, dw_up, "dw")
 
 
 ################################################################################################################################
-#                                                      7. DISEASE DURATION                                                     #
+#                                                      6. DISEASE DURATION                                                     #
 ################################################################################################################################
 # Generate PREVALENCE normal distributions
 set.seed(123)
@@ -228,9 +212,6 @@ duration_distrib_table <- general_incidence_distrib_table %>%
 
 # Prevalencedistribution table
   export(prevalence_distrib_table, here("data_clean", "Diseases", "prevalence_distrib_table.xlsx"))
-
-# Reduction risks distribution table
-  export(reduc_distrib_table, here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
 
 # Disability weights distribution table
   export(dw_distrib_table, here("data_clean", "Diseases", "dw_distrib_table.xlsx"))
