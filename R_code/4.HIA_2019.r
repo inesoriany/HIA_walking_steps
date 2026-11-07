@@ -51,7 +51,7 @@ prevalence_distrib_table <- import(here("data_clean", "Diseases", "prevalence_di
 duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
 # Risk reduction distribution table
-reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
+rr_distrib_table <- import(here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
 
 # Disability weights distribution table
 dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx"))
@@ -59,7 +59,6 @@ dw_distrib_table <- import(here("data_clean", "Diseases", "dw_distrib_table.xlsx
 
 # Import functions
 source(here("R_code", "Functions.R"))
-
 
 
 ################################################################################################################################
@@ -107,12 +106,12 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-burden_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_total <- HIA_burden_total(scenario = "current", 
+                                 replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, rr_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
                                  N = 1000)
- 
 
 # Export : Table of HIA outcomes per simulation
 export(burden_total, here("output", "RDS", "2019", "HIA_1000replicate.rds"))
@@ -123,11 +122,12 @@ export(burden_total, here("output", "RDS", "2019", "HIA_1000replicate.rds"))
 ##############################################################
 # Total of prevented burden of each disease per sex for each simulation
 set.seed(123)
-burden_sex_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
-                                 dis_vec, 
-                                 prop_relapse, dep_recovery,vsl, 
-                                 group ="sex", 
-                                 N = 1000)
+burden_sex_total <- HIA_burden_total(scenario = "current", 
+                                     replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, rr_distrib_table, dw_distrib_table, 
+                                     dis_vec, 
+                                     prop_relapse, dep_recovery,vsl, 
+                                     group ="sex", 
+                                     N = 1000)
 
 
 # Export : Table of HIA outcomes per simulation
@@ -139,17 +139,19 @@ export(burden_sex_total, here("output", "RDS", "2019", "HIA_per_sex_1000replicat
 ##############################################################
 # Total of prevented burden of each disease per age for each simulation
 set.seed(123)
-burden_age_total <- HIA_burden_total(replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+burden_age_total <- HIA_burden_total(scenario = "current", 
+                                     replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, rr_distrib_table, dw_distrib_table, 
                                      dis_vec, 
-                                     prop_relapse, dep_recovery, vsl,
-                                     group = "age_grp10", 
-                                     N = 1000,
-                                     prevalence_distrib_table = prevalence_distrib_table)
+                                     prop_relapse, dep_recovery,vsl, 
+                                     group ="age_grp10", 
+                                     N = 1000)
+
 
 # Export : Table of HIA outcomes per simulation
 export(burden_age_total, here("output", "RDS", "2019", "HIA_per_age_1000replicate.rds"))
 
-# Tester avec une prévalence unique pour toustes pour voir qu'il y a une réduction de 10%
+
+
 
 
 ################################################################################################################################
@@ -257,7 +259,7 @@ for (i in 1:N) {
     incidence_distrib_table = incidence_distrib_table,
     prevalence_distrib_table = prevalence_distrib_table,
     duration_table = duration_distrib_table,
-    reduction_risk_distrib_table = reduction_risk_distrib_table,
+    rr_distrib_table = rr_distrib_table,
     dw_distrib_table = dw_distrib_table,
     dis_vec = "mort",
     prop_relapse = prop_relapse,
