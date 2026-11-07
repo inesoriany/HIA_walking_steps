@@ -255,6 +255,7 @@ reduc_mortality_risk <- data.frame()
 for (i in 1:N) {
 
   HIA_mortality_replicate <- calc_HIA_replicate(
+    scenario = "current",
     data_list = replicate_list,
     incidence_distrib_table = incidence_distrib_table,
     prevalence_distrib_table = prevalence_distrib_table,
@@ -488,11 +489,8 @@ soc_euro_unit_2019 <- soc_euro_step_unit_2019 %>%
   
 # Tables of HIA outcomes
   export(burden, here("output", "Tables", "2019", "HIA_per_disease.xlsx"))
-  export(Rubin_burden, here("output", "Tables", "2019", "HIA_per_disease_Rubin.xlsx"))
   export(burden_per_sex, here("output", "Tables", "2019", "HIA_per_sex.xlsx"))
-  export(Rubin_burden_per_sex, here("output", "Tables", "2019", "HIA_per_sex_Rubin.xlsx"))
   export(burden_per_age, here("output", "Tables", "2019", "HIA_per_age.xlsx"))
-  export(Rubin_burden_per_age, here("output", "Tables", "2019", "HIA_per_age_Rubin.xlsx"))
 
   
 # Table of reduction of mortality risk
