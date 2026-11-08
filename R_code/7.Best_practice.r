@@ -232,7 +232,7 @@ PRACT_burden_total <- HIA_burden_total(scenario = "intervention",
                                        dis_vec,
                                        prop_relapse, dep_recovery, vsl,
                                        group = "area_type",
-                                       N = 1)
+                                       N = 1000)
 
 
 # Export : Table of HIA outcomes per simulation
@@ -341,9 +341,10 @@ for (dis in dis_vec) {
 ################################################################################################################################
 # Total of prevented burden of each disease per area type for each simulation 
 set.seed(123)
-burden_2019_total <- HIA_burden_total(emp_2019_list,
+burden_2019_total <- HIA_burden_total(scenario = "current",
+                                      emp_2019_list,
                                       calc_HIA_replicate,
-                                      incidence_distrib_table, prevalence_distrib_table,duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table,
+                                      incidence_distrib_table, prevalence_distrib_table,duration_distrib_table, rr_distrib_table, dw_distrib_table,
                                       dis_vec,
                                       prop_relapse, dep_recovery, vsl,
                                       group = "area_type",
