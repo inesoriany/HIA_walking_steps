@@ -50,7 +50,7 @@ prevalence_distrib_table <- import(here("data_clean", "Diseases", "prevalence_di
 # Disease duration distribution table
 duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
-# Risk reduction distribution table
+# Relative risk distribution table
 rr_distrib_table <- import(here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
 
 # Disability weights distribution table
@@ -95,7 +95,9 @@ for (dis in dis_vec) {
     filter(disease == dis)
 }
 
-
+# Prevalence = 0
+prevalence_distrib_table <- prevalence_distrib_table %>% 
+  mutate(simulated_prevalence = 0)
 
 ################################################################################################################################
 #                                                 4. HEALTH IMPACT ASSESSMENT                                                  #
@@ -115,6 +117,8 @@ burden_total <- HIA_burden_total(scenario = "current",
 
 # Export : Table of HIA outcomes per simulation
 export(burden_total, here("output", "RDS", "2019", "HIA_1000replicate.rds"))
+
+
 
 
 ##############################################################
@@ -222,6 +226,7 @@ burden_per_sex <- HIA_burden_IC(burden_sex_total, dis_vec, outcome_vec, calc_rep
 
 # Import data
 burden_age_total <- import(here("output", "RDS", "2019", "HIA_per_age_1000replicate.rds"))
+
 
 
 # --------------------------------------

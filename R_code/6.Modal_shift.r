@@ -82,6 +82,10 @@ outcome_vec <- c("tot_cases", "tot_daly", "tot_medic_costs", "tot_soc_costs")
   # Percentage of drivers shifted to walking
   perc <- 0.5
 
+# Prevalence = 0
+prevalence_distrib_table <- prevalence_distrib_table %>% 
+  mutate(simulated_prevalence = 0)
+
 ################################################################################################################################
 #                                                      3. CO2 EMISSIONS                                                        #
 ################################################################################################################################
@@ -135,7 +139,7 @@ emp_short_driver <- emp_short_trip %>%
 # C EST L INCREMENTAL EFFECT
 set.seed(123)
 
-N <- 1000
+N <- 10
 
 MODAL_burden_total <- data.frame()
 

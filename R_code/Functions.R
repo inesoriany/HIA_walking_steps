@@ -129,7 +129,8 @@ walk_dataset <- function(data, diseases_10, insee, dis_vec,
       insee %>% select(MR, sex, age),       
       by = c("sex", "age")                  
     ) %>% 
-    rename(mort_rate = MR) %>%
+    rename(mort_rate = MR)  %>%  
+    mutate(mort_rate = mort_rate * 100000)     # Convert to per 100,000
   
   # Add life-expectancy for each sex
   data <- data %>%
@@ -330,7 +331,7 @@ reduc_incidence = function(data) {
  }
 
  data <- data %>% 
-   mutate(cases = pond_indc * (1 - prev_rate) * reduction_risk * incid_rate)
+   mutate(cases = pond_indc * (1 - prev_rate/100000) * reduction_risk * (incid_rate/100000))
   
   return(data)
 }
@@ -458,6 +459,20 @@ calc_HIA_replicate <- function(scenario = NULL, data_list, incidence_distrib_tab
   }
  
   # 3. Disease reduction risk
+
+  if (scenario == "current") {
+    data_list <- value_associate(
+      data_list = data_list,
+      distrib_table = rr_distrib_table,
+      dis_vec = dis_vec,
+      variable = "rr_2019",
+      source_column = "rr_interpolated",
+      group_columns = "step"
+    )
+    data_list <- reduction_risk(data_list = data_list, dis_vec = dis_vec)
+
+  }
+
   if (scenario == "intervention") {
     rr_2019_distrib_table <- rr_distrib_table %>%
       rename(step_2019 = step)
@@ -478,18 +493,30 @@ calc_HIA_replicate <- function(scenario = NULL, data_list, incidence_distrib_tab
       group_columns = "step"
     )
     data_list <- reduction_risk_scenario(data_list = data_list, dis_vec = dis_vec)
-  } else {
-    data_list <- value_associate(
+
+  } 
+
+  if (scenario == "alternative") {
+    # RR association
+    data_list <-  value_associate(
       data_list = data_list,
       distrib_table = rr_distrib_table,
       dis_vec = dis_vec,
-      variable = "rr_2019",
-      source_column = "rr_interpolated",
-      group_columns = "step"
+      variable = "alt_rr",
+      source_column = "simulated_rr",
+      group_columns = "sex"
     )
-    data_list <- reduction_risk(data_list = data_list, dis_vec = dis_vec)
-  }
+    # Ref association
+    data_list <-  value_associate(
+      data_list = data_list,
+      distrib_table = rr_distrib_table,
+      dis_vec = dis_vec,
+      variable = "ref",
+      source_column = "ref",
+      group_columns = "sex"
+    )
 
+  }
  
   # 4. Disability weights
   data_list <- value_associate(data_list = data_list,
@@ -501,6 +528,19 @@ calc_HIA_replicate <- function(scenario = NULL, data_list, incidence_distrib_tab
   for (dis in dis_vec) {
  
     dis_data <- data_list[[dis]]
+
+    if (scenario == "alternative") {
+      dis_data <- dis_data %>%
+        mutate(reduction_risk = (1 - alt_rr) * (week_time / ref))
+
+      if (dis == "mort") {
+        dis_data <- dis_data %>%
+          mutate(reduction_risk = if_else(reduction_risk > (1 - 0.45), 1 - 0.45, reduction_risk))
+      } else {
+        dis_data <- dis_data %>%
+          mutate(reduction_risk = if_else(reduction_risk > 0.40, 0.40, reduction_risk))
+      }
+    }
  
     # 5. Cases prevented
     dis_data <- reduc_incidence(dis_data)
@@ -548,7 +588,7 @@ burden_prevented_replicate <- function(data_list, dis_vec, group) {
 # `seed`: optional integer; if supplied, set once before the loop for reproducibility.
 HIA_burden_total <- function(scenario, data_list, function_calc_HIA, incidence_distrib_table,
                              prevalence_distrib_table, duration_table,
-                             reduction_risk_distrib_table, dw_distrib_table,
+                             rr_distrib_table, dw_distrib_table,
                              dis_vec,
                              prop_relapse, dep_recovery, vsl, group, N,
                              show_progress = TRUE) {
@@ -573,6 +613,7 @@ HIA_burden_total <- function(scenario, data_list, function_calc_HIA, incidence_d
     data_list = data_list,
     incidence_distrib_table = incidence_distrib_table,
     duration_table = duration_table,
+    rr_distrib_table = rr_distrib_table,
     dw_distrib_table = dw_distrib_table,
     dis_vec = dis_vec,
     prop_relapse = prop_relapse,
@@ -585,11 +626,10 @@ HIA_burden_total <- function(scenario, data_list, function_calc_HIA, incidence_d
   if ("prevalence_distrib_table" %in% calc_formals) {
     calc_args$prevalence_distrib_table <- prevalence_distrib_table
   }
-  if ("reduction_risk_distrib_table" %in% calc_formals) {
-    calc_args$reduction_risk_distrib_table <- reduction_risk_distrib_table
-  } else if ("rr_distrib_table" %in% calc_formals) {
-    calc_args$rr_distrib_table <- reduction_risk_distrib_table
+  if ("rr_distrib_table" %in% calc_formals) {
+    calc_args$rr_distrib_table <- rr_distrib_table
   }
+
   
  
   for (i in seq_len(N)) {
@@ -784,10 +824,10 @@ dis_setting = function (dis) {
 
 
 
-
+# A SUPPRIMER !!!
 # FUNCTION calc_HIA_replicate : Calculate the disease reduction percentage, cases, DALY and medical costs prevented for 1 run
   # set.seed()
-calc_alt_HIA <- function(data_list, incidence_distrib_table, prevalence_distrib_table, duration_table, reduction_risk_distrib_table, dw_distrib_table, 
+calc_alt_HIA <- function(data_list, incidence_distrib_table, prevalence_distrib_table, duration_table, rr_distrib_table, dw_distrib_table, 
                           dis_vec,
                           prop_relapse, dep_recovery, vsl) {
   
@@ -808,7 +848,7 @@ calc_alt_HIA <- function(data_list, incidence_distrib_table, prevalence_distrib_
                                       rate_column = "prev_rate")
   }
   # 3. Relative risks
-  rr_distrib_by_sex <- reduction_risk_distrib_table %>%
+  rr_distrib_by_sex <- rr_distrib_table %>%
     filter(disease %in% dis_vec) %>%
     group_by(disease, sex) %>%
     summarise(values = list(simulated_rr), .groups = "drop") %>%

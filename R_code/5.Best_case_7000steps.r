@@ -93,7 +93,9 @@ for (dis in dis_vec) {
     filter(disease == dis)
 }
 
-
+# Prevalence = 0
+prevalence_distrib_table <- prevalence_distrib_table %>% 
+  mutate(simulated_prevalence = 0)
 
 ################################################################################################################################
 #                                                 4. HEALTH IMPACT ASSESSMENT                                                  #

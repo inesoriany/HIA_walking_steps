@@ -586,12 +586,53 @@ plot_mean_steps_walkers
 #############################################################
 #                        MEAN PER AREA                      #
 #############################################################
-mean_step_area <- indiv_walkers %>% 
-  group_by(area_type) %>% 
-  summarise(mean_step = survey_mean(step_commute + baseline_step, na.rm = TRUE, vartype = "ci")) %>% 
+## EMP METHODOLOGY
+# Total walked by sex (EMP methodology)
+day_step <- emp_walkers  %>% 
+    mutate(step_pond = (nbkm_tot_walking * pond_jour/7)/ step_length, 
+          step_main_pond = (nbkm_main_walk * pond_jour/7)/ step_length,
+          step_inter_pond = (nbkm_intermodal_walk * pond_jour/7)/ step_length)
+  # Urban
+  steps_urban <- day_step  %>% 
+    filter(area_type == "urban") %>% 
+    summarise(tot_steps = sum(step_pond, na.rm = TRUE),
+              tot_pond_indc = sum(pond_indc, na.rm = T))  %>% 
+    mutate(mean_steps = tot_steps / tot_pond_indc)  %>% 
+    mutate(area_type = "urban")
+
+  # Periurban
+  steps_periurban <- day_step  %>% 
+    filter(area_type == "periurban") %>%
+    summarise(tot_steps = sum(step_pond, na.rm = TRUE),
+              tot_pond_indc = sum(pond_indc, na.rm = T))  %>% 
+    mutate(mean_steps = tot_steps / tot_pond_indc)  %>% 
+    mutate(area_type = "periurban")
+
+
+  # Rural
+  steps_rural <- day_step  %>% 
+    filter(area_type == "rural") %>% 
+    summarise(tot_steps = sum(step_pond, na.rm = TRUE),
+              tot_pond_indc = sum(pond_indc, na.rm = T))  %>% 
+    mutate(mean_steps = tot_steps / tot_pond_indc) %>% 
+    mutate(area_type = "rural")
+
+
+  # Proportion of distances walked by each sex
+  step_prop_area_emp_method <- bind_rows(steps_urban, steps_periurban, steps_rural) %>%
+    mutate(mean_step = mean_steps)  %>% 
+    mutate(proportion = tot_steps / sum(tot_steps))  %>% 
   mutate(area_type = factor(area_type, levels = c("urban", "periurban", "rural"))) 
 
 
+## SURVEY PACKAGE
+mean_step_area <- indiv_walkers %>% 
+  group_by(area_type) %>% 
+  summarise(mean_step = survey_mean(step_commute + baseline_step, na.rm = TRUE, vartype = "ci")) %>%  # include baseline step
+  mutate(area_type = factor(area_type, levels = c("urban", "periurban", "rural"))) 
+
+
+# Plot
 plot_mean_step_area = ggplot(mean_step_area, aes(x = area_type, y = mean_step,
                                               ymin = mean_step_low, ymax = mean_step_upp,
                                               fill = area_type)) +
@@ -607,6 +648,19 @@ plot_mean_step_area = ggplot(mean_step_area, aes(x = area_type, y = mean_step,
 plot_mean_step_area
 
 
+# Plot EMP METHODOLOGY
+plot_mean_step_area = ggplot(step_prop_area_emp_method, aes(x = area_type, y = mean_step,
+                                              fill = area_type)) +
+  geom_col(width = 0.7, position = position_dodge2(0.4)) +
+  scale_fill_manual(name = "Municipality density degree",
+                    labels = c("urban", "periurban", "rural"),
+                    values = colors_area) +
+  scale_y_continuous(labels = label_comma(big.mark = ",", decimal.mark = ".")) +
+  labs(x = "Area type",
+       y = "Mean steps per day per area") +
+  theme_minimal()
+plot_mean_step_area
+
 # Test Anova
 anova_area_step <- svyglm(step_commute_jour ~ area_type, indiv_walkers)
 summary(anova_area_step)
@@ -614,6 +668,43 @@ summary(anova_area_step)
 regTermTest(anova_area_step, ~ area_type)
 # p_value < 2.22e-16                 Highly significant (p<0.0001)
 
+
+## EMP METHODOLOGY
+# Total walked by sex (EMP methodology)
+day_step <- emp_walkers  %>% 
+    mutate(step_pond = (nbkm_tot_walking * pond_jour/7)/ step_length, 
+          step_main_pond = (nbkm_main_walk * pond_jour/7)/ step_length,
+          step_inter_pond = (nbkm_intermodal_walk * pond_jour/7)/ step_length)
+  # Urban
+  steps_urban <- day_step  %>% 
+    filter(area_type == "urban") %>% 
+    summarise(tot_steps = sum(step_pond, na.rm = TRUE),
+              tot_pond_indc = sum(pond_indc, na.rm = T))  %>% 
+    mutate(mean_steps = tot_steps / tot_pond_indc)  %>% 
+    mutate(area_type = "urban")
+
+  # Periurban
+  steps_periurban <- day_step  %>% 
+    filter(area_type == "periurban") %>%
+    summarise(tot_steps = sum(step_pond, na.rm = TRUE),
+              tot_pond_indc = sum(pond_indc, na.rm = T))  %>% 
+    mutate(mean_steps = tot_steps / tot_pond_indc)  %>% 
+    mutate(area_type = "periurban")
+
+
+  # Rural
+  steps_rural <- day_step  %>% 
+    filter(area_type == "rural") %>% 
+    summarise(tot_steps = sum(step_pond, na.rm = TRUE),
+              tot_pond_indc = sum(pond_indc, na.rm = T))  %>% 
+    mutate(mean_steps = tot_steps / tot_pond_indc) %>% 
+    mutate(area_type = "rural")
+
+
+  # Proportion of distances walked by each sex
+  step_prop_area_emp_method <- bind_rows(steps_urban, steps_periurban, steps_rural) %>%
+    mutate(mean_step = mean_steps)  %>% 
+    mutate(proportion = tot_steps / sum(tot_steps)) 
 
 
 ################################################################################################################################

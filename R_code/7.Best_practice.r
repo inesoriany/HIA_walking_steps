@@ -182,9 +182,19 @@ emp_target_walk <- emp_target_walk  %>%
 
 # Calculate target steps per person for each individual, adjusted by the distribution coefficient and population structure
 emp_target_walk <- emp_target_walk %>% 
+  group_by(area_type, disease) %>%
+  mutate(target_ind = rho * target_area * sum(pond_indc, na.rm = TRUE) / sum(pond_indc * rho, na.rm = TRUE)) %>%
+  ungroup()
+
+  
+
+
+former_target_emp_taregt_walk <- emp_target_walk %>%
   mutate(target_ind = rho * target_area * sum(pop_age_area) / sum(pop_age_area * rho))
 
 
+new_emp_target_walk == former_target_emp_taregt_walk  # TRUE
+new_emp_target_walk == emp_target_walk  # TRUE
 
 ###########################################################################################################################################################################
 ###########################################################################################################################################################################
@@ -217,6 +227,40 @@ for (dis in dis_vec) {
     filter(disease == dis)
 }
 
+target_indiv_walkers <- PRACT_list[["mort"]]  %>% 
+  filter(!is.na(pond_indc)) %>% 
+  as_survey_design(ids = ident_ind,
+                   weights = pond_indc,
+                   strata = c(sex, age_grp10, area_type),
+                   nest = TRUE)
+
+target_mean_step_area <- target_indiv_walkers %>% 
+  group_by(area_type) %>% 
+  summarise(mean_step = survey_mean(step, na.rm = TRUE, vartype = "ci")) %>% 
+  mutate(area_type = factor(area_type, levels = c("urban", "periurban", "rural"))) 
+
+
+# No diminution
+diminish_PRACT_list <- list() 
+
+for (dis in dis_vec) {
+  diminish_PRACT_list[[dis]] <- emp_target_walk_with_diminution %>% 
+    filter(disease == dis)
+}
+
+diminish__indiv_walkers <- diminish_PRACT_list[["mort"]]  %>% 
+  filter(!is.na(pond_indc)) %>% 
+  as_survey_design(ids = ident_ind,
+                   weights = pond_indc,
+                   strata = c(sex, age_grp10, area_type),
+                   nest = TRUE)
+
+diminish_mean_step_area <- diminish__indiv_walkers %>% 
+  group_by(area_type) %>% 
+  summarise(mean_step = survey_mean(step, na.rm = TRUE, vartype = "ci")) %>% 
+  mutate(area_type = factor(area_type, levels = c("urban", "periurban", "rural"))) 
+
+
 
 
 ###############################################################################################################################
@@ -226,7 +270,7 @@ for (dis in dis_vec) {
 # Total of prevented burden of each disease per area type for each simulation 
 set.seed(123)
 PRACT_burden_total <- HIA_burden_total(scenario = "intervention",
-                                        PRACT_list,
+                                       PRACT_list,
                                        calc_HIA_replicate,
                                        incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, rr_distrib_table, dw_distrib_table,
                                        dis_vec,
@@ -334,7 +378,9 @@ for (dis in dis_vec) {
     filter(disease == dis)
 }
 
-
+# Prevalence = 0
+prevalence_distrib_table <- prevalence_distrib_table %>% 
+  mutate(simulated_prevalence = 0)
 
 ################################################################################################################################
 #                                                6. HEALTH IMPACT ASSESSMENT                                                   #
@@ -428,7 +474,7 @@ burden_2019 <- bind_rows(burden_per_area,
 
 # Import data
 burden_2019 <- import(here("output", "Tables", "Best practice", "HIA_area_2019_1000replicate.xlsx"))
-PRACT_burden <- import(here("output", "Tables", "Best practice", "HIA_best_practice_1000replicate.xlsx"))
+# PRACT_burden <- import(here("output", "Tables", "Best practice", "HIA_best_practice_1000replicate.xlsx"))
 
 
 # Incremental benefits

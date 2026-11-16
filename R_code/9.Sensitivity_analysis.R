@@ -39,14 +39,12 @@ incidence_distrib_table <- import(here("data_clean", "Diseases", "incidence_dist
 # Prevalence distribution table
 prevalence_distrib_table <- import(here("data_clean", "Diseases", "prevalence_distrib_table.xlsx"))
 
-# Risk reduction distribution table
-reduction_risk_distrib_table <- import(here("data_clean", "Diseases", "DRF", "reduction_risk_distrib_table.xlsx"))
+# Relative risk distribution table
+rr_distrib_table <- import(here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
 
 # Disease duration distribution table
 duration_distrib_table <- import(here("data_clean", "Diseases", "duration_distrib_table.xlsx"))
 
-# RR by step, simulated dose-response relationships
-rr_distrib_table <- import(here("data_clean", "Diseases", "DRF", "rr_sim_interpolated.rds"))
 
 
 # Disability weights distribution table
@@ -205,12 +203,13 @@ for (dis in alt_dis_vec) {
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
 alt_burden_total <- HIA_burden_total(
+  scenario = "alternative",
   data_list = alt_replicate_list, 
-  function_calc_HIA = calc_alt_HIA,
+  function_calc_HIA = calc_HIA_replicate,
   incidence_distrib_table = incidence_distrib_table,
   prevalence_distrib_table = prevalence_distrib_table,
   duration_table = duration_distrib_table,
-  reduction_risk_distrib_table = alt_rr_distrib_table,
+  rr_distrib_table = alt_rr_distrib_table,
   dw_distrib_table = dw_distrib_table,
   dis_vec = alt_dis_vec,
   prop_relapse = prop_relapse,
@@ -219,7 +218,7 @@ alt_burden_total <- HIA_burden_total(
   group = NULL,
   N = 1000
 )
- 
+
 
 # Export : Table of HIA outcomes per simulation
 export(alt_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_DRF_sensitivity_1000replicate.rds"))
@@ -237,12 +236,13 @@ export(alt_burden_total, here("output", "RDS", "Sensitivity analyses", "HIA_DRF_
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
 alt_base_burden_total <- HIA_burden_total(
+  scenario = "alternative",
   data_list = alt_baseline_replicate_list,
-  function_calc_HIA = calc_alt_HIA,
+  function_calc_HIA = calc_HIA_replicate,
   incidence_distrib_table = incidence_distrib_table,
   prevalence_distrib_table = prevalence_distrib_table,
   duration_table = duration_distrib_table,
-  reduction_risk_distrib_table = alt_rr_distrib_table,
+  rr_distrib_table = alt_rr_distrib_table,
   dw_distrib_table = dw_distrib_table,
   dis_vec = alt_dis_vec,
   prop_relapse = prop_relapse,
@@ -381,7 +381,11 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-baseline_burden_total <- HIA_burden_total(baseline_replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_baseline_distrib_table, dw_distrib_table, 
+baseline_burden_total <- HIA_burden_total(
+                                 scenario = "current",
+                                 baseline_replicate_list, 
+                                 calc_HIA_replicate, 
+                                 incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_baseline_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
@@ -484,7 +488,10 @@ for (dis in dis_vec) {
 ##############################################################
 # Total of prevented burden of each disease for each simulation 
 set.seed(123)
-age_burden_total <- HIA_burden_total(age_replicate_list, calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, reduction_risk_distrib_table, dw_distrib_table, 
+age_burden_total <- HIA_burden_total(
+                                 scenario = "current",
+                                 age_replicate_list, 
+                                 calc_HIA_replicate, incidence_distrib_table, prevalence_distrib_table, duration_distrib_table, rr_distrib_table, dw_distrib_table, 
                                  dis_vec, 
                                  prop_relapse, dep_recovery, vsl, 
                                  group = NULL,
