@@ -349,6 +349,7 @@ rr_baseline_step <- rr_distrib_table %>%
   select(simulation_id, disease, rr_interpolated) %>% 
   rename(rr_baseline = rr_interpolated)
 
+# A MODIFIER !!
 reduction_risk_baseline_distrib_table <- rr_distrib_table  %>% 
   left_join(rr_baseline_step, by = c("disease", "simulation_id")) %>% 
   mutate(reduction_risk = rr_baseline/rr_interpolated - 1)

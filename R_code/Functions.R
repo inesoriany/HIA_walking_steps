@@ -304,7 +304,7 @@ reduction_risk <- function(data_list, dis_vec) {
 
 
 
-# FUNCTION reduction_risk_scenario : Calculate incremental reduction relative to 2019
+# FUNCTION reduction_risk_scenario : Calculate reduction of RR compared to counterfactual scenario
   # set.seed()
 reduction_risk_scenario <- function(data_list, dis_vec) {
 
@@ -324,15 +324,14 @@ reduction_risk_scenario <- function(data_list, dis_vec) {
 #                           CASES                            #
 ##############################################################
 
-# FUNCTION reduc_incidence : Calculate the reduced disease incidence (number of prevented new cases)
-reduc_incidence = function(data) {
- if (!"prev_rate" %in% names(data)) {
-   data$prev_rate <- 0
+# FUNCTION reduc_incidence : Calculate the reduced disease incidence or mortality (number of prevented cases or deaths)
+reduc_incidence = function(data, dis) {
+  if (!"prev_rate" %in% names(data)) {
+    data$prev_rate <- 0
  }
+    data <- data %>% 
+      mutate(cases = pond_indc * (1 - prev_rate/100000) * reduction_risk * (incid_rate/100000))
 
- data <- data %>% 
-   mutate(cases = pond_indc * (1 - prev_rate/100000) * reduction_risk * (incid_rate/100000))
-  
   return(data)
 }
 
@@ -543,7 +542,7 @@ calc_HIA_replicate <- function(scenario = NULL, data_list, incidence_distrib_tab
     }
  
     # 5. Cases prevented
-    dis_data <- reduc_incidence(dis_data)
+    dis_data <- reduc_incidence(dis_data, dis)
  
     # 6. DALY
     dis_data <- daly(dis_data, duration_table, dis, prop_relapse, dep_recovery)
@@ -889,7 +888,7 @@ calc_alt_HIA <- function(data_list, incidence_distrib_table, prevalence_distrib_
     
     
     # 6. Cases prevented
-    dis_data <- reduc_incidence(dis_data)
+    dis_data <- reduc_incidence(dis_data, dis)
     
 
     # 7. DALY
