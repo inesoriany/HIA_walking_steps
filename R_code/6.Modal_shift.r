@@ -139,7 +139,7 @@ emp_short_driver <- emp_short_trip %>%
 # C EST L INCREMENTAL EFFECT
 set.seed(123)
 
-N <- 10
+N <- 1000
 
 MODAL_burden_total <- data.frame()
 
